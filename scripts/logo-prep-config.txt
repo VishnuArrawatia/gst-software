@@ -1,0 +1,4 @@
+SOURCE_LIST = ["C:\Users\SAKAR\AppData\Local\Temp\freebuff-desktop-pastes\paste-1792487107068-122664.png", "C:\Users\SAKAR\AppData\Local\Temp\freebuff-desktop-pastes\paste-1792487130466-122664.png"]
+BOX_W = 600
+BOX_H = 600
+OUTPUT_DIR = output\_logo-prep

@@ -1,0 +1,6 @@
+﻿"GST CONTROL ERP — GSTR-2B vs Books, invoice-to-invoice reconciliation (sheet 1 of the .xlsx template)"
+This CSV is for reading. Upload the .xlsx working sheet — the line-wise sheet needs its Line IDs.
+
+GSTIN,Period,Supplier GSTIN,Supplier Name,Invoice No,Invoice Date,Lines,Book Taxable Value,Book IGST,Book CGST,Book SGST,Book CESS,Book ITC,2B Matched,2B Matched Month,2B Invoice No,2B Invoice Date,2B Taxable Value,2B IGST,2B CGST,2B SGST,2B ITC,Taxable Difference,ITC Difference,2B Match Status,Line Status Break-up,Duplicate Lines,ITC Decision,Kya Karna Hai,Locked
+26AALCS9985J1ZC,2026-04,24AABCU9604R1ZX,TATA STEEL LIMITED,EXAMPLE-2,2026-04-18,1,25000,0,2250,2250,0,4500,No,,,,0,0,0,0,0,0,0,Missing in 2B,Missing in 2B 1,1,Pending Review,Vendor se poocho — 2B me nahi hai. Follow-up Date aur Vendor Response bharein.,
+26AALCS9985J1ZC,2026-04,27AAFCC9473R1ZP,CROMPTON GREAVES,EXAMPLE-1,2026-04-15,2,100000,18000,0,0,0,18000,YES,2026-04,EXAMPLE-1,2026-04-15,100000,18000,0,0,18000,0,0,Matched,Matched 2,1,Pending Review,2B se poora match — ITC decision le lo.,

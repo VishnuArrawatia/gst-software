@@ -1,0 +1,41 @@
+{
+  "name": "gst-erp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "GST ERP — purchase reconciliation vs GSTR-2B, GSTR-1, GSTR-3B and ITC control",
+  "scripts": {
+    "test": "tsx tests/run.ts",
+    "verify": "tsx tests/verify-real-data.ts",
+    "cli": "tsx src/cli/monthly.ts",
+    "migrate": "tsx scripts/apply-migrations.ts",
+    "seed": "tsx scripts/seed-masters.ts",
+    "serve": "tsx src/server/server.ts",
+    "test:p0": "tsx tests/phase0-db.ts",
+    "test:p0:test": "tsx scripts/test-db.ts scripts/seed-test-fixtures.ts && tsx scripts/test-db.ts tests/phase0-db.ts",
+    "test:all": "npm test && npm run test:p0",
+    "test:all:test": "npm test && npm run test:p0:test",
+    "migrate:test": "tsx scripts/test-db.ts scripts/apply-migrations.ts",
+    "seed:test": "tsx scripts/test-db.ts scripts/seed-masters.ts",
+    "fixture:test": "tsx scripts/test-db.ts scripts/seed-test-fixtures.ts",
+    "fixture:test:clean": "tsx scripts/test-db.ts scripts/seed-test-fixtures.ts --clean",
+    "e2e:test": "tsx scripts/test-db.ts src/cli/monthly.ts",
+    "template:sales": "tsx scripts/make-sales-template.ts",
+    "template:purchase": "tsx scripts/make-purchase-template.ts",
+    "template:twob-recon": "tsx scripts/make-twob-recon-template.ts",
+    "seed:team": "tsx scripts/seed-team.ts",
+    "seed:logos": "tsx scripts/seed-logos.ts"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "pg": "^8.13.1",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.14.0",
+    "@types/pg": "^8.11.10",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

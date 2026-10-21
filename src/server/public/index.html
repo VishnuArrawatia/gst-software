@@ -1,0 +1,3453 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>GST CONTROL ERP</title>
+<style>
+/* ==========================================================================
+   GST CONTROL ERP — design system
+   --------------------------------------------------------------------------
+   One restrained navy/blue palette for the whole application, so every screen
+   is built from the same tokens instead of its own colours. Amounts use
+   tabular figures and are right-aligned; status is always a colour AND a word,
+   never colour alone. Nothing here needs a network font: the office LAN has no
+   internet, so the stack is the system UI font.
+   ========================================================================== */
+:root {
+  /* surfaces */
+  --bg: #080d17;
+  --bg-grad-1: #0b1322;
+  --bg-grad-2: #070b13;
+  --panel: #0f1726;
+  --panel-2: #0b1220;
+  --panel-3: #131d30;
+  --line: #1e2a41;
+  --line-soft: #172235;
+
+  /* text */
+  --text: #e9eef8;
+  --text-2: #b6c3da;
+  --muted: #8798b5;
+
+  /* brand */
+  --accent: #3b82f6;
+  --accent-2: #1d4ed8;
+  --accent-soft: rgba(59, 130, 246, .14);
+  --gold: #d9a441;
+  --gold-soft: rgba(217, 164, 65, .14);
+
+  /* status */
+  --good: #22c55e;
+  --good-soft: rgba(34, 197, 94, .13);
+  --warn: #f0a92b;
+  --warn-soft: rgba(240, 169, 43, .14);
+  --bad: #ef4444;
+  --bad-soft: rgba(239, 68, 68, .13);
+  --info: #60a5fa;
+  --info-soft: rgba(96, 165, 250, .13);
+
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 12px 28px -18px rgba(0, 0, 0, .8);
+  --sidebar-w: 236px;
+  --topbar-h: 62px;
+}
+
+* { box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  color: var(--text);
+  background:
+    radial-gradient(1200px 600px at 78% -10%, rgba(59, 130, 246, .10), transparent 60%),
+    radial-gradient(900px 500px at 10% 110%, rgba(217, 164, 65, .05), transparent 60%),
+    linear-gradient(180deg, var(--bg-grad-1), var(--bg-grad-2));
+  background-attachment: fixed;
+  font: 14px/1.55 "Segoe UI", system-ui, -apple-system, "Helvetica Neue", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4 { margin: 0; font-weight: 600; letter-spacing: .1px; }
+a { color: var(--info); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* --------------------------------------------------------------- app shell */
+#shell { min-height: 100%; }
+
+.app { display: grid; grid-template-columns: var(--sidebar-w) 1fr; min-height: 100vh; }
+
+.sidebar {
+  background: linear-gradient(180deg, #0c1424, #080e1a);
+  border-right: 1px solid var(--line);
+  padding: 16px 12px 22px;
+  position: sticky; top: 0; align-self: start;
+  height: 100vh; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.brand { display: flex; align-items: center; gap: 11px; padding: 4px 6px 16px; }
+.mark {
+  width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center;
+  background: linear-gradient(140deg, #2461d8, #123a86);
+  color: #fff; font-weight: 800; font-size: 13px; letter-spacing: .6px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .10), 0 6px 14px -8px #0b3ea8;
+}
+.brand-name { font-size: 14.5px; font-weight: 700; letter-spacing: .2px; line-height: 1.2; }
+.brand .tag { display: block; }
+.tag { color: var(--muted); font-size: 11px; letter-spacing: .2px; }
+.gold-rule { height: 2px; border-radius: 2px; background: linear-gradient(90deg, var(--gold), transparent); opacity: .55; margin: 0 6px 12px; }
+
+.nav-label {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 1.1px; color: var(--muted);
+  padding: 14px 10px 6px; font-weight: 700;
+}
+nav { display: flex; flex-direction: column; gap: 2px; padding: 0; }
+.navlink {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  background: transparent; color: var(--text-2); border: 0; border-radius: var(--radius-sm);
+  padding: 9px 11px; font: inherit; font-size: 13px; font-weight: 500; text-align: left;
+  cursor: pointer; position: relative; transition: background .12s ease, color .12s ease;
+}
+.navlink:hover { background: var(--panel-3); color: var(--text); }
+.navlink.active { background: var(--accent-soft); color: #dbe9ff; font-weight: 600; }
+.navlink.active::before {
+  content: ''; position: absolute; left: 0; top: 7px; bottom: 7px; width: 3px;
+  border-radius: 0 3px 3px 0; background: var(--accent);
+}
+.navlink .ico { width: 17px; height: 17px; flex: none; opacity: .85; }
+.navlink.active .ico { opacity: 1; }
+.sidebar-foot { margin-top: auto; padding: 14px 8px 0; border-top: 1px solid var(--line-soft); }
+
+.main-col { display: flex; flex-direction: column; min-width: 0; }
+
+/* -------------------------------------------------------------- top bar */
+header.topbar {
+  position: sticky; top: 0; z-index: 20;
+  display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+  padding: 10px 22px; min-height: var(--topbar-h);
+  background: linear-gradient(180deg, rgba(12, 20, 34, .96), rgba(12, 20, 34, .86));
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--line);
+}
+.crumb { display: flex; flex-direction: column; gap: 1px; min-width: 150px; }
+.crumb .k { font-size: 10.5px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); font-weight: 700; }
+.crumb .v { font-size: 14px; font-weight: 600; }
+.spacer { flex: 1 1 auto; }
+.ctx { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+.ctx > div { min-width: 132px; }
+.ctx label { margin-bottom: 3px; }
+.who { display: flex; align-items: center; gap: 9px; font-size: 12.5px; color: var(--muted); }
+.user-chip {
+  display: flex; align-items: center; gap: 8px; padding: 5px 10px 5px 6px;
+  border: 1px solid var(--line); border-radius: 999px; background: var(--panel-2); color: var(--text-2);
+}
+.avatar {
+  width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--gold-soft); color: var(--gold); font-size: 11px; font-weight: 700;
+}
+
+main { padding: 20px 22px 56px; max-width: 1620px; width: 100%; margin: 0 auto; }
+
+/* ------------------------------------------------------------ page header */
+.page-head {
+  display: flex; align-items: flex-start; gap: 18px; flex-wrap: wrap;
+  padding: 16px 18px; margin-bottom: 16px;
+  background: linear-gradient(120deg, rgba(19, 29, 48, .92), rgba(11, 18, 32, .92));
+  border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow);
+  position: relative; overflow: hidden;
+}
+.page-head::after {
+  content: ''; position: absolute; inset: 0 auto 0 0; width: 3px;
+  background: linear-gradient(180deg, var(--accent), var(--gold));
+}
+.page-head .ph-text { flex: 1 1 320px; min-width: 240px; }
+.page-head h1 { font-size: 19px; letter-spacing: .2px; }
+.page-head .ph-sub { color: var(--muted); font-size: 12.5px; margin-top: 4px; max-width: 92ch; }
+.page-head .ph-chips { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 10px; }
+.page-head .ph-img {
+  width: 168px; height: 92px; flex: none; border-radius: 10px; object-fit: cover;
+  border: 1px solid var(--line); box-shadow: var(--shadow);
+  opacity: .92;
+}
+.chipstat {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px;
+  background: var(--panel-2); border: 1px solid var(--line); color: var(--text-2);
+  padding: 4px 9px; border-radius: 999px;
+}
+.chipstat b { color: var(--text); font-weight: 600; }
+
+/* ------------------------------------------------------------------ cards */
+.card {
+  background: linear-gradient(180deg, var(--panel), var(--panel-2));
+  border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 16px 18px 18px; margin-bottom: 16px; box-shadow: var(--shadow);
+}
+.card > h2 {
+  display: flex; align-items: center; gap: 9px;
+  font-size: 11.5px; text-transform: uppercase; letter-spacing: 1.1px;
+  color: var(--text-2); margin: 0 0 14px; font-weight: 700;
+}
+.card > h2::before {
+  content: ''; width: 3px; height: 13px; border-radius: 2px; background: var(--accent); flex: none;
+}
+.card h3 {
+  font-size: 12px; text-transform: uppercase; letter-spacing: .9px; color: var(--muted);
+  margin: 18px 0 8px; font-weight: 700;
+}
+.card .hint + .hint { margin-top: 6px; }
+.split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+@media (max-width: 1080px) { .split { grid-template-columns: 1fr; } }
+
+/* ------------------------------------------------------------- KPI / tiles */
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(172px, 1fr)); gap: 12px; }
+.kpi-row { margin-bottom: 16px; }
+.tile {
+  background: linear-gradient(180deg, var(--panel-3), var(--panel-2));
+  border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 13px 15px 14px; position: relative; overflow: hidden;
+}
+.tile::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--line); }
+.tile .k {
+  font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; font-weight: 700;
+}
+.tile .v {
+  font-size: 23px; margin-top: 6px; font-variant-numeric: tabular-nums;
+  font-weight: 650; letter-spacing: -.2px; line-height: 1.15;
+}
+.tile .v.sm { font-size: 15px; font-weight: 600; }
+.tile .sub { font-size: 11.5px; color: var(--muted); margin-top: 5px; }
+.tile.good::before { background: var(--good); }
+.tile.warn::before { background: var(--warn); }
+.tile.bad::before { background: var(--bad); }
+.tile.info::before { background: var(--info); }
+.tile.good .v { color: #6ee7a0; }
+.tile.warn .v { color: #f6c065; }
+.tile.bad .v { color: #ff8f8f; }
+.tile.accent::before { background: var(--accent); }
+.tile.accent .v { color: #9cc4ff; }
+
+/* ---------------------------------------------------------------- tables */
+.tablewrap, .scroll {
+  border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--panel-2);
+  overflow: auto; max-height: 470px;
+}
+table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line-soft); white-space: nowrap; }
+thead th {
+  position: sticky; top: 0; z-index: 2;
+  background: #101a2c; color: var(--muted); font-weight: 700;
+  font-size: 10.5px; text-transform: uppercase; letter-spacing: .9px;
+  border-bottom: 1px solid var(--line);
+}
+tbody tr:nth-child(even) { background: rgba(255, 255, 255, .014); }
+tbody tr:hover { background: rgba(59, 130, 246, .07); }
+tbody tr:last-child td { border-bottom: 0; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+th.num { text-align: right; }
+td code { font-family: ui-monospace, Consolas, monospace; font-size: 12px; color: #cfe0ff; }
+tr.clickable { cursor: pointer; }
+tr.total-row td { font-weight: 700; color: var(--text); border-top: 1px solid var(--line); background: rgba(217, 164, 65, .06); }
+td .hint { white-space: normal; }
+/* A note column must WRAP. `th, td` sets nowrap so amounts stay on one line,
+   and a note cell inheriting nowrap stretched the Reports table wider than the
+   screen instead of wrapping its sentence. */
+td.hint { white-space: normal; min-width: 200px; }
+
+/* ------------------------------------------------------------ pills/badges */
+.pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 600;
+  background: var(--info-soft); color: #a9c8ff; border: 1px solid rgba(96, 165, 250, .22);
+  white-space: nowrap;
+}
+.pill::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .9; }
+.pill.good { background: var(--good-soft); color: #7ee2a8; border-color: rgba(34, 197, 94, .26); }
+.pill.warn { background: var(--warn-soft); color: #f3c473; border-color: rgba(240, 169, 43, .28); }
+.pill.bad { background: var(--bad-soft); color: #ff9d9d; border-color: rgba(239, 68, 68, .28); }
+.pill.info { background: var(--info-soft); color: #a9c8ff; }
+.pill.plain { background: var(--panel-3); color: var(--muted); border-color: var(--line); }
+
+/* ------------------------------------------------------------------ tabs */
+.tabs { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 12px; }
+.tab {
+  background: var(--panel-2); color: var(--muted); border: 1px solid var(--line);
+  border-radius: 999px; padding: 6px 14px; cursor: pointer; font: inherit; font-size: 12.5px;
+  display: inline-flex; align-items: center; gap: 7px; transition: all .12s ease;
+}
+.tab:hover { color: var(--text); border-color: #2a3a58; }
+.tab.active { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 600; }
+.tab.active::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #fff; }
+
+/* ------------------------------------------------------- month chip strip */
+.month-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.chip {
+  display: flex; flex-direction: column; gap: 3px; align-items: flex-start;
+  min-width: 92px; padding: 8px 11px; cursor: pointer; font: inherit; text-align: left;
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--radius-sm);
+  color: var(--text-2); transition: all .12s ease;
+}
+.chip:hover { border-color: #2f4470; transform: translateY(-1px); }
+.chip .cm { font-size: 12.5px; font-weight: 600; }
+.chip .cs { font-size: 10.5px; color: var(--muted); display: flex; align-items: center; gap: 5px; }
+.chip .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex: none; }
+.chip.good .dot { background: var(--good); }
+.chip.warn .dot { background: var(--warn); }
+.chip.bad .dot { background: var(--bad); }
+.chip.active { border-color: var(--accent); background: var(--accent-soft); color: #dbe9ff; box-shadow: 0 0 0 1px rgba(59, 130, 246, .35) inset; }
+.chip.active .cm { color: #fff; }
+
+/* ---------------------------------------------------------------- buttons */
+button {
+  background: linear-gradient(180deg, #3d86f7, #2563eb); color: #fff; border: 1px solid #1d4ed8;
+  border-radius: var(--radius-sm); padding: 9px 15px; font: inherit; font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: filter .12s ease, transform .06s ease, background .12s ease;
+  box-shadow: 0 6px 14px -12px #000;
+}
+button:hover { filter: brightness(1.08); }
+button:active { transform: translateY(1px); }
+button:disabled { opacity: .45; cursor: not-allowed; filter: none; }
+button.ghost {
+  background: var(--panel-2); color: var(--text-2); border: 1px solid var(--line); font-weight: 500;
+}
+button.ghost:hover { background: var(--panel-3); color: var(--text); border-color: #2c3e5f; filter: none; }
+button.sm { padding: 6px 11px; font-size: 12.5px; }
+button.gold { background: linear-gradient(180deg, #e2b158, #c08f2c); border-color: #a97c22; color: #1b1405; }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid rgba(96, 165, 250, .55); outline-offset: 1px;
+}
+
+/* ----------------------------------------------------------------- forms */
+label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 4px; font-weight: 600; letter-spacing: .3px; }
+input[type=text], input[type=password], input[type=search], input[type=file], input[type=date], select, textarea {
+  background: var(--panel-2); color: var(--text); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); padding: 9px 11px; min-width: 140px; font: inherit; font-size: 13px;
+  transition: border-color .12s ease, box-shadow .12s ease;
+}
+input[type=text]:hover, select:hover, textarea:hover { border-color: #2a3a58; }
+input:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59, 130, 246, .16); outline: none; }
+select {
+  appearance: none; padding-right: 30px;
+  background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position: calc(100% - 16px) 52%, calc(100% - 11px) 52%;
+  background-size: 5px 5px, 5px 5px; background-repeat: no-repeat;
+}
+textarea { width: 100%; min-height: 140px; font-family: ui-monospace, Consolas, monospace; font-size: 12.5px; line-height: 1.5; }
+.row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+.hint { font-size: 12px; color: var(--muted); }
+.hint b, .hint strong { color: var(--text-2); }
+
+/* ------------------------------------------------------------- drop zone */
+.drop {
+  border: 2px dashed #26364f; border-radius: var(--radius); padding: 26px 22px; text-align: center;
+  color: var(--muted); cursor: pointer; background: rgba(11, 18, 32, .5);
+  transition: all .14s ease;
+}
+.drop b { color: var(--text-2); }
+.drop:hover { border-color: #35507c; color: var(--text-2); }
+.drop.over { border-color: var(--accent); color: #cfe0ff; background: var(--accent-soft); }
+
+/* --------------------------------------------------------- messages/toast */
+.msg { padding: 10px 13px; border-radius: var(--radius-sm); margin-bottom: 8px; font-size: 12.5px; border: 1px solid; }
+.msg.warn { background: var(--warn-soft); color: #f3c473; border-color: rgba(240, 169, 43, .3); }
+.msg.err { background: var(--bad-soft); color: #ff9d9d; border-color: rgba(239, 68, 68, .3); }
+.msg.ok { background: var(--good-soft); color: #7ee2a8; border-color: rgba(34, 197, 94, .28); }
+pre.log {
+  background: #070c15; border: 1px solid var(--line); border-radius: var(--radius-sm);
+  padding: 12px; max-height: 320px; overflow: auto; font-size: 12px; color: #9fb0cc;
+  white-space: pre-wrap; margin: 0; font-family: ui-monospace, Consolas, monospace;
+}
+.toast {
+  position: fixed; right: 22px; bottom: 22px; z-index: 60; max-width: 430px;
+  background: linear-gradient(180deg, var(--panel-3), var(--panel));
+  border: 1px solid var(--line); border-left: 3px solid var(--accent);
+  color: var(--text); padding: 12px 15px; border-radius: var(--radius-sm);
+  opacity: 0; transform: translateY(10px); transition: opacity .18s ease, transform .18s ease;
+  pointer-events: none; font-size: 13px; box-shadow: var(--shadow);
+}
+.toast.show { opacity: 1; transform: none; }
+.toast.err { border-left-color: var(--bad); color: #ff9d9d; }
+.toast.ok { border-left-color: var(--good); color: #7ee2a8; }
+
+/* ------------------------------------------- invoice-level edit row */
+/* The four correctable values open UNDER the invoice they belong to, so the
+   books value, the 2B value and the correction are on screen together. */
+.editrow > td { background: #0c1524; border-top: 1px solid var(--line-soft); padding: 14px 12px; }
+tr.editing > td { background: var(--accent-soft); }
+.editgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(185px, 1fr)); gap: 12px; }
+.editgrid input { width: 100%; }
+.editrow .edit-note { font-size: 11.5px; color: var(--muted); margin: 12px 0 0; max-width: 110ch; line-height: 1.55; }
+.editrow .edit-note b { color: var(--text-2); }
+.editrow .edit-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.row-actions { white-space: nowrap; }
+.row-actions button { padding: 5px 10px; font-size: 12px; }
+tr.clickable { cursor: default; }
+
+/* ----------------------------------------------------- workflow / steps */
+.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(232px, 1fr)); gap: 12px; }
+.step {
+  background: linear-gradient(180deg, var(--panel-3), var(--panel-2));
+  border: 1px solid var(--line); border-radius: var(--radius); padding: 13px 14px 14px;
+  display: flex; flex-direction: column; gap: 2px; position: relative; overflow: hidden;
+}
+.step .n {
+  font-size: 10px; color: var(--accent); font-weight: 800; letter-spacing: 1.2px;
+}
+.step .t { margin: 3px 0 5px; font-weight: 600; font-size: 13.5px; }
+.step .hint { font-size: 11.5px; }
+.step .step-actions { margin-top: auto; padding-top: 11px; display: flex; gap: 8px; flex-wrap: wrap; }
+.step .thumb {
+  position: absolute; right: -18px; top: -18px; width: 84px; height: 84px; border-radius: 50%;
+  object-fit: cover; opacity: .16; pointer-events: none;
+}
+
+/* ------------------------------------------------------------ login page */
+/* A two-panel sign-in card: the brand panel states what the system does, the
+   form panel does exactly one thing. Small-caps labels, one accent rule across
+   the top, and generous spacing — the same tokens as the rest of the app, so
+   the first screen and the last screen look like one product. */
+.gate { min-height: 100vh; display: grid; place-items: center; padding: 28px; }
+.login-shell {
+  position: relative;
+  display: grid; grid-template-columns: 1.08fr .92fr; width: min(1060px, 100%);
+  border: 1px solid var(--line); border-radius: 16px; overflow: hidden;
+  background: var(--panel);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .5), 0 40px 90px -55px #000;
+  animation: gate-rise .34s ease both;
+}
+.login-shell::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; z-index: 3;
+  background: linear-gradient(90deg, transparent, var(--accent) 30%, var(--gold) 70%, transparent);
+  opacity: .9;
+}
+@keyframes gate-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .login-shell { animation: none; } }
+
+.login-hero {
+  position: relative; isolation: isolate;
+  min-height: 578px; padding: 32px 36px 30px; color: #fff;
+  background: #0a1120 url('/assets/hero-hologram.jpg') center/cover no-repeat;
+  display: flex; flex-direction: column; justify-content: space-between; gap: 28px;
+}
+.login-hero::after {
+  content: ''; position: absolute; inset: 0; z-index: -1;
+  background: linear-gradient(180deg, rgba(6, 12, 24, .62) 0%, rgba(6, 12, 24, .86) 52%, rgba(5, 10, 20, .96) 100%);
+}
+.login-hero h2 { font-size: 25px; line-height: 1.28; letter-spacing: -.2px; }
+.login-hero p { color: #c6d4ec; font-size: 13px; line-height: 1.6; margin: 11px 0 0; }
+
+.hero-top { display: flex; align-items: center; gap: 12px; }
+.hero-top .mark { width: 42px; height: 42px; font-size: 13px; border-radius: 12px; }
+.hero-brand { font-size: 13.5px; font-weight: 700; letter-spacing: .3px; line-height: 1.25; }
+.hero-sub { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: #9db0cf; margin-top: 2px; }
+
+.hero-badge {
+  display: inline-flex; align-items: center; align-self: flex-start;
+  background: rgba(217, 164, 65, .14); border: 1px solid rgba(217, 164, 65, .38); color: #f0cd8a;
+  font-size: 10px; font-weight: 700; letter-spacing: 1.1px; text-transform: uppercase;
+  padding: 5px 11px; border-radius: 999px; margin-bottom: 15px;
+}
+.login-hero .hero-list { list-style: none; padding: 0; margin: 22px 0 0; display: grid; gap: 13px; }
+.login-hero .hero-list li { display: flex; gap: 11px; align-items: flex-start; line-height: 1.45; }
+/* Label on one line, the claim it makes on the next — reads as four facts
+   rather than four slogans. */
+.login-hero .hero-list b { display: block; color: #fff; font-weight: 600; font-size: 12.5px; letter-spacing: .1px; }
+.login-hero .hero-list .d { display: block; color: #9db0cd; font-size: 11.5px; margin-top: 2px; }
+.hero-tick {
+  width: 17px; height: 17px; border-radius: 50%; flex: none; margin-top: 2px;
+  display: grid; place-items: center; color: var(--gold);
+  background: rgba(217, 164, 65, .15); border: 1px solid rgba(217, 164, 65, .4);
+}
+.login-hero .hero-foot {
+  display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  border-top: 1px solid rgba(255, 255, 255, .10); padding-top: 15px;
+  font-size: 10px; letter-spacing: .9px; text-transform: uppercase; color: #8ea2c2;
+}
+
+.login-side {
+  padding: 42px 44px 24px; background: linear-gradient(180deg, var(--panel), #0b1220);
+  display: flex; flex-direction: column; justify-content: center;
+}
+.login-side .eyebrow {
+  font-size: 10px; font-weight: 700; letter-spacing: 1.3px; text-transform: uppercase; color: var(--gold);
+}
+.login-side h1 { font-size: 23px; letter-spacing: -.2px; margin-top: 7px; }
+.login-lede { color: var(--muted); font-size: 12.5px; margin: 7px 0 24px; max-width: 40ch; }
+
+.field { margin-bottom: 14px; }
+.field label {
+  font-size: 10.5px; letter-spacing: .9px; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 6px;
+}
+.field input {
+  width: 100%; height: 44px; padding: 0 13px; font-size: 13.5px;
+  background: #0a1220; border-radius: 9px;
+}
+.field input::placeholder { color: #566784; }
+.field-pass { position: relative; }
+.field-pass input { padding-right: 64px; }
+.reveal {
+  position: absolute; right: 5px; top: 50%; transform: translateY(-50%);
+  background: transparent; border: 0; box-shadow: none; filter: none;
+  color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .9px; text-transform: uppercase;
+  padding: 7px 9px; border-radius: 7px;
+}
+.reveal:hover { background: var(--panel-3); color: var(--text-2); filter: none; }
+#signinBtn { width: 100%; height: 46px; margin-top: 8px; font-size: 14px; border-radius: 9px; }
+
+.login-note {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--line-soft);
+  font-size: 11.5px; color: var(--muted);
+}
+.login-note svg { color: var(--good); flex: none; }
+.login-foot {
+  display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  margin-top: 26px; font-size: 10.5px; letter-spacing: .4px; color: #6d7f9c;
+}
+@media (max-width: 900px) {
+  .login-shell { grid-template-columns: 1fr; }
+  .login-hero { min-height: 0; padding: 24px 22px 22px; gap: 20px; }
+  .login-hero h2 { font-size: 20px; }
+  .login-hero .hero-list, .login-hero .hero-foot { display: none; }
+  .login-side { padding: 26px 22px 20px; }
+  .login-side h1 { font-size: 20px; }
+}
+
+/* -------------------------------------------------------- banner artwork */
+.banner {
+  display: flex; align-items: center; gap: 20px; padding: 0; margin-bottom: 16px;
+  border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow);
+  background: linear-gradient(120deg, #0d1728, #0a1120);
+}
+.banner img { width: 300px; height: 118px; object-fit: cover; flex: none; opacity: .95; }
+.banner .bn-text { padding: 16px 18px; flex: 1 1 320px; }
+.banner .bn-text h2 { font-size: 16px; text-transform: none; letter-spacing: 0; color: var(--text); }
+.banner .bn-text h2::before { display: none; }
+.banner .bn-text p { color: var(--muted); font-size: 12.5px; margin: 6px 0 0; max-width: 92ch; }
+@media (max-width: 760px) { .banner img { width: 100%; height: 120px; } .banner { flex-direction: column; align-items: stretch; } }
+
+/* ------------------------------------------------------------ responsive */
+/* The context pickers own the bar. The crumb repeats the title the screen
+   already prints, so on a laptop it is the first thing to go — otherwise the
+   four selectors wrap and the header grows to three rows of a 720px screen. */
+@media (max-width: 1400px) { .crumb { display: none; } }
+#ctxPeriod { min-width: 118px; }
+@media (max-width: 1180px) { :root { --sidebar-w: 208px; } }
+@media (max-width: 980px) {
+  .app { grid-template-columns: 1fr; }
+  .sidebar { position: static; height: auto; flex-direction: column; }
+  nav { flex-direction: row; flex-wrap: wrap; }
+  .nav-label, .sidebar-foot { display: none; }
+  .navlink { width: auto; }
+  .navlink.active::before { left: 6px; right: 6px; top: auto; bottom: 0; height: 3px; width: auto; border-radius: 3px 3px 0 0; }
+}
+
+/* `hidden` must win. `.gate` sets display:grid and an author class rule beats
+   the UA stylesheet's [hidden] rule, so without this the sign-in card stayed
+   on screen above the signed-in application. */
+.view[hidden], .gate[hidden], #shell[hidden] { display: none; }
+
+/* ------------------------------------------------------------------ print */
+@media print {
+  .sidebar, header.topbar, nav, .toast, .login-hero, button { display: none !important; }
+  body { background: #fff; color: #000; }
+  .card, .page-head { border-color: #999; box-shadow: none; break-inside: avoid; }
+  .tablewrap, .scroll { max-height: none; border-color: #999; }
+  th, td, thead th { color: #000; border-color: #bbb; background: #fff; }
+  .tile { border-color: #999; }
+}
+</style>
+</head>
+<body>
+
+<div class="gate" id="gate">
+  <div class="login-shell">
+    <section class="login-hero">
+      <div class="hero-top">
+        <div class="mark">GST</div>
+        <div>
+          <div class="hero-brand">GST CONTROL ERP</div>
+          <div class="hero-sub">Vishnu Intelligence Services</div>
+        </div>
+      </div>
+
+      <div class="hero-main">
+        <span class="hero-badge">GST Compliance Suite</span>
+        <h2>GSTR-1, GSTR-2B and the books &mdash; reconciled in one place</h2>
+        <p>
+          The books and the GST Portal rarely agree. This system keeps both untouched, reports their
+          totals separately, and explains every invoice-level difference &mdash; it never overwrites a
+          return that has already been filed.
+        </p>
+        <ul class="hero-list">
+          <li>
+            <span class="hero-tick"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+            <span><b>GSTR-1: draft against filed</b><span class="d">Every invoice side by side, and the month's HSN summary against Table 12.</span></span>
+          </li>
+          <li>
+            <span class="hero-tick"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+            <span><b>GSTR-2B against the purchase register</b><span class="d">Supplier-wise ITC matching; books-only and 2B-only invoices stay visible.</span></span>
+          </li>
+          <li>
+            <span class="hero-tick"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+            <span><b>ITC held on evidence</b><span class="d">Eligibility, decision, claim month and reversal kept apart, each with who decided and when.</span></span>
+          </li>
+          <li>
+            <span class="hero-tick"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+            <span><b>P&amp;L reconciled to GSTR-1</b><span class="d">Turnover and tax agreed across every registration, unit and month.</span></span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="hero-foot">
+        <span>Runs on your office network</span>
+        <span>Invoice data stays on this server</span>
+      </div>
+    </section>
+
+    <section class="login-side">
+      <div class="login-form-wrap">
+        <span class="eyebrow">Secure sign-in</span>
+        <h1>Sign in to your workspace</h1>
+        <p class="login-lede">Use the login ID and password issued by your administrator.</p>
+        <form id="signinForm" autocomplete="on">
+          <div class="msg err" id="gateMsg" hidden></div>
+          <div class="field">
+            <label for="signinUser">Username</label>
+            <input type="text" id="signinUser" autocomplete="username" spellcheck="false" placeholder="e.g. USER-1" autofocus />
+          </div>
+          <div class="field">
+            <label for="signinPass">Password</label>
+            <div class="field-pass">
+              <input type="password" id="signinPass" autocomplete="current-password" placeholder="Enter your password" />
+              <button type="button" class="reveal" id="passToggle" aria-label="Show password" onclick="togglePassword()">Show</button>
+            </div>
+          </div>
+          <button type="submit" id="signinBtn">Sign in</button>
+          <div class="login-note">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10.5" width="16" height="10" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg>
+            Local office server &mdash; every sign-in and download is logged.
+          </div>
+        </form>
+      </div>
+      <div class="login-foot">
+        <span>SAKAR &amp; SVN registrations</span>
+        <span>Apr&ndash;Mar financial years</span>
+        <span>v1.0</span>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div id="shell" hidden>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="mark">GST</div>
+      <div>
+        <div class="brand-name">GST CONTROL ERP</div>
+        <span class="tag">Vishnu Intelligence Services</span>
+      </div>
+    </div>
+    <div class="gold-rule"></div>
+    <div class="nav-label">Compliance workspace</div>
+    <nav id="nav"></nav>
+    <div class="sidebar-foot">
+      <div class="who">
+        <span class="user-chip">
+          <span class="avatar" id="whoAvatar">&#8226;</span>
+          <span id="whoami"></span>
+        </span>
+      </div>
+      <div style="margin-top:10px">
+        <button class="ghost sm" id="btnSignOut" type="button" style="width:100%">Sign out</button>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main-col">
+    <header class="topbar">
+      <div class="crumb">
+        <span class="k" id="crumbView">Dashboard</span>
+        <span class="v" id="crumbCtx">&mdash;</span>
+      </div>
+      <span class="spacer"></span>
+      <div class="ctx">
+        <div><label for="ctxCompany">Company</label><select id="ctxCompany"></select></div>
+        <div><label for="ctxGstin">Our GSTIN</label><select id="ctxGstin"></select></div>
+        <div><label for="ctxFy">Financial year</label><select id="ctxFy"></select></div>
+        <div><label for="ctxPeriod">Return month</label><select id="ctxPeriod"></select></div>
+      </div>
+    </header>
+
+    <main>
+
+    <!-- ============================== DASHBOARD ============================ -->
+    <section class="view" id="viewHome">
+      <div class="banner">
+        <img src="/assets/gst-blocks-cart.jpg" alt="" loading="lazy" />
+        <div class="bn-text">
+          <h2>GSTR-1 filing control &mdash; SAKAR &amp; SVN</h2>
+          <p>
+            Har figure is page par us month ke asli data se aata hai. Jis month ka data nahi hai
+            wo &ldquo;Not started&rdquo; dikhta hai &mdash; khaali month chhupaya nahi jata, kyunki
+            khaali month bhi kaam hai.
+          </p>
+          <div class="row" style="margin-top:12px">
+            <button onclick="go('sales')">Upload Books Sales Register</button>
+            <button class="ghost" onclick="go('portal')">Upload Portal GSTR-1</button>
+            <button class="ghost" onclick="go('outward')">Open reconciliation</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="tiles kpi-row" id="homeKpis"></div>
+
+      <div class="card">
+        <h2>Today's GSTR-1 filing — step by step</h2>
+        <div class="hint">
+          Books/SAP Sales Register se GSTR-1 banata hai, aur GST Portal ki pre-filled GSTR-1 se milata hai.
+          Dono ka source alag hota hai — isliye dono alag upload hote hain aur alag totals dikhate hain.
+          Ek file doosri ko overwrite nahi karti.
+        </div>
+        <div class="steps" style="margin-top:14px">
+          <div class="step">
+            <div class="n">STEP 1</div>
+            <div class="t">Sales Register template</div>
+            <div class="hint">Nayi file ka format — Instructions sheet me har column likha hai.</div>
+            <div style="margin-top:10px"><button class="ghost" onclick="downloadSalesTemplate('xlsx')">Template .xlsx</button></div>
+          </div>
+          <div class="step">
+            <div class="n">STEP 2</div>
+            <div class="t">Books Sales Register</div>
+            <div class="hint">SAP/Books ki Sales Register upload karke <b>preview</b> dekho, phir run chalao.</div>
+            <div style="margin-top:10px"><button onclick="go('sales')">Open Books</button></div>
+          </div>
+          <div class="step">
+            <div class="n">STEP 3</div>
+            <div class="t">Portal pre-filled GSTR-1</div>
+            <div class="hint">GST Portal se download ki hui file yahan upload + import karo.</div>
+            <div style="margin-top:10px"><button onclick="go('portal')">Open Portal</button></div>
+          </div>
+          <div class="step">
+            <div class="n">STEP 4</div>
+            <div class="t">Rebuild GSTR-1 draft</div>
+            <div class="hint">Books se is period ka draft return banao (safe: replace karta hai, add nahi).</div>
+            <div style="margin-top:10px"><button onclick="go('outward')">Open reconciliation</button></div>
+          </div>
+          <div class="step">
+            <div class="n">STEP 5</div>
+            <div class="t">Reconcile draft vs filed</div>
+            <div class="hint">Kaun invoice declared nahi hua, kahan amount alag hai — invoice-wise.</div>
+            <div style="margin-top:10px"><button onclick="go('outward')">Compare</button></div>
+          </div>
+          <div class="step">
+            <div class="n">STEP 6</div>
+            <div class="t">HSN Summary (table 12)</div>
+            <div class="hint">Books vs Portal HSN comparison, quantity aur UQC ke saath — export ready.</div>
+            <div style="margin-top:10px"><button onclick="go('hsn')">Open HSN</button></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Month control centre &mdash; FY <span id="fyTitle"></span></h2>
+        <div class="hint">
+          Selected financial year ke 12 months, April se March. Jis month ki file nahi aayi wo
+          khaali dikhta hai, chhupaya nahi jata &mdash; khaali month bhi kaam hai. Month par click
+          karke us month ka GSTR-1 recon kholo.
+        </div>
+        <div class="row" style="margin-top:12px;align-items:center">
+          <img src="/assets/calendar-2027.jpg" alt="" loading="lazy"
+               style="width:150px;height:74px;object-fit:cover;border:1px solid var(--line);border-radius:8px" />
+          <span class="chipstat">Financial year <b id="fyRange">&mdash;</b></span>
+          <span class="chipstat">Return month <b id="periodRange">&mdash;</b></span>
+        </div>
+        <div class="month-chips" id="monthChips" style="margin-top:14px"></div>
+        <div class="row" style="margin-top:4px">
+          <button class="ghost" onclick="loadHome()">Refresh</button>
+          <button class="ghost" onclick="download('/api/report/complete.xlsx', 'GST_Reconciliation.xlsx')">Download Complete Reconciliation</button>
+          <span class="hint" id="homeHint" style="flex:1;min-width:220px"></span>
+        </div>
+        <div class="scroll" style="margin-top:12px"><table id="monthStrip"></table></div>
+      </div>
+
+      <div class="card">
+        <h2>Monthly run (Books + GSTR-2B + Sales Register)</h2>
+        <div class="hint">
+          Ye poora monthly run hai. Sales Register yahin se ingest hota hai — usi se GSTR-1 draft banta hai.
+          Upload kiya folder use karo, ya apna folder path likho.
+        </div>
+        <div class="row" style="margin-top:12px">
+          <div style="flex:1;min-width:260px"><label for="runDir">Input folder</label><input type="text" id="runDir" style="width:100%" /></div>
+          <div><label for="runPeriod">Sirf ek period</label><input type="text" id="runPeriod" placeholder="2026-04" /></div>
+          <div><label for="runGstin">Sales GSTIN</label><input type="text" id="runGstin" placeholder="26AALCS9985J1ZC" /></div>
+          <button id="btnRun" onclick="runNow()">Run reconciliation</button>
+          <a id="dlLink" href="#" onclick="download('/api/download/workbook','GST workbook.xlsx'); return false;" style="display:none">Download workbook</a>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <button class="ghost" onclick="useUploads()">Uploaded folder use karo</button>
+          <span class="hint" id="uploadList" style="flex:1;min-width:220px"></span>
+        </div>
+        <pre class="log" id="runLog" style="display:none;margin-top:12px"></pre>
+      </div>
+
+      <div class="card" id="resultCard" style="display:none">
+        <h2>Last run result</h2>
+        <div id="resultMsgs"></div>
+        <div class="tiles" id="resultTiles"></div>
+      </div>
+    </section>
+
+    <!-- ============================ SALES REGISTER ========================= -->
+    <section class="view" id="viewSales" hidden>
+      <div class="card">
+        <h2>Books / SAP Sales Register — GSTR-1 ka input</h2>
+        <div class="hint">
+          Yahi file GSTR-1 banati hai. Pehle <b>preview</b> dekho: kitne invoice, kitni item line,
+          kaun sa period, kaun se GSTIN — aur parser ne kya skip kiya. Preview kuch bhi save nahi karta.
+        </div>
+        <div class="row" style="margin-top:12px">
+          <button class="ghost" onclick="downloadSalesTemplate('xlsx')">Download Sales Register template (.xlsx)</button>
+          <button class="ghost" onclick="downloadSalesTemplate('csv')">Download template (.csv)</button>
+          <button class="ghost" onclick="download('/api/template/purchase-register.xlsx','Purchase Register Template.xlsx')">Purchase template (.xlsx)</button>
+        </div>
+        <div class="drop" id="salesDrop" style="margin-top:14px">
+          Books/SAP <b>Sales Register</b> (.xlsx/.xlsm/.xlsb/.csv) yahan drop karo
+          <div class="hint">ya click karo file choose karne ke liye</div>
+          <input type="file" id="salesFile" hidden accept=".xlsx,.xlsm,.xlsb,.xls,.csv" />
+        </div>
+        <div class="row" style="margin-top:12px">
+          <button id="salesPreviewBtn" onclick="salesPreview()">Preview file</button>
+          <button class="ghost" onclick="salesUploadAndRun()">Upload + run monthly reconciliation</button>
+          <span class="hint" id="salesFileMsg" style="flex:1;min-width:200px"></span>
+        </div>
+      </div>
+      <div class="card" id="salesPreviewCard" style="display:none">
+        <h2>Sales Register preview</h2>
+        <div id="salesPreview"></div>
+      </div>
+    </section>
+
+    <!-- ============================== PORTAL GSTR-1 ======================== -->
+    <section class="view" id="viewPortal" hidden>
+      <div class="card">
+        <h2>Portal GSTR-1 source (pre-filled download, books se alag)</h2>
+        <div class="hint">
+          GST Portal se download hui <b>pre-filled GSTR-1</b> yahan upload karein. Books ki Sales Register
+          aur Portal ki filed GSTR-1 ka source alag hota hai — isliye alag card, alag preview aur alag
+          totals. Import karne se pehle preview dekh lo; import upsert karta hai, isliye dobara import
+          safe hai.
+        </div>
+        <div class="drop" id="portalG1Drop" style="margin-top:14px">
+          GST Portal pre-filled GSTR-1 (.xlsx/.xlsm/.xlsb/.xls/.csv) yahan drop karo
+          <div class="hint">ya click karo file choose karne ke liye</div>
+          <input type="file" id="portalG1File" hidden accept=".xlsx,.xlsm,.xlsb,.xls,.csv" />
+        </div>
+        <div class="row" style="margin-top:12px">
+          <div style="flex:1;min-width:190px">
+            <label for="portalG1Gstin">Is file ka GSTIN (Our GSTIN)</label>
+            <input type="text" id="portalG1Gstin" placeholder="26AALCS9985J1ZC" />
+          </div>
+          <div style="min-width:140px">
+            <label for="portalG1Period">Return period</label>
+            <input type="text" id="portalG1Period" placeholder="2026-04" />
+          </div>
+          <button id="portalG1PreviewBtn" onclick="portalG1Preview()">Preview portal file</button>
+          <button class="ghost" id="portalG1ImportBtn" onclick="portalG1Import()" disabled>Confirm import</button>
+        </div>
+        <div id="portalG1Msg" style="margin-top:12px"></div>
+      </div>
+      <div class="card" id="portalG1Card" style="display:none">
+        <h2>Portal file preview</h2>
+        <div id="portalG1Out"></div>
+      </div>
+    </section>
+
+    <!-- ========================== GSTR-1 RECONCILIATION ==================== -->
+    <section class="view" id="viewOutward" hidden>
+      <div class="card">
+        <h2>GSTR-1 reconciliation — <span id="outCtx"></span></h2>
+        <div class="row">
+          <button onclick="g1Draft()">Rebuild draft from books</button>
+          <button onclick="g1Recon()">Run reconciliation</button>
+          <button class="ghost" onclick="loadOutward()">Refresh</button>
+          <button class="ghost" onclick="download(g1HsnUrl('xlsx','comparison'), 'HSN Summary.xlsx')">HSN comparison (.xlsx)</button>
+          <span class="hint" id="outMsg" style="flex:1;min-width:200px"></span>
+        </div>
+        <div class="tiles" id="outTiles" style="margin-top:14px"></div>
+      </div>
+      <div class="card">
+        <h2>Per-invoice outcome</h2>
+        <div class="tabs" id="outTabs"></div>
+        <div class="scroll"><table id="outTable"></table></div>
+        <div class="hint" id="outHint"></div>
+      </div>
+      <div class="split">
+        <div class="card">
+          <h2>Table-wise comparison (draft vs filed)</h2>
+          <div class="scroll"><table id="outSummary"></table></div>
+        </div>
+        <div class="card">
+          <h2>What exists, by GSTIN and month</h2>
+          <div class="scroll"><table id="outCoverage"></table></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================================= HSN =============================== -->
+    <section class="view" id="viewHsn" hidden>
+      <div class="card">
+        <h2>HSN summary — GSTR-1 table 12</h2>
+        <div class="hint">
+          Books se bana HSN summary, portal ke HSN ke saath. Item-wise register se hi UQC aur quantity
+          aati hai — invoice-level register par bhi chalta hai (quantity 0), fail nahi hota.
+        </div>
+        <div class="row" style="margin-top:12px">
+          <div><label for="hsnScope">Supply</label>
+            <select id="hsnScope" onchange="loadHsn()">
+              <option value="all">B2B + B2C</option>
+              <option value="b2b">Sirf B2B</option>
+              <option value="b2c">Sirf B2C</option>
+            </select>
+          </div>
+          <div><label for="hsnView">Table</label>
+            <select id="hsnView" onchange="loadHsn()">
+              <option value="auto">Auto (comparison jab portal ho)</option>
+              <option value="books">Books</option>
+              <option value="portal">Portal (filed)</option>
+              <option value="comparison">Books vs Portal</option>
+            </select>
+          </div>
+          <button class="ghost" onclick="download(g1HsnUrl('csv', el('hsnView').value), 'HSN Summary.csv')">CSV</button>
+          <button class="ghost" onclick="download(g1HsnUrl('xlsx', el('hsnView').value), 'HSN Summary.xlsx')">Excel</button>
+          <span class="hint" id="hsnMsg" style="flex:1;min-width:200px"></span>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Books HSN summary</h2>
+        <div class="scroll"><table id="hsnBooks"></table></div>
+      </div>
+      <div class="card" id="hsnPortalCard" style="display:none">
+        <h2>Portal (filed) HSN summary</h2>
+        <div class="scroll"><table id="hsnPortal"></table></div>
+      </div>
+      <div class="card" id="hsnCompareCard" style="display:none">
+        <h2>Comparison — kahan farak hai</h2>
+        <div class="tiles" id="hsnTiles" style="margin-bottom:12px"></div>
+        <div class="scroll"><table id="hsnCompare"></table></div>
+        <div class="hint" id="hsnNotes"></div>
+      </div>
+    </section>
+
+    <!-- ============================== P&L vs GSTR-1 ======================== -->
+    <section class="view" id="viewPl" hidden>
+      <div class="card">
+        <h2>P&amp;L upload — company level</h2>
+        <div class="hint">
+          P&amp;L company ka document hai aur GST GSTIN-wise hota hai, isliye ye screen company chunti hai.
+          Wo company header me select karo jiska P&amp;L upload karna hai.
+        </div>
+        <div class="row" style="margin-top:12px">
+          <div><label for="plPeriod">P&amp;L month</label><input type="text" id="plPeriod" placeholder="2026-04" /></div>
+          <button class="ghost" onclick="plTpl('xlsx')">Download template (.xlsx)</button>
+          <button class="ghost" onclick="plTpl('csv')">Template (.csv)</button>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <div><label for="plFile">P&amp;L file</label><input type="file" id="plFile" accept=".xlsx,.xlsm,.xlsb,.xls,.csv" /></div>
+          <button onclick="plPreview()">Preview</button>
+          <button class="ghost" id="plImportBtn" onclick="plImport()" disabled>Confirm import</button>
+          <button class="ghost" onclick="plLoad()">Load month</button>
+          <button onclick="plRecon()">Run P&amp;L reconciliation</button>
+        </div>
+        <div id="plMsg" class="hint" style="margin-top:10px"></div>
+      </div>
+      <div class="card" id="plPreviewCard" style="display:none">
+        <h2>P&amp;L preview</h2>
+        <div id="plPreviewBody"></div>
+      </div>
+      <div class="card">
+        <h2>Monthly position</h2>
+        <div class="tiles" id="plTiles"></div>
+        <h3>Months on file</h3>
+        <div class="scroll"><table id="plMonths"></table></div>
+      </div>
+      <div class="card">
+        <h2>Head-wise reconciliation</h2>
+        <div class="scroll"><table id="plTable"></table></div>
+        <div class="hint">
+          Difference ke bina reason save nahi hota — database khud rokta hai. Isliye har pending row par
+          "Explain" se reason chuno.
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================= PURCHASE REGISTER ===================== -->
+    <section class="view" id="viewPurchase" hidden>
+      <div class="card">
+        <h2>Purchase register — ITC side</h2>
+        <div class="hint">
+          Purchase register ka preview upload se pehle. Book entry date aur usse nikla
+          <b>book entry month</b> dono dikhte hain: April me invoice aur May me booking — dono facts
+          alag alag bachne chahiye, warna books-vs-return ka gap chhup jata hai.
+        </div>
+        <div class="row" style="margin-top:12px">
+          <button class="ghost" onclick="download('/api/template/purchase-register.xlsx','Purchase Register Template.xlsx')">Purchase template (.xlsx)</button>
+          <button class="ghost" onclick="download('/api/template/purchase-register.csv','Purchase Register Template.csv')">Purchase template (.csv)</button>
+          <button class="ghost" onclick="downloadTwobRecon(false)">2B vs Books reco sheet (.xlsx)</button>
+          <button class="ghost" onclick="downloadTwobRecon(true)">Reco sheet khaali template (.xlsx)</button>
+        </div>
+        <div class="hint" style="margin-top:8px">
+          Reco sheet me do sheet hain: <b>invoice-wise</b> (ek row = ek invoice, books vs 2B) aur
+          <b>line-wise</b> (Line ID + ITC Decision/Remarks/Vendor Response — yahi sheet wapas upload hoti hai).
+        </div>
+        <div class="drop" id="purchaseDrop" style="margin-top:14px">
+          Purchase register (.xlsx/.xlsm/.xlsb/.csv) yahan drop karo
+          <div class="hint">ya click karo file choose karne ke liye</div>
+          <input type="file" id="purchaseFile" hidden accept=".xlsx,.xlsm,.xlsb,.xls,.csv" />
+        </div>
+        <div class="row" style="margin-top:12px">
+          <button onclick="purchasePreview()">Preview file</button>
+          <button class="ghost" id="purchaseImportBtn" onclick="purchaseImport()" disabled>Confirm import</button>
+          <span class="hint" id="purchaseMsg" style="flex:1;min-width:200px"></span>
+        </div>
+      </div>
+      <div class="card" id="purchasePreviewCard" style="display:none">
+        <h2>Purchase register preview</h2>
+        <div id="purchasePreview"></div>
+      </div>
+      <div class="card">
+        <h2>GSTR-2B file — JSON, CSV ya Excel</h2>
+        <div class="hint">
+          GST Portal se download kiya hua 2B yahan upload karo — <b>.json</b> (portal ka original),
+          <b>.csv</b> ya <b>.xlsx</b>. File upload scratch folder me jaati hai, aur
+          "Upload + reconcile" use padh kar 2B lines database me daal deta hai aur usi waqt
+          books se reconcile kar deta hai. Ek hi file dobara upload karna safe hai — lines
+          update hoti hain, duplicate nahi banti.
+        </div>
+        <div class="row" style="margin-top:12px">
+          <div><label for="twobFile">GSTR-2B file (.json/.csv/.xlsx)</label><input type="file" id="twobFile" accept=".json,.csv,.xlsx,.xlsm,.xlsb,.xls" /></div>
+          <button onclick="upload2b(true)">Upload + reconcile</button>
+          <button class="ghost" onclick="upload2b(false)">Upload only</button>
+          <span class="hint" id="twobMsg" style="flex:1;min-width:200px"></span>
+        </div>
+      </div>
+
+      <!-- ============ INVOICE-LEVEL RECONCILIATION (books vs 2B) ========= -->
+      <!--
+        The working screen. One row per book invoice, with GSTR-2B beside it,
+        and an Edit control on every row: the four values that decide whether
+        two systems agree — our GSTIN, the invoice number, the invoice date and
+        the supplier's GSTIN — can be corrected here without touching the
+        source file and re-uploading the month.
+      -->
+      <div class="card">
+        <h2>Purchase register vs GSTR-2B — invoice level</h2>
+        <div class="hint" id="reconCtx">&mdash;</div>
+        <div class="row" style="margin-top:12px">
+          <button onclick="rerunMonth()">Re-reconcile this month</button>
+          <button class="ghost" onclick="loadRecon()">Refresh</button>
+          <select id="reconStatus" onchange="loadRecon()" title="Filter by match status">
+            <option value="">All statuses</option>
+            <option value="Matched">Matched</option>
+            <option value="Missing in 2B">Missing in 2B</option>
+            <option value="Amount Mismatch">Amount mismatch</option>
+            <option value="Duplicate">Duplicate</option>
+            <option value="Blocked">ITC blocked</option>
+          </select>
+          <input type="search" id="reconSearch" placeholder="Invoice no, supplier GSTIN ya vendor"
+                 style="flex:1;min-width:200px" onkeydown="if (event.key === 'Enter') loadRecon()" />
+          <span class="hint" id="reconMsg" style="flex:1;min-width:160px"></span>
+        </div>
+        <div class="tiles" id="reconTiles"></div>
+        <div class="scroll" style="margin-top:12px"><table id="reconTable"></table></div>
+      </div>
+
+      <div class="card">
+        <h2>GSTR-2B me hai, books me nahi</h2>
+        <div class="hint">
+          Supplier ne file kar diya, hamari books me entry nahi. Invoice book karna padega —
+          credit note ho to reverse bhi. Yahi ITC ka asli gap hota hai.
+        </div>
+        <div class="scroll" style="margin-top:12px"><table id="reconTwoBTable"></table></div>
+      </div>
+
+      <div class="card" id="reconHistoryCard" style="display:none">
+        <h2>Correction history — <span id="reconHistoryFor"></span></h2>
+        <div class="scroll"><table id="reconHistoryTable"></table></div>
+      </div>
+    </section>
+
+    <!-- ================================ PASTE ============================== -->
+    <section class="view" id="viewPaste" hidden>
+      <div class="card">
+        <h2>Paste purchase register (Excel se copy)</h2>
+        <div class="hint">
+          Excel me rows select karke copy karo aur yahan paste karo — header row ke saath.
+          Preview bilkul wahi parser chalata hai jo file upload chalata hai.
+        </div>
+        <textarea id="pasteBox" spellcheck="false" placeholder="Our GSTIN&#9;Supplier GSTIN&#9;Invoice No&#9;Invoice Date&#9;Book Entry Date&#9;Taxable Value&#9;IGST&#9;CGST&#9;SGST&#9;CESS"></textarea>
+        <div class="row" style="margin-top:10px">
+          <button onclick="pastePreview()">Preview</button>
+          <button class="ghost" id="pasteImportBtn" onclick="pasteImport()" disabled>Confirm import</button>
+          <span class="hint" id="pasteMsg" style="flex:1;min-width:200px"></span>
+        </div>
+      </div>
+      <div class="card" id="pastePreviewCard" style="display:none">
+        <h2>Paste preview</h2>
+        <div id="pastePreview"></div>
+      </div>
+    </section>
+
+    <!-- =============================== REPORTS ============================= -->
+    <section class="view" id="viewReports" hidden>
+      <div class="card">
+        <h2>Reports</h2>
+        <div class="row">
+          <button class="ghost" onclick="download('/api/report/complete.xlsx','GST_Reconciliation.xlsx')">Download Complete Reconciliation (.xlsx)</button>
+          <button class="ghost" onclick="downloadTwobRecon(false)">2B vs Books reco sheet (.xlsx)</button>
+          <button class="ghost" onclick="loadReports()">Refresh list</button>
+          <span class="hint" id="reportsMsg" style="flex:1;min-width:200px"></span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="scroll"><table id="reportsTable"></table></div>
+      </div>
+    </section>
+
+    <!-- =============================== MASTERS ============================= -->
+    <section class="view" id="viewMasters" hidden>
+      <div class="card">
+        <h2>Registrations (company / unit / GSTIN)</h2>
+        <div class="row">
+          <button class="ghost" onclick="loadMasters()">Refresh</button>
+          <span class="hint" id="mastersMsg" style="flex:1;min-width:200px"></span>
+        </div>
+        <div class="scroll" style="margin-top:12px"><table id="mastersTable"></table></div>
+      </div>
+      <div class="card" id="companiesCard" style="display:none">
+        <h2>Companies &amp; logos</h2>
+        <div class="scroll"><table id="companiesTable"></table></div>
+      </div>
+      <div class="card">
+        <h2>Access</h2>
+        <div class="tiles" id="whoTiles"></div>
+      </div>
+    </section>
+
+    </main>
+  </div>
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+
+// ---------------------------------------------------------------------------
+// Financial year and month helpers.
+//
+// These four are the ones the screen and the engine must agree on: the engine's
+// fyOf() decides which return a month belongs to, and the month strip, the year
+// list and every period label here are built from the same rule. Mar-2026 is the
+// LAST month of FY 2025-26, not the first month of 2026-27.
+// ---------------------------------------------------------------------------
+
+/** '2026-04' -> '2026-27'. April starts the year; Jan/Feb/Mar belong to the one before. */
+function fyOfPeriod(period) {
+  const m = /^(\d{4})-(\d{2})$/.exec(String(period == null ? '' : period));
+  if (!m) return '';
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  if (mo < 1 || mo > 12) return '';
+  const start = mo >= 4 ? y : y - 1;
+  return start + '-' + String((start + 1) % 100).padStart(2, '0');
+}
+
+/** '2025-26' -> '2026-27'. Used to walk the year list forward. */
+function nextFy(fy) {
+  const m = /^(\d{4})-(\d{2})$/.exec(String(fy == null ? '' : fy));
+  if (!m) return '';
+  const start = Number(m[1]) + 1;
+  return start + '-' + String((start + 1) % 100).padStart(2, '0');
+}
+
+/**
+ * The twelve tax periods of a financial year, April first, in filing order.
+ *
+ * Built from the year itself rather than a fixed list, so a year that has no
+ * data yet still lays out its own months instead of borrowing another year's.
+ * Anything that is not a year answers with no months at all.
+ */
+function monthsOfFy(fy) {
+  const m = /^(\d{4})-(\d{2})$/.exec(String(fy == null ? '' : fy));
+  if (!m) return [];
+  const start = Number(m[1]);
+  if (String((start + 1) % 100).padStart(2, '0') !== m[2]) return [];
+  const out = [];
+  for (let i = 0; i < 12; i++) {
+    const k = 3 + i;
+    out.push((start + Math.floor(k / 12)) + '-' + String((k % 12) + 1).padStart(2, '0'));
+  }
+  return out;
+}
+
+/**
+ * Which financial years the picker may offer: every year that has a month on
+ * file, the year we are in today, and the year immediately after it.
+ *
+ * The year after today's IS offered on purpose. FY 2027-28 has no data on
+ * 12-Oct-2026, but the picker is exactly where the team asks "next year me kya
+ * baaki hai", and that April-March year is built by the year rule below rather
+ * than by a hard-coded list. Earlier years are never dropped: they come from
+ * the data, so the selector keeps every year that has anything on file.
+ */
+function fyOptionsFor(onFile, current) {
+  const years = new Set((onFile || []).map(fyOfPeriod).filter(Boolean));
+  if (current) {
+    years.add(current);
+    years.add(nextFy(current));
+  }
+  return Array.from(years).sort();
+}
+
+/** '2027-28' -> '2027-28 (01/04/2027 – 31/03/2028)'. Empty input stays empty. */
+function fyLabel(fy) {
+  const m = /^(\d{4})-(\d{2})$/.exec(String(fy == null ? '' : fy));
+  if (!m) return String(fy == null ? '' : fy);
+  const y = Number(m[1]);
+  return m[1] + '-' + m[2] + ' (01/04/' + y + ' – 31/03/' + (y + 1) + ')';
+}
+
+/** Today, as the tax period the office is working in ('2026-10'). */
+function todayPeriod() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+
+const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/**
+ * A date as DD/MM/YYYY — the order the office reads and writes.
+ *
+ * The server sends DATE columns as plain 'YYYY-MM-DD' strings (see
+ * src/config/env.ts), so this only reformats; it never re-parses a value that
+ * already carries a time zone, and a value it cannot read is passed through
+ * untouched rather than shown as a wrong date.
+ */
+function fmtDmy(v) {
+  if (v === null || v === undefined || v === '') return '';
+  const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(v));
+  if (iso) return iso[3] + '/' + iso[2] + '/' + iso[1];
+  const d = (v instanceof Date) ? v : null;
+  if (d && !isNaN(d.getTime())) {
+    return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
+  }
+  return String(v);
+}
+
+/** A column whose value is a date, so it renders as DD/MM/YYYY. */
+function isDateKey(k) { return /(^|_)date$/i.test(String(k == null ? '' : k)); }
+
+/** First and last day of a tax period as DD/MM/YYYY — the From/To pair. */
+function periodRange(period) {
+  const m = /^(\d{4})-(\d{2})$/.exec(String(period == null ? '' : period));
+  if (!m) return { from: '', to: '' };
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  if (mo < 1 || mo > 12) return { from: '', to: '' };
+  const last = new Date(y, mo, 0).getDate();  // day 0 of next month = last day of this one
+  return { from: '01/' + m[2] + '/' + m[1], to: String(last).padStart(2, '0') + '/' + m[2] + '/' + m[1] };
+}
+
+/** '01/04/2026 – 30/04/2026', or '' when there is no period yet. */
+function periodRangeText(period) {
+  const r = periodRange(period);
+  return r.from ? r.from + ' \u2013 ' + r.to : '';
+}
+
+/** '2026-04' -> 'Apr-2026'. One spelling everywhere, so two screens cannot disagree. */
+function monthLabel(period) {
+  const m = /^(\d{4})-(\d{2})$/.exec(String(period == null ? '' : period));
+  if (!m) return String(period == null ? '' : period);
+  const mo = Number(m[2]);
+  if (mo < 1 || mo > 12) return String(period);
+  return MONTH_ABBR[mo - 1] + '-' + m[1];
+}
+
+// ---------------------------------------------------------------------------
+// Context — what the whole screen is currently pointed at.
+// ---------------------------------------------------------------------------
+const CTX = {
+  user: null,
+  view: 'home',
+  company: '',
+  gstin: '',
+  fy: '',
+  period: '',
+  companies: [],
+  gstins: [],
+  masters: [],
+  months: [],
+  coverage: [],
+  uploadDir: '',
+  salesFileName: '',
+  purchaseFileName: '',
+  pasteReady: false,
+  plPreviewName: '',
+  plReady: false,
+  outStatus: '',
+};
+
+const VIEWS = ['home', 'sales', 'portal', 'outward', 'hsn', 'pl', 'purchase', 'paste', 'reports', 'masters'];
+
+/**
+ * Icons are inline paths. The office LAN has no internet, so nothing here may
+ * depend on an icon font, a CDN or a sprite file another process has to serve.
+ */
+const ICONS = {
+  dashboard: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+  sales: '<path d="M14 3v5h5"/><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M9 13h6M9 17h5"/>',
+  portal: '<path d="M7 16a5 5 0 0 1 .6-9.8A6 6 0 0 1 19 8.5a4 4 0 0 1-.5 7.5"/><path d="M12 12v7"/><path d="m9 16 3 3 3-3"/>',
+  recon: '<path d="M4 7h11"/><path d="m12 4 3 3-3 3"/><path d="M20 17H9"/><path d="m12 14-3 3 3 3"/>',
+  hsn: '<path d="m12 3 8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12v9M12 12 4 7.5"/>',
+  pl: '<path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/>',
+  purchase: '<circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2 3h2.2l2.4 11.2a2 2 0 0 0 2 1.6h8.8a2 2 0 0 0 2-1.6L21 7H5"/>',
+  paste: '<rect x="8" y="3" width="8" height="4" rx="1"/><path d="M16 5h2a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2"/><path d="M9 12h6M9 16h4"/>',
+  reports: '<path d="M14 3v5h5"/><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M8 17v-4M12 17v-7M16 17v-2"/>',
+  masters: '<ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>',
+};
+
+/** One inline SVG for a named icon. Unknown names fall back to the dashboard grid. */
+function icon(name, size) {
+  const s = size || 17;
+  return '<svg class="ico" width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" ' +
+    'stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    (ICONS[name] || ICONS.dashboard) + '</svg>';
+}
+
+const NAV = [
+  { id: 'dashboard', label: 'Dashboard', view: 'home', icon: 'dashboard' },
+  { id: 'books-sales', label: 'Books / Sales Register', view: 'sales', icon: 'sales' },
+  { id: 'portal-g1', label: 'Portal GSTR-1', view: 'portal', icon: 'portal' },
+  { id: 'gstr1-recon', label: 'GSTR-1 Reconciliation', view: 'outward', icon: 'recon' },
+  { id: 'hsn-summary', label: 'HSN Summary (12)', view: 'hsn', icon: 'hsn' },
+  { id: 'pl-recon', label: 'P&L vs GSTR-1', view: 'pl', icon: 'pl' },
+  { id: 'purchase-register', label: 'Purchase vs GSTR-2B', view: 'purchase', icon: 'recon' },
+  { id: 'paste-register', label: 'Paste Register', view: 'paste', icon: 'paste' },
+  { id: 'reports', label: 'Reports', view: 'reports', icon: 'reports' },
+  { id: 'masters', label: 'Masters', view: 'masters', icon: 'masters' },
+];
+
+/**
+ * What each screen says about itself. The page head is built from this map once
+ * at boot and prepended to the section, so a screen's own markup stays about
+ * the task and the heading cannot drift from the sidebar label.
+ */
+const VIEW_META = {
+  home: {
+    title: 'Compliance dashboard',
+    sub: 'Ek nazar me: kaun sa month chalu hai, kya file hua, kya baaki hai. Har figure us month ke data se aata hai \u2014 koi number yahan likha hua nahi hai.',
+    img: '/assets/gst-touch.jpg',
+  },
+  sales: {
+    title: 'Books / Sales Register',
+    sub: 'GSTR-1 ka input yahi file hai. Pehle preview \u2014 kitne invoice, kitni item line, kaun sa period, kaun sa GSTIN \u2014 aur parser ne kya skip kiya. Preview kuch save nahi karta.',
+    img: '/assets/gst-blocks-cart.jpg',
+  },
+  portal: {
+    title: 'Portal GSTR-1 (pre-filled download)',
+    sub: 'GST Portal se utri hui pre-filled GSTR-1 yahan import hoti hai. Books ki file se alag source, alag preview, alag totals \u2014 ek doosre ko overwrite nahi karti.',
+    img: '/assets/gst-laptop.jpg',
+  },
+  outward: {
+    title: 'GSTR-1 reconciliation',
+    sub: 'Books se bana draft aur Portal ki filed return, invoice-wise. Kaun sa invoice declare nahi hua, kahan amount ya table alag hai \u2014 sab yahin dikhta hai.',
+    img: '/assets/gst-touch.jpg',
+  },
+  hsn: {
+    title: 'HSN summary \u2014 table 12',
+    sub: 'Books ka HSN summary aur Portal ka HSN, side by side. UQC aur quantity sirf item-wise register se aate hain \u2014 invoice-level register par bhi chalta hai, banaya hua nahi jata.',
+    img: '/assets/gst-blocks.jpg',
+  },
+  pl: {
+    title: 'P&L vs GSTR-1',
+    sub: 'P&L company ka document hai aur GST GSTIN-wise, isliye ye screen company select karti hai. Head-wise farak ke bina reason save nahi hota.',
+    img: '/assets/gst-rupee.jpg',
+  },
+  purchase: {
+    title: 'Purchase register \u2014 ITC side',
+    sub: 'Invoice date aur book entry date dono dikhte hain, kyunki April ka invoice May me book ho sakta hai \u2014 dono facts alag rehne chahiye, warna books-vs-return ka gap chhup jata hai.',
+    img: '/assets/gst-blocks.jpg',
+  },
+  paste: {
+    title: 'Paste register',
+    sub: 'Excel se rows copy karke yahan paste karo, header row ke saath. Preview bilkul wahi parser chalata hai jo file upload chalata hai.',
+    img: '/assets/gst-blocks-cart.jpg',
+  },
+  reports: {
+    title: 'Reports & downloads',
+    sub: 'Reconciliation workbook, HSN aur month-wise reports \u2014 Excel aur CSV dono me. Download par wahi GSTIN/period filter lagta hai jo upar header me selected hai.',
+    img: '/assets/gst-rupee.jpg',
+  },
+  masters: {
+    title: 'Masters \u2014 companies, units & GSTIN',
+    sub: 'Company, unit aur GSTIN ki registrations. Naam display ke liye badalte hain; company ID, GSTIN aur PAN waise hi rehte hain, aur do companies kabhi merge nahi hoti.',
+    img: '/assets/gst-touch.jpg',
+  },
+};
+
+/**
+ * Company and unit names exactly as the Accounts team asked for them.
+ *
+ * These are DISPLAY names: the value posted to the server is always the ID, and
+ * the GSTIN/PAN a row carries never changes. Older rows — and the production
+ * master, which still holds the short spellings — are mapped on the way out,
+ * so every screen shows one spelling without a database write.
+ */
+const DISPLAY_COMPANY = {
+  'sakar': 'SAKAR ELECTRICALS & ELECTRONICS PVT LTD',
+  'sakar electricals': 'SAKAR ELECTRICALS & ELECTRONICS PVT LTD',
+  'sakar electricals & electronics pvt ltd': 'SAKAR ELECTRICALS & ELECTRONICS PVT LTD',
+  'svn opto': 'SVN OPTO ELECTRONICS PVT LTD',
+  'svn': 'SVN OPTO ELECTRONICS PVT LTD',
+  'svn opto electronics pvt ltd': 'SVN OPTO ELECTRONICS PVT LTD',
+};
+
+/** 'Sakar' -> 'SAKAR ELECTRICALS & ELECTRONICS PVT LTD'. Unknown names pass through. */
+function dispCompany(name) {
+  const raw = String(name == null ? '' : name).trim();
+  if (!raw) return '';
+  return DISPLAY_COMPANY[raw.toLowerCase()] || raw;
+}
+
+/** Unit labels stay short: they are a location, and the selector shows the GSTIN beside them. */
+function dispUnit(unit) {
+  const raw = String(unit == null ? '' : unit).trim();
+  const map = { 'sakar-i': 'Sakar Unit-I', 'sakar-iii': 'Sakar Unit-III', 'sakar-ii': 'Sakar Unit-II',
+    'svn unit-i': 'SVN Unit-I', 'svn unit-ii': 'SVN Unit-II' };
+  return map[raw.toLowerCase()] || raw;
+}
+
+// ---------------------------------------------------------------------------
+// Small helpers
+// ---------------------------------------------------------------------------
+let toastTimer = null;
+
+function el(id) { return document.getElementById(id); }
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+
+function inr(n) {
+  const v = Number(n);
+  if (!isFinite(v)) return '';
+  return v.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function cnt(n) {
+  const v = Number(n);
+  if (!isFinite(v)) return '0';
+  return v.toLocaleString('en-IN');
+}
+
+/** A number that may be absent: money columns print a dash rather than a fake 0. */
+function money(n) {
+  if (n === null || n === undefined || n === '') return '&mdash;';
+  return inr(n);
+}
+
+function numCell(n) {
+  if (n === null || n === undefined || n === '') return '&mdash;';
+  return cnt(n);
+}
+
+/** A JSON value that may be an object (difference_json) or a string. */
+function asText(v) {
+  if (v === null || v === undefined) return '';
+  if (typeof v === 'object') {
+    try { return JSON.stringify(v); } catch (e) { return String(v); }
+  }
+  return String(v);
+}
+
+function setHtml(id, html) {
+  const node = el(id);
+  if (node) node.innerHTML = html;
+}
+
+function show(node) { if (node) node.hidden = false; }
+function hide(node) { if (node) node.hidden = true; }
+function showId(id) { show(el(id)); }
+function hideId(id) { hide(el(id)); }
+
+function toast(msg, kind) {
+  const t = el('toast');
+  if (!t) return;
+  t.textContent = String(msg == null ? '' : msg);
+  t.className = 'toast show' + (kind ? ' ' + kind : '');
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.className = 'toast'; }, 6000);
+}
+
+/** A message block, used instead of alert() so a failure is never missed. */
+function note(elId, kind, msg) {
+  const node = el(elId);
+  if (!node) return;
+  const text = String(msg == null ? '' : msg);
+  node.innerHTML = text ? '<div class="msg ' + kind + '">' + esc(text) + '</div>' : '';
+}
+
+function showInline(elId, kind, msg) {
+  const node = el(elId);
+  if (!node) return;
+  node.innerHTML = msg ? '<div class="msg ' + kind + '">' + esc(msg) + '</div>' : '';
+}
+
+// ---------------------------------------------------------------------------
+// HTTP
+// ---------------------------------------------------------------------------
+function handleAuthLoss() {
+  CTX.user = null;
+  hide(el('shell'));
+  show(el('gate'));
+  const m = el('gateMsg');
+  if (m) { m.hidden = false; m.textContent = 'Session khatam ho gaya — dobara sign in karein.'; }
+}
+
+async function api(path, opts) {
+  const r = await fetch(path, opts || {});
+  let body = null;
+  const ct = r.headers.get('content-type') || '';
+  try { body = ct.indexOf('json') >= 0 ? await r.json() : await r.text(); } catch (e) { body = null; }
+  if (r.status === 401) handleAuthLoss();
+  if (!r.ok) {
+    const msg = (body && body.error) || (typeof body === 'string' && body) || ('HTTP ' + r.status);
+    const err = new Error(msg);
+    err.status = r.status;
+    err.body = body;
+    err.needPerm = body && body.needPerm;
+    err.needAuth = body && body.needAuth;
+    throw err;
+  }
+  return body;
+}
+
+function postJson(path, data) {
+  return api(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(data || {}) });
+}
+
+/** Raw-body upload — the server takes the bytes with the name in the query. */
+function postFile(path, file) {
+  return api(path, { method: 'POST', headers: { 'content-type': 'application/octet-stream' }, body: file });
+}
+
+function errText(e) {
+  const base = (e && e.message) ? e.message : String(e);
+  if (e && e.needPerm) return base + ' (chahiye: ' + e.needPerm + ')';
+  return base;
+}
+
+/** Download a file, reporting a JSON error instead of saving it as a broken file. */
+async function download(path, fileName) {
+  try {
+    const r = await fetch(path);
+    if (!r.ok) {
+      let msg = 'HTTP ' + r.status;
+      try { const j = await r.json(); if (j && j.error) msg = j.error; } catch (e) { /* not json */ }
+      return toast(msg, 'err');
+    }
+    const blob = await r.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = fileName || 'download';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => { URL.revokeObjectURL(a.href); }, 5000);
+    return toast('Downloaded: ' + (fileName || 'file'), 'ok');
+  } catch (e) {
+    toast(errText(e), 'err');
+    return undefined;
+  }
+}
+
+function downloadSalesTemplate(fmt) {
+  const q = CTX.company ? '?company=' + encodeURIComponent(CTX.company) : '';
+  return download('/api/template/sales-register.' + fmt + q, 'Sales Register Template.' + fmt);
+}
+
+/**
+ * The GSTR-2B vs Books working sheet for the month on screen.
+ *
+ * Sheet 1 is the invoice-wise reconciliation (one row per invoice), sheet 2 is
+ * the line-wise sheet with the Line IDs that goes back in. The GSTIN and month
+ * from the top bar travel with the request — the sheet a CA opens must say which
+ * registration and which month it is, or it gets forwarded as "the report" and
+ * nobody knows which one.
+ */
+function downloadTwobRecon(blank) {
+  const q = [];
+  if (CTX.gstin) q.push('gstin=' + enc(CTX.gstin));
+  if (CTX.period) q.push('period=' + enc(CTX.period));
+  if (blank) q.push('blank=1');
+  return download(
+    '/api/template/twob-recon.xlsx' + (q.length ? '?' + q.join('&') : ''),
+    'GSTR-2B vs Books - Invoice-wise Reco.xlsx',
+  );
+}
+
+function enc(v) { return encodeURIComponent(String(v == null ? '' : v)); }
+
+// ---------------------------------------------------------------------------
+// Tables. Only two column lists in this file are named `cols` — the purchase
+// upload preview and the paste preview — because the two screens carry
+// deliberately different columns and one borrowed list would hide a column the
+// other screen proves works.
+// ---------------------------------------------------------------------------
+const HEADS = {
+  our_gstin: 'Our GSTIN', unit_name: 'Location', reference_no: 'Reference No', party_name: 'Vendor',
+  supplier_gstin: 'Supplier GSTIN', invoice_no: 'Invoice No', invoice_date: 'Invoice Date',
+  book_entry_date: 'Book Entry Date', book_entry_month: 'Book Entry Month', period: '2B Month',
+  taxable_value: 'Taxable', igst: 'IGST', cgst: 'CGST', sgst: 'SGST', cess: 'CESS',
+  remark: 'Remark', has_e_invoice: 'E-Invoice?', e_invoice_no: 'E-Invoice No',
+  has_e_way_bill: 'E-Way Bill?', e_way_bill_no: 'E-Way Bill No',
+  customer_name: 'Customer', customer_gstin: 'Customer GSTIN',
+  customer_gstin_norm: 'Customer GSTIN', draft_count: 'Draft docs', filed_count: 'Portal docs',
+  recipient_type: 'Recipient',
+  invoice_type: 'Type', place_of_supply: 'POS', invoice_value: 'Invoice Value',
+  hsn: 'HSN/SAC', note_ref_no: 'Original Note', item_lines: 'Item lines',
+  table_type: 'Table', invoice_number: 'Invoice No', recipient_gstin: 'Recipient GSTIN',
+  recipient_name: 'Recipient', rate: 'Rate %', rateOut: 'Rate %', tax: 'Tax',
+  scope: 'Supply', desc: 'Description', uqc: 'UQC', qty: 'Quantity', documents: 'Filed docs',
+  sheet: 'Sheet', rows: 'Rows', table: 'Read as', count: 'Rows',
+  pl_head: 'P&L head', group_name: 'Group', gstr1_table: 'GSTR-1 table',
+  difference_reason_label: 'Reason', remarks: 'Remarks', headName: 'P&L head',
+  status: 'Status', amount: 'Amount',
+};
+
+/** Columns that are COUNTS. "2.00 rows" reads like a bug, so they print as whole numbers. */
+const COUNT_FIELDS = new Set([
+  'count', 'rows', 'lines', 'item_lines', 'itemRows', 'documents', 'matched', 'missing', 'mismatch',
+  'blocked', 'duplicate', 'duplicates', 'pendingDecision', 'followUp', 'twobFiles', 'twobRecords',
+  'draft_count', 'filed_count', 'gstin_count', 'pl_entry_count', 'gstr1_draft_count',
+]);
+
+/** Fields that are numbers: right-aligned, and never printed as text. */
+
+const NUM_FIELDS = new Set([
+  'taxable_value', 'igst', 'cgst', 'sgst', 'cess', 'invoice_value', 'difference', 'difference_amount',
+  'booksTaxable', 'booksIgst', 'booksCgst', 'booksSgst', 'booksCess',
+  'portalTaxable', 'portalIgst', 'portalCgst', 'portalSgst', 'portalCess',
+  'diffTaxable', 'diffIgst', 'diffCgst', 'diffSgst', 'diffCess', 'taxable', 'qty',
+  'pl_amount', 'gstr1_amount', 'amount', 'tax', 'draft_taxable', 'filed_taxable', 'draft_tax', 'filed_tax',
+  'taxable_difference', 'tax_difference', 'draft_count', 'filed_count', 'lines', 'matched',
+  'missing', 'mismatch', 'blocked', 'duplicate', 'pendingDecision', 'followUp', 'twobFiles',
+  'twobRecords', 'itemRows', 'count', 'documents', 'matchedHeads', 'pendingHeads', 'unmappedHeads',
+]);
+
+function tableHtml(cols, rows, emptyText) {
+  if (!rows || !rows.length) {
+    return '<tbody><tr><td class="hint">' + esc(emptyText || 'Koi row nahi.') + '</td></tr></tbody>';
+  }
+  const head = '<thead><tr>' + cols.map((c) => {
+    const key = Array.isArray(c) ? c[0] : c;
+    const label = Array.isArray(c) ? c[1] : (HEADS[key] || key);
+    const numeric = NUM_FIELDS.has(key);
+    return '<th class="' + (numeric ? 'num' : '') + '">' + esc(label) + '</th>';
+  }).join('') + '</tr></thead>';
+  const body = '<tbody>' + rows.map((r) => '<tr>' + cols.map((c) => {
+    const key = Array.isArray(c) ? c[0] : c;
+    let v = r[key];
+    const numeric = NUM_FIELDS.has(key);
+    if (numeric) return '<td class="num">' + (COUNT_FIELDS.has(key) ? numCell(v) : money(v)) + '</td>';
+    if (v && typeof v === 'object') v = asText(v);
+    if (isDateKey(key)) v = fmtDmy(v);
+    if (v === null || v === undefined || v === '') return '<td>&mdash;</td>';
+    return '<td>' + esc(v) + '</td>';
+  }).join('') + '</tr>').join('') + '</tbody>';
+  return head + body;
+}
+
+function pills(counts) {
+  return Object.keys(counts || {}).map((k) => {
+    const v = counts[k];
+    if (!v) return '';
+    return '<span class="pill ' + pillClass(k) + '">' + esc(statusLabel(k)) + ' ' + cnt(v) + '</span>';
+  }).filter(Boolean).join(' ');
+}
+
+function slug(s) {
+  return String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]+/g, '_');
+}
+
+function pillClass(status) {
+  const s = slug(status);
+  if (s === 'matched' || s === 'reconciled' || s === 'ok') return 'good';
+  if (s === 'pending_review' || s === 'amount_mismatch' || s === 'difference_explained' || s === 'table_mismatch' || s === 'recipient_mismatch' || s === 'differs') return 'warn';
+  if (s === 'not_declared' || s === 'missing_in_books' || s === 'duplicate' || s === 'declared_not_in_books' || s === 'credit_note_missing_ref' || s === 'missing') return 'bad';
+  return 'info';
+}
+
+function statusLabel(k) {
+  const map = {
+    matched: 'Matched', not_declared: 'Not declared', declared_not_in_books: 'Portal only',
+    amount_mismatch: 'Amount mismatch', table_mismatch: 'Table mismatch',
+    recipient_mismatch: 'Recipient mismatch', credit_note_missing_ref: 'Credit note ref missing',
+    duplicates: 'Duplicate', duplicate: 'Duplicate', has_filed_data: 'Portal data',
+    books_only: 'Books only', portal_only: 'Portal only',
+  };
+  return map[k] || String(k).replace(/_/g, ' ');
+}
+
+function tilesFrom(obj, classes) {
+  return Object.keys(obj || {}).map((k) => {
+    const v = obj[k];
+    const numeric = typeof v === 'number';
+    const cls = classes && classes[k] ? classes[k] : (numeric && v > 0 && /pending|mismatch|unexpl|missing|duplicate|not_declared|difference/i.test(k) ? 'warn' : '');
+    return '<div class="tile ' + cls + '"><div class="k">' + esc(statusLabel(k)) + '</div><div class="v">' +
+      (numeric ? cnt(v) : esc(v)) + '</div></div>';
+  }).join('') || '<div class="tile"><div class="k">No data</div><div class="v">&mdash;</div></div>';
+}
+
+// ---------------------------------------------------------------------------
+// Sign in
+// ---------------------------------------------------------------------------
+async function signIn(username, password) {
+  const r = await fetch('/api/auth/login', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ username: username, password: password }),
+  });
+  let body = null;
+  try { body = await r.json(); } catch (e) { body = null; }
+  if (!r.ok) throw new Error((body && body.error) || 'Sign in failed.');
+  return body;
+}
+
+async function enter(user) {
+  CTX.user = user;
+  hide(el('gate'));
+  show(el('shell'));
+  const who = user.displayName || user.username || '';
+  el('whoami').textContent = who + (user.role ? ' \u00b7 ' + user.role : '') +
+    (user.mustChangePassword ? ' \u00b7 password badalna baaki hai' : '');
+  const av = el('whoAvatar');
+  if (av) av.textContent = (who || '?').trim().charAt(0).toUpperCase() || '?';
+  renderNav();
+  injectPageHeads();
+  await loadContext();
+  showView('home');
+}
+
+function renderNav() {
+  setHtml('nav', NAV.map((n) =>
+    '<button type="button" class="navlink" data-view="' + n.view + '" id="nav-' + n.id + '" title="' + esc(n.label) + '">' +
+    icon(n.icon) + '<span>' + esc(n.label) + '</span></button>').join(''));
+  for (const n of NAV) {
+    const b = el('nav-' + n.id);
+    if (b) b.onclick = () => showView(n.view);
+  }
+}
+
+/**
+ * Put each screen's heading at the top of its section, once.
+ *
+ * The head is built here rather than written into ten <section> blocks so the
+ * title, the one-line explanation and the artwork cannot fall out of step with
+ * the sidebar, and so adding a screen later means adding one map entry.
+ */
+function injectPageHeads() {
+  for (const name of VIEWS) {
+    const section = document.getElementById('view' + name[0].toUpperCase() + name.slice(1));
+    const meta = VIEW_META[name];
+    if (!section || !meta || section.dataset.headDone === '1') continue;
+    section.dataset.headDone = '1';
+    const head = document.createElement('div');
+    head.className = 'page-head';
+    head.innerHTML =
+      '<div class="ph-text"><h1>' + esc(meta.title) + '</h1>' +
+      '<div class="ph-sub">' + esc(meta.sub) + '</div>' +
+      '<div class="ph-chips" id="ph-' + name + '"></div></div>' +
+      (meta.img ? '<img class="ph-img" src="' + esc(meta.img) + '" alt="" loading="lazy" />' : '');
+    section.insertBefore(head, section.firstChild);
+  }
+}
+
+/**
+ * The two-line context in the top bar: which screen is open, and what it is
+ * pointed at. Built from CTX so the header and the forms cannot disagree.
+ */
+function setCrumb() {
+  const meta = VIEW_META[CTX.view];
+  const v = el('crumbView');
+  if (v) v.textContent = (meta && meta.title) ? meta.title : 'Dashboard';
+  const c = el('crumbCtx');
+  if (!c) return;
+  const parts = [];
+  const co = (CTX.companies || []).find((x) => String(x.id) === String(CTX.company));
+  parts.push(co ? dispCompany(co.name) : 'Sab companies');
+  if (CTX.gstin) parts.push(CTX.gstin);
+  if (CTX.period) {
+    parts.push(monthLabel(CTX.period));
+    // The month's own From/To, in DD/MM/YYYY. It sits here rather than in a
+    // separate header field because a fifth field wrapped the whole context row
+    // on a 1280-wide laptop, and the range belongs beside the month it describes.
+    const range = periodRangeText(CTX.period);
+    if (range) parts.push(range);
+  }
+  c.textContent = parts.join('  \u00b7  ');
+}
+
+function go(view) { showView(view); }
+
+function showView(v) {
+  if (VIEWS.indexOf(v) < 0) v = 'home';
+  CTX.view = v;
+  setCrumb();
+  for (const name of VIEWS) {
+    const node = document.getElementById('view' + name[0].toUpperCase() + name.slice(1));
+    if (node) node.hidden = name !== v;
+  }
+  for (const n of NAV) {
+    const b = el('nav-' + n.id);
+    // Sidebar links, not the pill tabs used inside a screen: renderNav() draws
+    // these, and re-setting the class here must not undo it.
+    if (b) b.className = 'navlink' + (n.view === v ? ' active' : '');
+  }
+  if (v === 'pl') loadPl();
+  if (v === 'home') loadHome();
+  if (v === 'sales') loadSales();
+  if (v === 'portal') loadPortal();
+  if (v === 'outward') loadOutward();
+  if (v === 'hsn') loadHsn();
+  if (v === 'purchase') loadPurchase();
+  if (v === 'paste') loadPaste();
+  if (v === 'reports') loadReports();
+  if (v === 'masters') loadMasters();
+}
+
+// ---------------------------------------------------------------------------
+// Context: masters, coverage, months -> the four pickers in the header
+// ---------------------------------------------------------------------------
+async function loadContext() {
+  let masters = { ok: false, rows: [] };
+  try { masters = await api('/api/masters'); } catch (e) { masters = { ok: false, rows: [] }; }
+  CTX.masters = (masters && masters.ok && masters.rows) ? masters.rows : [];
+
+  const companies = [];
+  const seenCo = {};
+  for (const r of CTX.masters) {
+    if (r.company_id === null || r.company_id === undefined) continue;
+    if (seenCo[r.company_id]) continue;
+    seenCo[r.company_id] = true;
+    companies.push({ id: r.company_id, name: r.company, pan: r.pan });
+  }
+  CTX.companies = companies;
+
+  CTX.gstins = CTX.masters.filter((r) => r.gstin).map((r) => ({
+    gstin: r.gstin, company_id: r.company_id, company: r.company, unit: r.unit, state: r.state,
+  }));
+
+  let mc = { ready: false, rows: [] };
+  try { mc = await api('/api/control/months'); } catch (e) { mc = { ready: false, rows: [] }; }
+  CTX.months = (mc && mc.ready && mc.rows) ? mc.rows : [];
+
+  let cov = { coverage: [] };
+  try { cov = await api('/api/gstr1/coverage'); } catch (e) { cov = { coverage: [] }; }
+  CTX.coverage = (cov && cov.coverage) ? cov.coverage : [];
+
+  let up = { dir: '', files: [] };
+  try { up = await api('/api/uploads'); } catch (e) { up = { dir: '', files: [] }; }
+  CTX.uploadDir = (up && up.dir) ? up.dir : '';
+
+  const periodsOnFile = CTX.months.map((m) => m.period).concat(CTX.coverage.map((c) => c.period));
+  if (!CTX.period) {
+    CTX.period = CTX.months.length ? CTX.months[CTX.months.length - 1].period : todayPeriod();
+  }
+  CTX.fy = CTX.fy || fyOfPeriod(CTX.period) || fyOfPeriod(todayPeriod());
+  if (!CTX.gstin && CTX.gstins.length) CTX.gstin = CTX.gstins[0].gstin;
+  fillPickers(periodsOnFile);
+}
+
+function fillPickers(periodsOnFile) {
+  const co = el('ctxCompany');
+  if (co) {
+    co.innerHTML = '<option value="">Sab companies</option>' +
+      CTX.companies.map((c) => '<option value="' + esc(c.id) + '">' + esc(dispCompany(c.name)) + '</option>').join('');
+    co.value = CTX.company;
+    co.onchange = () => { CTX.company = co.value; refreshContext(false); };
+  }
+
+  const list = CTX.gstins.filter((g) => !CTX.company || String(g.company_id) === String(CTX.company));
+  if (CTX.gstin && !list.some((g) => g.gstin === CTX.gstin)) CTX.gstin = list.length ? list[0].gstin : '';
+  if (!CTX.gstin && list.length) CTX.gstin = list[0].gstin;
+  const gs = el('ctxGstin');
+  if (gs) {
+    gs.innerHTML = list.map((g) => '<option value="' + esc(g.gstin) + '">' + esc(g.gstin) +
+      (g.unit ? ' \u00b7 ' + esc(dispUnit(g.unit)) : '') + '</option>').join('');
+    gs.value = CTX.gstin;
+    gs.onchange = () => { CTX.gstin = gs.value; refreshContext(true); };
+  }
+
+  const fy = el('ctxFy');
+  const fys = fyOptionsFor(periodsOnFile, fyOfPeriod(todayPeriod()));
+  if (fys.length && fys.indexOf(CTX.fy) < 0) CTX.fy = fys[fys.length - 1];
+  if (fy) {
+    fy.innerHTML = fys.map((f) => '<option value="' + esc(f) + '">FY ' + esc(fyLabel(f)) + '</option>').join('');
+    fy.value = CTX.fy;
+    fy.onchange = () => { setFy(fy.value); };
+  }
+
+  const months = monthsOfFy(CTX.fy);
+  if (months.length && months.indexOf(CTX.period) < 0) CTX.period = months[months.length - 1];
+  const pm = el('ctxPeriod');
+  if (pm) {
+    pm.innerHTML = months.map((p) => '<option value="' + p + '">' + esc(monthLabel(p)) + '</option>').join('');
+    pm.value = CTX.period;
+    pm.onchange = () => { CTX.period = pm.value; refreshContext(false); };
+  }
+
+  setHtml('fyTitle', esc(CTX.fy));
+  // The From/To of the selected return month, in DD/MM/YYYY, right in the top
+  // bar \u2014 so "2026-04" is never the only form of the period on screen.
+  setCrumb();
+  // The forms that target ONE GSTIN or ONE month follow the header context.
+  // They used to keep whatever they were first given, so changing the month in
+  // the header left the Portal form reading a file against one period and
+  // importing it into another — the header is the authority, always.
+  const rp = el('runPeriod'); if (rp) rp.value = CTX.period;
+  const rg = el('runGstin'); if (rg) rg.value = CTX.gstin;
+  const rd = el('runDir'); if (rd && CTX.uploadDir) rd.value = CTX.uploadDir;
+  const pp = el('plPeriod'); if (pp) pp.value = CTX.period;
+  const pg = el('portalG1Gstin'); if (pg) pg.value = CTX.gstin;
+  const ppd = el('portalG1Period'); if (ppd) ppd.value = CTX.period;
+  renderUploads();
+}
+
+function setFy(fy) {
+  CTX.fy = fy;
+  const months = monthsOfFy(fy);
+  // Changing the year opens that year at APRIL, its first return month. Keeping
+  // the old month instead used to land the user on a month they never picked
+  // for this year — and for a brand-new year that month had no data at all.
+  if (months.length) CTX.period = months[0];
+  fillPickers(CTX.months.map((m) => m.period).concat(CTX.coverage.map((c) => c.period)));
+  refreshContext(false);
+}
+
+function setPeriod(period) {
+  CTX.period = period;
+  CTX.fy = fyOfPeriod(period) || CTX.fy;
+  fillPickers(CTX.months.map((m) => m.period).concat(CTX.coverage.map((c) => c.period)));
+  refreshContext(false);
+}
+
+/** Re-run whatever the visible view shows, after a context change. */
+function refreshContext(reloadMonths) {
+  setHtml('fyTitle', esc(CTX.fy));
+  if (reloadMonths) { loadContext().then(() => showView(CTX.view)); return; }
+  showView(CTX.view);
+}
+
+// ---------------------------------------------------------------------------
+// Dashboard — the month strip and the monthly run
+// ---------------------------------------------------------------------------
+async function loadHome() {
+  const strip = el('monthStrip');
+  if (strip) strip.innerHTML = '<tbody><tr><td class="hint">loading\u2026</td></tr></tbody>';
+  let out = { ready: false, rows: [] };
+  try { out = await api('/api/control/months' + (CTX.gstin ? '?gstin=' + enc(CTX.gstin) : '')); }
+  catch (e) {
+    if (strip) strip.innerHTML = '<tbody><tr><td><div class="msg err">' + esc(errText(e)) + '</div></td></tr></tbody>';
+    renderMonthChips([]);
+    renderKpis([]);
+    return;
+  }
+  const rows = (out && out.ready && out.rows) ? out.rows : [];
+  CTX.months = rows;
+
+  // The strip is laid out from the SELECTED YEAR, so a year whose months have
+  // no data yet still shows its months rather than a single empty message.
+  const fyMonths = monthsOfFy(CTX.fy);
+  const blanks = fyMonths.filter((p) => !rows.some((r) => r.period === p));
+  setHtml('fyRange', esc(fyLabel(CTX.fy) || '&mdash;'));
+  setHtml('periodRange', esc(periodRangeText(CTX.period) || '\u2014'));
+  renderMonthChips(rows);
+  renderKpis(rows);
+  if (!rows.length && !fyMonths.length) {
+    if (strip) strip.innerHTML = '<tbody><tr><td class="hint">Is year ke liye koi month data nahi mila.</td></tr></tbody>';
+    note('homeHint', 'warn', 'Filhaal koi GST data nahi hai — pehle books/2B upload karke run chalao.');
+    renderResult(null);
+    return;
+  }
+
+  const inFy = fyMonths.map((p) => rows.find((r) => r.period === p) || { period: p, blank: true });
+  const outside = rows.filter((r) => fyMonths.indexOf(r.period) < 0);
+  const all = inFy.concat(outside);
+
+  setHtml('monthStrip',
+    '<thead><tr><th>Month</th><th>Status</th><th class="num">Lines</th><th class="num">Taxable</th>' +
+    '<th class="num">ITC matched</th><th class="num">Missing</th><th class="num">Mismatch</th>' +
+    '<th class="num">Blocked</th><th class="num">Follow-up</th><th class="num">2B files</th><th>GSTR-1</th></tr></thead>' +
+    '<tbody>' + all.map((r) => {
+      if (r.blank) {
+        return '<tr class="clickable" onclick="setPeriod(\'' + esc(r.period) + '\');go(\'outward\')">' +
+          '<td>' + esc(monthLabel(r.period)) + '</td>' +
+          '<td><span class="pill">Not started</span></td>' +
+          '<td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td>' +
+          '<td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td>' +
+          '<td class="num">&mdash;</td><td class="num">&mdash;</td><td><span class="pill">No file</span></td></tr>';
+      }
+      const g1 = r.filed1 ? '<span class="pill good">GSTR-1 filed</span>' : '<span class="pill">Draft only</span>';
+      return '<tr class="clickable" onclick="setPeriod(\'' + esc(r.period) + '\');go(\'outward\')">' +
+        '<td>' + esc(r.label || monthLabel(r.period)) + '</td>' +
+        '<td><span class="pill ' + pillClass(slug(r.status)) + '">' + esc(r.status) + '</span></td>' +
+        '<td class="num">' + numCell(r.lines) + '</td>' +
+        '<td class="num">' + money(r.taxable) + '</td>' +
+        '<td class="num">' + money(r.matchedItc) + '</td>' +
+        '<td class="num">' + numCell(r.missing) + '</td>' +
+        '<td class="num">' + numCell(r.mismatch) + '</td>' +
+        '<td class="num">' + numCell(r.blocked) + '</td>' +
+        '<td class="num">' + numCell(r.followUp) + '</td>' +
+        '<td class="num">' + numCell(r.twobFiles) + '</td>' +
+        '<td>' + g1 + '</td></tr>';
+    }).join('') + '</tbody>');
+
+  const dataMonths = rows.filter((r) => fyMonths.indexOf(r.period) >= 0 && r.lines > 0).length;
+  note('homeHint', 'hint',
+    'FY ' + CTX.fy + ': ' + fyMonths.length + ' months, ' + dataMonths + ' me data' +
+    (blanks.length ? ', ' + blanks.length + ' khaali' : '') + '.');
+
+  const r = await api('/api/result').catch(() => null);
+  renderResult(r && r.ready ? r : null);
+}
+
+/**
+ * The twelve months of the selected year as clickable chips.
+ *
+ * The table below carries the numbers; the chips carry the shape of the year \u2014
+ * which months are filed, which have data, and which are untouched \u2014 so a gap
+ * is visible without reading a single row. Colour is always paired with the
+ * word beside it ("4 lines", "no data"), never used on its own.
+ */
+function renderMonthChips(rows) {
+  const fyMonths = monthsOfFy(CTX.fy);
+  if (!fyMonths.length) { setHtml('monthChips', ''); return; }
+  const list = rows || [];
+  setHtml('monthChips', fyMonths.map((p) => {
+    const r = list.find((x) => x.period === p);
+    const lines = r ? Number(r.lines) || 0 : 0;
+    const cls = r && r.filed1 ? 'good' : (lines > 0 ? 'warn' : '');
+    const state = !r ? 'no data' : (lines > 0 ? cnt(lines) + ' lines' : 'empty');
+    return '<button type="button" class="chip ' + cls + (CTX.period === p ? ' active' : '') + '"' +
+      ' onclick="setPeriod(\'' + esc(p) + '\');go(\'outward\')" title="' + esc(monthLabel(p)) + '">' +
+      '<span class="cm">' + esc(monthLabel(p)) + '</span>' +
+      '<span class="cs"><span class="dot"></span>' + esc(state) + '</span></button>';
+  }).join(''));
+}
+
+/** One KPI card. `value` is HTML (money/cnt already format it) \u2014 never user text. */
+function kpiTile(label, value, sub, cls) {
+  return '<div class="tile ' + (cls || '') + '">' +
+    '<div class="k">' + esc(label) + '</div>' +
+    '<div class="v">' + value + '</div>' +
+    (sub ? '<div class="sub">' + esc(sub) + '</div>' : '') +
+    '</div>';
+}
+
+/**
+ * The year summary above the month strip.
+ *
+ * Every figure is summed from the month rows the server just returned for the
+ * selected GSTIN, so a month with no data contributes nothing and a year with
+ * no data at all says so \u2014 it does not print a row of zeroes, which would
+ * read as "books are nil" instead of "nothing has been uploaded yet".
+ */
+function renderKpis(rows) {
+  const box = el('homeKpis');
+  if (!box) return;
+  const fyMonths = monthsOfFy(CTX.fy);
+  const inFy = (rows || []).filter((r) => fyMonths.indexOf(r.period) >= 0);
+  const withData = inFy.filter((r) => Number(r.lines) > 0);
+  if (!withData.length) {
+    // One honest strip rather than a grid of empty tiles: a row of "0" cards
+    // reads as "the books are nil", which is a different statement from "nothing
+    // has been uploaded yet". The strip spans the row so it does not look like an
+    // oversized card with a hole in the middle.
+    box.innerHTML = '<div class="tile warn" style="grid-column:1/-1">' +
+      '<div class="k">Financial year ' + esc(CTX.fy) + ' &mdash; koi data nahi</div>' +
+      '<div class="v sm">Is year ke kisi month me data nahi hai.</div>' +
+      '<div class="sub">Pehle Books/SAP Sales Register ya GSTR-2B upload karke monthly run chalao \u2014 '
+      + 'uske baad yahan taxable value, matched ITC, missing aur mismatch ke figures aa jayenge. '
+      + 'Jhootha 0 dikhane se behtar hai khaali dikhana.</div></div>';
+    return;
+  }
+  const cov = (CTX.coverage || []).filter((c) => fyMonths.indexOf(c.period) >= 0 && (!CTX.gstin || c.gstin === CTX.gstin));
+  const drafts = cov.reduce((a, c) => a + (Number(c.drafts) || 0), 0);
+  const filedDocs = cov.reduce((a, c) => a + (Number(c.filed) || 0), 0);
+  const filedMonths = inFy.filter((r) => r.filed1).length;
+  const sum = (k) => withData.reduce((a, r) => a + (Number(r[k]) || 0), 0);
+  const missing = sum('missing');
+  const mismatch = sum('mismatch');
+  const blocked = sum('blocked');
+  const followUp = sum('followUp');
+
+  box.innerHTML =
+    kpiTile('Taxable value (FY)', money(sum('taxable')), withData.length + ' of 12 month(s) have data', 'accent') +
+    kpiTile('Books lines', numCell(sum('lines')), 'purchase + 2B lines read') +
+    kpiTile('Books GSTR-1 drafts', cnt(drafts), 'draft documents stored') +
+    kpiTile('Portal documents', cnt(filedDocs), 'imported from the portal', filedDocs ? 'good' : '') +
+    kpiTile('ITC matched', money(sum('matchedItc')), 'matched by the monthly run', 'good') +
+    kpiTile('Missing in 2B', numCell(missing), 'in books, not in 2B', missing ? 'bad' : 'good') +
+    kpiTile('Amount mismatch', numCell(mismatch), 'taxable/tax differs', mismatch ? 'warn' : 'good') +
+    kpiTile('ITC blocked', numCell(blocked), 'blocked credit rows', blocked ? 'bad' : 'good') +
+    kpiTile('Follow-up pending', numCell(followUp), 'needs a decision', followUp ? 'warn' : 'good') +
+    kpiTile('GSTR-1 filed months', cnt(filedMonths) + ' / 12', 'months with a filed return', filedMonths ? 'good' : 'warn');
+}
+
+function renderUploads() {
+  const node = el('uploadList');
+  if (!node) return;
+  api('/api/uploads').then((u) => {
+    const files = (u && u.files) ? u.files : [];
+    CTX.uploadDir = (u && u.dir) ? u.dir : CTX.uploadDir;
+    node.innerHTML = files.length
+      ? 'Uploaded: ' + files.map((f) => esc(f.name) + ' (' + Math.round(f.size / 1024) + ' KB)').join(' &nbsp;\u00b7&nbsp; ')
+      : 'Abhi koi upload nahi.';
+    const rd = el('runDir');
+    if (rd && CTX.uploadDir) rd.value = CTX.uploadDir;
+  }).catch(() => { node.textContent = ''; });
+}
+
+async function useUploads() {
+  await refreshUploads();
+  toast('Uploaded folder select kiya: ' + CTX.uploadDir, 'ok');
+}
+
+async function refreshUploads() {
+  try {
+    const u = await api('/api/uploads');
+    CTX.uploadDir = (u && u.dir) ? u.dir : CTX.uploadDir;
+    renderUploads();
+  } catch (e) { toast(errText(e), 'err'); }
+}
+
+async function runNow() {
+  const btn = el('btnRun');
+  const log = el('runLog');
+  const dir = (el('runDir') && el('runDir').value.trim()) || CTX.uploadDir;
+  if (!dir) return toast('Input folder chahiye.', 'err');
+  if (btn) { btn.disabled = true; btn.textContent = 'running\u2026'; }
+  if (log) { log.style.display = 'block'; log.textContent = 'starting\u2026'; }
+  try {
+    const { jobId } = await postJson('/api/run', {
+      dir: dir,
+      period: (el('runPeriod') && el('runPeriod').value.trim()) || undefined,
+      salesGstin: (el('runGstin') && el('runGstin').value.trim()) || undefined,
+    });
+    let job = null;
+    for (;;) {
+      job = await api('/api/run/' + enc(jobId));
+      if (log) { log.textContent = (job.log || []).join('\n') || 'reading files\u2026'; log.scrollTop = log.scrollHeight; }
+      if (job.status === 'done') { if (log) log.textContent += '\n\nDONE'; break; }
+      if (job.status === 'failed') { if (log) log.textContent += '\n\nFAILED: ' + (job.error || ''); toast('Run failed: ' + (job.error || ''), 'err'); break; }
+      await new Promise((res) => setTimeout(res, 1200));
+    }
+    const r = await api('/api/result').catch(() => null);
+    renderResult(r && r.ready ? r : null);
+    await loadContext();
+    if (CTX.view === 'home') loadHome();
+  } catch (e) {
+    if (log) log.textContent += '\nERROR: ' + errText(e);
+    toast(errText(e), 'err');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Run reconciliation'; }
+  }
+}
+
+function renderResult(r) {
+  const card = el('resultCard');
+  if (!r) { if (card) card.hidden = true; return; }
+  if (card) card.hidden = false;
+  const c = r.counts || {};
+  setHtml('resultMsgs',
+    ((r.messages || []).length ? '<div class="msg warn">' + esc((r.messages || []).join(' \u00b7 ')) + '</div>' : '') +
+    (r.validationIssues && r.validationIssues.length
+      ? r.validationIssues.slice(0, 10).map((v) => '<div class="msg err">[' + esc(v.severity) + '] ' + esc(v.invoiceNo) + ': ' + esc(v.message) + '</div>').join('')
+      : ''));
+  setHtml('resultTiles',
+    '<div class="tile"><div class="k">Purchase rows</div><div class="v">' + cnt(c.purchase || 0) + '</div></div>' +
+    '<div class="tile"><div class="k">GSTR-2B rows</div><div class="v">' + cnt(c.twob || 0) + '</div></div>' +
+    '<div class="tile"><div class="k">Sales rows</div><div class="v">' + cnt(c.sales || 0) + '</div></div>' +
+    '<div class="tile ' + ((r.totals && r.totals.exceptions) ? 'warn' : 'good') + '"><div class="k">Exceptions</div><div class="v">' +
+    cnt((r.totals && r.totals.exceptions) || 0) + '</div></div>');
+  const dl = el('dlLink');
+  if (dl) dl.style.display = '';
+}
+
+// ---------------------------------------------------------------------------
+// Books / Sales Register
+// ---------------------------------------------------------------------------
+function loadSales() {
+  renderUploads();
+  wireDrop('salesDrop', 'salesFile', (files) => {
+    if (el('salesFileMsg')) el('salesFileMsg').textContent = files.length ? files[0].name : '';
+    if (files.length) salesPreview();
+  });
+}
+
+async function salesPreview() {
+  const input = el('salesFile');
+  const f = input && input.files && input.files[0];
+  if (!f) return toast('Pehle Sales Register file choose karo.', 'err');
+  const box = el('salesPreview');
+  const card = el('salesPreviewCard');
+  if (card) card.hidden = false;
+  if (box) box.innerHTML = '<div class="hint">parsing\u2026</div>';
+  try {
+    const out = await postFile('/api/sales-register/preview?name=' + enc(f.name), f);
+    CTX.salesFileName = f.name;
+    if (box) box.innerHTML = salesPreviewHtml(out);
+  } catch (e) {
+    if (box) box.innerHTML = '<div class="msg err">' + esc(errText(e)) + '</div>';
+  }
+}
+
+function salesPreviewHtml(out) {
+  const periods = Object.keys(out.periods || {});
+  const flags =
+    '<div class="tiles" style="margin-bottom:12px">' +
+    '<div class="tile"><div class="k">Invoices</div><div class="v">' + cnt(out.count) + '</div></div>' +
+    '<div class="tile"><div class="k">Item lines</div><div class="v">' + cnt(out.itemRows) + '</div></div>' +
+    '<div class="tile"><div class="k">Shape</div><div class="v" style="font-size:14px">' + (out.itemLevel ? 'Item-wise' : 'Invoice-level') + '</div></div>' +
+    '<div class="tile"><div class="k">Taxable</div><div class="v">' + inr(out.totals && out.totals.taxable) + '</div></div>' +
+    '<div class="tile"><div class="k">Tax</div><div class="v">' + inr(out.totals && out.totals.tax) + '</div></div>' +
+    '<div class="tile"><div class="k">Sheet read</div><div class="v" style="font-size:14px">' + esc(out.sheet) + '</div></div>' +
+    '</div>';
+
+  const ctx = '<div class="hint">Detected as <b>' + esc(out.detected) + '</b> \u00b7 period ' +
+    (periods.length ? esc(periods.map((p) => monthLabel(p) + ' (' + out.periods[p] + ')').join(', ')) : 'n/a') +
+    ' \u00b7 our GSTIN ' + ((out.gstins || []).length ? esc(out.gstins.join(', ')) : '<b>missing</b>') + '</div>';
+
+  const issues = (out.issues || []).length
+    ? '<h3>Problems found (' + out.issues.length + ')</h3><div class="scroll" style="max-height:220px"><table>' +
+      '<thead><tr><th>Severity</th><th>Invoice</th><th>Message</th></tr></thead><tbody>' +
+      out.issues.map((i) => '<tr><td><span class="pill ' + (i.severity === 'ERROR' ? 'bad' : 'warn') + '">' + esc(i.severity) + '</span></td>' +
+        '<td>' + esc(i.invoiceNo) + '</td><td>' + esc(i.message) + '</td></tr>').join('') +
+      '</tbody></table></div>'
+    : '<h3>Problems found</h3><div class="msg ok">Koi problem nahi mili.</div>';
+
+  const skipped = (out.skipped || []).length
+    ? '<h3>Skipped rows (' + out.skipped.length + ')</h3><div class="scroll" style="max-height:180px"><table>' +
+      '<thead><tr><th>Row</th><th>Reason</th></tr></thead><tbody>' +
+      out.skipped.map((s) => '<tr><td>' + esc(s.row) + '</td><td>' + esc(s.reason) + '</td></tr>').join('') +
+      '</tbody></table></div>'
+    : '';
+
+  // `period` is labelled here rather than taken from HEADS: on this screen it
+  // is the sales invoice's own return month, while HEADS spells the same key
+  // "2B Month" for the purchase/2B screens, where it really is the 2B month.
+  const rowsCols = ['our_gstin', 'customer_name', 'customer_gstin', 'invoice_no', 'invoice_date', ['period', 'Return month'], 'invoice_type', 'place_of_supply', ['taxable_value', 'Taxable'], 'igst', 'cgst', 'sgst', ['invoice_value', 'Invoice Value'], 'item_lines'];
+
+  return flags + ctx + '<div style="margin-top:12px" class="scroll"><table>' +
+    tableHtml(rowsCols, out.rows || [], 'Koi invoice nahi.') + '</table></div>' + issues + skipped;
+}
+
+async function salesUploadAndRun() {
+  const input = el('salesFile');
+  const f = input && input.files && input.files[0];
+  if (!f) return toast('Pehle Sales Register file choose karo.', 'err');
+  try {
+    if (el('salesFileMsg')) el('salesFileMsg').textContent = 'uploading ' + f.name + '\u2026';
+    const up = await postFile('/api/sales-register/upload?name=' + enc(f.name), f);
+    if (el('salesFileMsg')) el('salesFileMsg').textContent = 'uploaded ' + up.name;
+    CTX.uploadDir = up.dir || CTX.uploadDir;
+    await refreshUploads();
+    toast('Sales Register upload ho gaya. Ab monthly run chal raha hai\u2026', 'ok');
+    go('home');
+    await runNow();
+  } catch (e) {
+    if (el('salesFileMsg')) el('salesFileMsg').textContent = '';
+    toast(errText(e), 'err');
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Portal pre-filled GSTR-1
+// ---------------------------------------------------------------------------
+function loadPortal() {
+  wireDrop('portalG1Drop', 'portalG1File', (files) => {
+    if (files.length) portalG1Preview();
+  });
+}
+
+function portalGstin() {
+  return ((el('portalG1Gstin') && el('portalG1Gstin').value.trim()) || CTX.gstin || '').toUpperCase();
+}
+
+function portalPeriod() {
+  return (el('portalG1Period') && el('portalG1Period').value.trim()) || CTX.period;
+}
+
+async function portalG1Preview() {
+  const f = el('portalG1File') && el('portalG1File').files && el('portalG1File').files[0];
+  if (!f) return toast('Pehle portal ki GSTR-1 file choose karo.', 'err');
+  const gstin = portalGstin();
+  if (!gstin) return toast('GSTIN daalo \u2014 portal file khud apna GSTIN nahi batati.', 'err');
+  showId('portalG1Card');
+  setHtml('portalG1Out', '<div class="hint">parsing\u2026</div>');
+  note('portalG1Msg', 'hint', '');
+  try {
+    // /api/gstr1/preview is the full preview: it reports which periods the file
+    // touches, a label per table, and the whole tax split per row. The staging
+    // route answers with less, and the import would then be the only place the
+    // missing detail showed up.
+    const out = await postFile('/api/gstr1/preview?name=' + enc(f.name) + '&gstin=' + enc(gstin) + '&period=' + enc(portalPeriod()), f);
+    if (el('portalG1ImportBtn')) el('portalG1ImportBtn').disabled = false;
+    setHtml('portalG1Out', portalPreviewHtml(out));
+    showInline('portalG1Msg', 'ok', f.name + ' padh li gayi \u2014 ab "Confirm import" dabao.');
+  } catch (e) {
+    setHtml('portalG1Out', '<div class="msg err">' + esc(errText(e)) + '</div>');
+    if (el('portalG1ImportBtn')) el('portalG1ImportBtn').disabled = true;
+  }
+}
+
+function portalPreviewHtml(out) {
+  const t = out.totals || {};
+  const byTable = t.byTable || {};
+  const rows = out.rows || out.sampleRows || [];
+  const periods = Object.keys(out.periods || {});
+  const perSheet = out.perSheet || {};
+  const tableOfSheet = out.tableOfSheet || {};
+  // Newer route answers with a labelled `tables` array; the staging route only
+  // has the byTable map. Folding the two shapes here keeps one screen for both.
+  const tables = out.tables || Object.keys(byTable).map((k) => Object.assign({ table: k, label: k }, byTable[k]));
+  const ratio = rows.length < t.count ? rows.length + ' of ' + cnt(t.count) : cnt(t.count);
+
+  const tiles =
+    '<div class="tiles" style="margin-bottom:12px">' +
+    '<div class="tile"><div class="k">Rows</div><div class="v">' + cnt(t.count) + '</div></div>' +
+    '<div class="tile"><div class="k">Taxable</div><div class="v">' + inr(t.taxable) + '</div></div>' +
+    '<div class="tile"><div class="k">Tax</div><div class="v">' + inr(t.tax) + '</div></div>' +
+    '<div class="tile"><div class="k">Tables</div><div class="v">' + cnt(tables.length) + '</div></div>' +
+    '<div class="tile ' + (periods.length === 1 ? 'good' : 'warn') + '"><div class="k">Periods in file</div><div class="v" style="font-size:15px">' +
+      (periods.length ? esc(periods.map(monthLabel).join(', ')) : 'n/a') + '</div></div>' +
+    '<div class="tile"><div class="k">Our GSTIN</div><div class="v" style="font-size:15px">' + esc(out.gstin || out.fileGstin || 'not in file') + '</div></div>' +
+    '</div>';
+
+  const ctx = '<div class="hint">File: <b>' + esc(out.file || out.name || '') + '</b> \u00b7 sheets: ' + esc((out.sheets || []).join(', ')) +
+    ' \u00b7 showing ' + esc(ratio) + ' row(s)</div>';
+
+  const sheetRows = (out.sheets || []).map((s) => ({ sheet: s, rows: perSheet[s] || 0, table: tableOfSheet[s] || '\u2014' }));
+  const sheetTable = sheetRows.length
+    ? '<h3>Sheets read</h3><div class="scroll" style="max-height:160px"><table>' +
+      tableHtml([['sheet', 'Sheet'], ['rows', 'Rows'], ['table', 'Read as']], sheetRows, 'Koi sheet nahi.') + '</table></div>'
+    : '';
+
+  const tableRows = tables.length
+    ? '<h3>By table</h3><div class="scroll" style="max-height:200px"><table>' +
+      tableHtml([['label', 'Table'], ['count', 'Rows'], ['taxable', 'Taxable'], ['tax', 'Tax']], tables, 'Koi table nahi.') + '</table></div>'
+    : '';
+
+  const skip = (out.skipped || []).length
+    ? '<h3>Skipped (' + out.skipped.length + ')</h3><div class="scroll" style="max-height:180px"><table>' +
+      tableHtml([['sheet', 'Sheet'], ['row', 'Row'], ['reason', 'Reason']], out.skipped, 'Kuch skip nahi hua.') + '</table></div>'
+    : '';
+
+  const cols = ['table_type', 'invoice_number', 'invoice_date', ['period', 'Return month'], 'recipient_gstin', 'recipient_name', 'place_of_supply', 'hsn', 'rate', ['taxable_value', 'Taxable'], 'igst', 'cgst', 'sgst', 'cess', ['invoice_value', 'Invoice Value']];
+  return tiles + ctx + sheetTable + tableRows +
+    '<h3>Rows</h3><div class="scroll"><table>' + tableHtml(cols, rows, 'Koi row nahi mili.') + '</table></div>' + skip;
+}
+
+async function portalG1Import() {
+  const f = el('portalG1File') && el('portalG1File').files && el('portalG1File').files[0];
+  if (!f) return toast('Pehle portal file choose karo.', 'err');
+  const gstin = portalGstin();
+  if (!gstin) return toast('GSTIN daalo.', 'err');
+  note('portalG1Msg', 'hint', 'importing\u2026');
+  try {
+    const out = await postFile('/api/gstr1/import?name=' + enc(f.name) + '&gstin=' + enc(gstin) + '&period=' + enc(portalPeriod()), f);
+    note('portalG1Msg', 'ok',
+      'Portal GSTR-1 import ho gayi: ' + cnt(out.inserted) + ' nayi, ' + cnt(out.updated) + ' update' +
+      ((out.periods || []).length ? ' \u00b7 periods ' + out.periods.join(', ') : '') +
+      '. Ab "Run reconciliation" dabao.');
+    await loadOutward();
+  } catch (e) {
+    showInline('portalG1Msg', 'err', errText(e));
+  }
+}
+
+// ---------------------------------------------------------------------------
+// GSTR-1 reconciliation: draft -> filed -> outcome
+// ---------------------------------------------------------------------------
+function outUri(extra) {
+  return '/api/gstr1/outcomes?gstin=' + enc(CTX.gstin) + '&period=' + enc(CTX.period) + (extra || '');
+}
+
+function g1HsnUrl(format, view) {
+  return '/api/gstr1/hsn?gstin=' + enc(CTX.gstin) + '&period=' + enc(CTX.period) +
+    '&scope=' + enc(el('hsnScope') ? el('hsnScope').value : 'all') +
+    '&format=' + enc(format) + '&view=' + enc(view || 'auto');
+}
+
+async function g1Draft() {
+  if (!CTX.gstin || !CTX.period) return toast('GSTIN aur period select karo.', 'err');
+  note('outMsg', 'hint', 'draft ban raha hai\u2026');
+  try {
+    const out = await postJson('/api/gstr1/draft', { gstin: CTX.gstin, period: CTX.period });
+    note('outMsg', 'ok', 'Draft rebuild ho gaya: ' + cnt(out.documents) + ' document' +
+      (out.rejected && out.rejected.length ? ', ' + out.rejected.length + ' reject' : '') + '.');
+    await loadOutward();
+  } catch (e) {
+    showInline('outMsg', e.status === 423 ? 'warn' : 'err', errText(e));
+  }
+}
+
+async function g1Recon() {
+  if (!CTX.gstin || !CTX.period) return toast('GSTIN aur period select karo.', 'err');
+  note('outMsg', 'hint', 'comparing draft against filed\u2026');
+  try {
+    const out = await postJson('/api/gstr1/recon', { gstin: CTX.gstin, period: CTX.period });
+    if (!out.has_filed_data) note('outMsg', 'warn', 'Portal ki filed GSTR-1 abhi import nahi hui \u2014 comparison adhoora hai.');
+    else note('outMsg', 'ok', 'Reconciliation ho gaya. Matched ' + cnt(out.totals && out.totals.matched) + '.');
+    await loadOutward();
+  } catch (e) {
+    showInline('outMsg', 'err', errText(e));
+  }
+}
+
+async function loadOutward() {
+  setHtml('outCtx', esc(CTX.gstin || '(koi GSTIN nahi)') + ' \u00b7 ' + esc(monthLabel(CTX.period)) + ' \u00b7 FY ' + esc(CTX.fy || ''));
+  try {
+    const out = await api(outUri(CTX.outStatus ? '&status=' + enc(CTX.outStatus) : ''));
+    renderOutward(out);
+  } catch (e) {
+    setHtml('outTiles', '<div class="msg err">' + esc(errText(e)) + '</div>');
+  }
+  loadCoverage();
+}
+
+function renderOutward(out) {
+  const totals = out.totals || {};
+  const tiles =
+    '<div class="tile"><div class="k">Books drafts</div><div class="v">' + cnt(out.stored_drafts) + '</div></div>' +
+    '<div class="tile"><div class="k">Portal docs</div><div class="v">' + cnt(out.stored_filed) + '</div></div>' +
+    '<div class="tile ' + (out.has_filed_data ? 'good' : 'warn') + '"><div class="k">Portal data</div><div class="v" style="font-size:14px">' +
+      (out.has_filed_data ? 'imported' : 'missing') + '</div></div>' +
+    Object.keys(totals).map((k) => '<div class="tile ' + pillClass(slug(k)) + '"><div class="k">' + esc(statusLabel(k)) + '</div><div class="v">' + cnt(totals[k]) + '</div></div>').join('');
+  setHtml('outTiles', tiles);
+
+  const statuses = Object.keys(totals);
+  setHtml('outTabs',
+    '<button type="button" class="tab' + (CTX.outStatus ? '' : ' active') + '" onclick="outFilter(\'\')">Sab</button>' +
+    statuses.map((s) => '<button type="button" class="tab' + (CTX.outStatus === s ? ' active' : '') + '" onclick="outFilter(\'' + esc(s) + '\')">' +
+      esc(statusLabel(s)) + ' (' + cnt(totals[s]) + ')</button>').join(''));
+
+  const cols = [
+    ['status', 'Outcome'], ['table_type', 'Table'], ['invoice_number_raw', 'Invoice'],
+    ['invoice_date', 'Date'], 'customer_name', 'customer_gstin_norm',
+    ['draft_taxable', 'Draft taxable'], ['filed_taxable', 'Filed taxable'],
+    ['draft_tax', 'Draft tax'], ['filed_tax', 'Filed tax'], ['difference_amount', 'Difference'],
+  ];
+  const rows = (out.outcomes || []).map((r) => Object.assign({}, r, { status: r.status }));
+  setHtml('outTable',
+    '<thead><tr>' + cols.map((c) => {
+      const key = Array.isArray(c) ? c[0] : c;
+      const label = Array.isArray(c) ? c[1] : (HEADS[key] || key);
+      return '<th class="' + (NUM_FIELDS.has(key) ? 'num' : '') + '">' + esc(label) + '</th>';
+    }).join('') + '</tr></thead><tbody>' +
+    (rows.length
+      ? rows.map((r) => '<tr>' + cols.map((c) => {
+          const key = Array.isArray(c) ? c[0] : c;
+          if (key === 'status') return '<td><span class="pill ' + pillClass(slug(r.status)) + '">' + esc(statusLabel(slug(r.status))) + '</span></td>';
+          if (NUM_FIELDS.has(key)) return '<td class="num">' + money(r[key]) + '</td>';
+          const v = r[key];
+          if (isDateKey(key)) return '<td>' + (v ? esc(fmtDmy(v)) : '&mdash;') + '</td>';
+          return '<td>' + (v === null || v === undefined || v === '' ? '&mdash;' : esc(v)) + '</td>';
+        }).join('') + '</tr>').join('')
+      : '<tr><td colspan="' + cols.length + '" class="hint">Koi outcome nahi. Pehle "Rebuild draft from books" chalao, phir "Run reconciliation".</td></tr>') +
+    '</tbody>');
+
+  setHtml('outHint', cnt(out.total) + ' invoice outcome' + (out.last_run ? ' \u00b7 last run ' + esc(asText(out.last_run.ran_at)) : ''));
+
+  const sCols = ['table_type', 'draft_count', 'filed_count', ['draft_taxable', 'Draft taxable'], ['filed_taxable', 'Filed taxable'], ['taxable_difference', 'Taxable diff'], ['tax_difference', 'Tax diff'], 'status'];
+  setHtml('outSummary',
+    '<thead><tr>' + sCols.map((c) => {
+      const key = Array.isArray(c) ? c[0] : c;
+      return '<th class="' + (NUM_FIELDS.has(key) ? 'num' : '') + '">' + esc(Array.isArray(c) ? c[1] : (HEADS[key] || key)) + '</th>';
+    }).join('') + '</tr></thead><tbody>' +
+    ((out.summary || []).length
+      ? out.summary.map((r) => '<tr>' + sCols.map((c) => {
+          const key = Array.isArray(c) ? c[0] : c;
+          if (NUM_FIELDS.has(key)) return '<td class="num">' + money(r[key]) + '</td>';
+          const v = r[key];
+          return '<td>' + (v === null || v === undefined || v === '' ? '&mdash;' : (key === 'status' ? '<span class="pill ' + pillClass(slug(v)) + '">' + esc(statusLabel(slug(v))) + '</span>' : esc(v))) + '</td>';
+        }).join('') + '</tr>').join('')
+      : '<tr><td colspan="' + sCols.length + '" class="hint">Comparison nahi hua \u2014 "Run reconciliation" dabao.</td></tr>') +
+    '</tbody>');
+}
+
+function outFilter(status) {
+  CTX.outStatus = status || '';
+  loadOutward();
+}
+
+async function loadCoverage() {
+  try {
+    const out = await api('/api/gstr1/coverage');
+    const rows = (out && out.coverage) ? out.coverage : [];
+    const mine = rows.filter((r) => !CTX.gstin || r.gstin === CTX.gstin);
+    setHtml('outCoverage',
+      '<thead><tr><th>GSTIN</th><th>Month</th><th class="num">Drafts</th><th class="num">Portal docs</th></tr></thead><tbody>' +
+      (mine.length
+        ? mine.map((r) => '<tr class="clickable" onclick="setPeriod(\'' + esc(r.period) + '\');loadOutward()">' +
+            '<td>' + esc(r.gstin) + '</td><td>' + esc(monthLabel(r.period)) + '</td>' +
+            '<td class="num">' + cnt(r.drafts) + '</td><td class="num">' + cnt(r.filed) + '</td></tr>').join('')
+        : '<tr><td colspan="4" class="hint">Abhi koi outward data nahi hai.</td></tr>') +
+      '</tbody>');
+  } catch (e) {
+    setHtml('outCoverage', '<tbody><tr><td class="hint">' + esc(errText(e)) + '</td></tr></tbody>');
+  }
+}
+
+// ---------------------------------------------------------------------------
+// HSN summary (table 12)
+// ---------------------------------------------------------------------------
+async function loadHsn() {
+  if (!CTX.gstin || !CTX.period) return;
+  note('hsnMsg', 'hint', 'loading\u2026');
+  try {
+    const out = await api('/api/gstr1/hsn?gstin=' + enc(CTX.gstin) + '&period=' + enc(CTX.period) +
+      '&scope=' + enc(el('hsnScope') ? el('hsnScope').value : 'all'));
+    renderHsn(out);
+  } catch (e) {
+    note('hsnMsg', 'err', errText(e));
+  }
+}
+
+function renderHsn(out) {
+  // The headline is written here, once, together with the warning — the loader
+  // used to write "books item lines: n" AFTER this function, which silently
+  // replaced the "portal HSN data is missing" warning with good news.
+  const base = 'Books item lines: ' + cnt(out.item_lines) + ' \u00b7 item-wise invoices: ' + cnt(out.item_level_invoices);
+  const bCols = ['scope', 'hsn', 'desc', 'uqc', ['qty', 'Quantity'], ['rateOut', 'Rate %'], ['taxable', 'Taxable'], 'igst', 'cgst', 'sgst', 'cess'];
+  setHtml('hsnBooks', tableHtml(bCols, out.rows || [], 'Is period ke liye books me koi HSN line nahi.'));
+
+  const card = el('hsnPortalCard');
+  if (out.portal && out.portal.available) {
+    if (card) card.hidden = false;
+    const pCols = ['scope', 'hsn', ['rate', 'Rate %'], ['taxable', 'Taxable'], 'igst', 'cgst', 'sgst', 'cess', ['documents', 'Filed docs']];
+    setHtml('hsnPortal', tableHtml(pCols, (out.portal.rows || []), 'Portal HSN rows nahi.'));
+  } else {
+    if (card) card.hidden = true;
+  }
+
+  const cCard = el('hsnCompareCard');
+  if (out.comparison && out.comparison.available) {
+    if (cCard) cCard.hidden = false;
+    const c = out.comparison;
+    setHtml('hsnTiles',
+      '<div class="tile good"><div class="k">Matched</div><div class="v">' + cnt(c.matched) + '</div></div>' +
+      '<div class="tile warn"><div class="k">Differs</div><div class="v">' + cnt(c.differs) + '</div></div>' +
+      '<div class="tile bad"><div class="k">Books only</div><div class="v">' + cnt(c.booksOnly) + '</div></div>' +
+      '<div class="tile bad"><div class="k">Portal only</div><div class="v">' + cnt(c.portalOnly) + '</div></div>');
+    const cc = [
+      ['status', 'Status'], ['scope', 'Supply'], 'hsn', 'desc', 'uqc',
+      ['booksTaxable', 'Books taxable'], ['portalTaxable', 'Portal taxable'],
+      ['diffTaxable', 'Diff taxable'], ['diffIgst', 'Diff IGST'], ['diffCgst', 'Diff CGST'], ['diffSgst', 'Diff SGST'],
+    ];
+    const rows = (c.rows || []).map((r) => Object.assign({}, r, {
+      desc: r.desc, uqc: r.uqc,
+      booksTaxable: r.books ? r.books.taxable : null,
+      portalTaxable: r.portal ? r.portal.taxable : null,
+      diffTaxable: r.diff ? r.diff.taxable : null,
+      diffIgst: r.diff ? r.diff.igst : null,
+      diffCgst: r.diff ? r.diff.cgst : null,
+      diffSgst: r.diff ? r.diff.sgst : null,
+    }));
+    setHtml('hsnCompare',
+      '<thead><tr>' + cc.map((c2) => {
+        const key = Array.isArray(c2) ? c2[0] : c2;
+        return '<th class="' + (NUM_FIELDS.has(key) ? 'num' : '') + '">' + esc(Array.isArray(c2) ? c2[1] : (HEADS[key] || key)) + '</th>';
+      }).join('') + '</tr></thead><tbody>' +
+      rows.map((r) => '<tr>' + cc.map((c2) => {
+        const key = Array.isArray(c2) ? c2[0] : c2;
+        if (key === 'status') return '<td><span class="pill ' + pillClass(slug(r.status)) + '">' + esc(r.status) + '</span></td>';
+        if (NUM_FIELDS.has(key)) return '<td class="num">' + money(r[key]) + '</td>';
+        const v = r[key];
+        return '<td>' + (v === null || v === undefined || v === '' ? '&mdash;' : esc(v)) + '</td>';
+      }).join('') + '</tr>').join('') + '</tbody>');
+    setHtml('hsnNotes', (c.notes || []).map(esc).join('<br>'));
+    note('hsnMsg', 'ok', base);
+  } else {
+    if (cCard) cCard.hidden = true;
+    note('hsnMsg', 'warn', base + ' \u2014 Portal ka HSN data import nahi hua, isliye ye comparison adhoora hai. ' +
+      ((out.portal && out.portal.reason) ? out.portal.reason : ''));
+  }
+}
+
+// ---------------------------------------------------------------------------
+// P&L versus GSTR-1
+// ---------------------------------------------------------------------------
+function plCompany() {
+  return CTX.company || '';
+}
+
+function plName() {
+  const f = el('plFile') && el('plFile').files && el('plFile').files[0];
+  return f ? f.name : (CTX.plPreviewName || 'pl.xlsx');
+}
+
+async function loadPl() {
+  await plLoadHeads();
+  const p = el('plPeriod'); if (p && !p.value) p.value = CTX.period;
+  if (p && p.value) plLoad();
+}
+
+async function plLoadHeads() {
+  if (!plCompany()) {
+    setHtml('plTiles', '<div class="msg warn">P&amp;L company-level hai \u2014 header me company select karo.</div>');
+    setHtml('plMonths', '<tbody><tr><td class="hint">Company select karne par months dikhenge.</td></tr></tbody>');
+    return;
+  }
+  try {
+    const cov = await api('/api/pl/coverage?company=' + enc(plCompany()));
+    const months = (cov && cov.months) ? cov.months : [];
+    setHtml('plMonths',
+      '<thead><tr><th>Month</th><th class="num">P&amp;L lines</th><th class="num">GSTR-1 draft</th>' +
+      '<th class="num">Pending</th><th class="num">Explained</th><th class="num">Reconciled</th><th class="num">Difference</th></tr></thead><tbody>' +
+      (months.length
+        ? months.map((m) => '<tr class="clickable" onclick="el(\'plPeriod\').value=\'' + esc(m.period) + '\';plLoad()">' +
+            '<td>' + esc(monthLabel(m.period)) + '</td>' +
+            '<td class="num">' + numCell(m.pl_entry_count) + '</td>' +
+            '<td class="num">' + numCell(m.gstr1_draft_count) + '</td>' +
+            '<td class="num">' + numCell(m.pending) + '</td>' +
+            '<td class="num">' + numCell(m.explained) + '</td>' +
+            '<td class="num">' + numCell(m.reconciled) + '</td>' +
+            '<td class="num">' + money(m.total_difference) + '</td></tr>').join('')
+        : '<tr><td colspan="7" class="hint">Koi P&amp;L month upload nahi hua.</td></tr>') +
+      '</tbody>');
+  } catch (e) {
+    note('plMsg', 'err', errText(e));
+  }
+}
+
+/** Load one month's head-wise reconciliation. */
+async function plLoad() {
+  if (!plCompany()) return toast('Header me company select karo \u2014 P&L company-level hai.', 'err');
+  const period = (el('plPeriod') && el('plPeriod').value.trim()) || CTX.period;
+  if (!period) return toast('P&L month daalo.', 'err');
+  note('plMsg', 'hint', 'loading ' + monthLabel(period) + '\u2026');
+  try {
+    const out = await api('/api/pl/outcomes?company=' + enc(plCompany()) + '&period=' + enc(period));
+    const s = out.summary || {};
+    setHtml('plTiles',
+      '<div class="tile"><div class="k">P&amp;L</div><div class="v">' + inr(s.pl) + '</div></div>' +
+      '<div class="tile"><div class="k">GSTR-1</div><div class="v">' + inr(s.gstr1) + '</div></div>' +
+      '<div class="tile ' + (s.difference ? 'warn' : 'good') + '"><div class="k">Difference</div><div class="v">' + inr(s.difference) + '</div></div>' +
+      '<div class="tile ' + (s.unexplained ? 'bad' : 'good') + '"><div class="k">Unexplained</div><div class="v">' + inr(s.unexplained) + '</div></div>' +
+      '<div class="tile good"><div class="k">Reconciled</div><div class="v">' + cnt(s.matched) + '</div></div>' +
+      '<div class="tile ' + (s.pending ? 'warn' : 'good') + '"><div class="k">Pending</div><div class="v">' + cnt(s.pending) + '</div></div>' +
+      '<div class="tile ' + (s.unmapped ? 'warn' : 'good') + '"><div class="k">Not mapped</div><div class="v">' + cnt(s.unmapped) + '</div></div>');
+
+    const rows = out.rows || [];
+    const cols = ['pl_head', 'group_name', 'gstr1_table', ['pl_amount', 'P&amp;L'], ['gstr1_amount', 'GSTR-1'], ['difference', 'Difference'], 'status', 'difference_reason_label', 'remarks'];
+    setHtml('plTable',
+      '<thead><tr>' + cols.map((c) => {
+        const key = Array.isArray(c) ? c[0] : c;
+        return '<th class="' + (NUM_FIELDS.has(key) ? 'num' : '') + '">' + esc(Array.isArray(c) ? c[1] : (HEADS[key] || key.replace(/_/g, ' '))) + '</th>';
+      }).join('') + '<th>Action</th></tr></thead><tbody>' +
+      (rows.length
+        ? rows.map((r) => '<tr>' + cols.map((c) => {
+            const key = Array.isArray(c) ? c[0] : c;
+            const v = r[key];
+            if (NUM_FIELDS.has(key)) return '<td class="num">' + money(v) + '</td>';
+            if (key === 'status') return '<td><span class="pill ' + pillClass(slug(v)) + '">' + esc(v) + '</span></td>';
+            return '<td>' + (v === null || v === undefined || v === '' ? '&mdash;' : esc(v)) + '</td>';
+          }).join('') +
+          '<td>' + (r.status === 'Pending Review'
+            ? '<button class="ghost" onclick="plExplain(' + esc(r.recon_id) + ')">Explain</button>'
+            : '&mdash;') + '</td></tr>').join('')
+        : '<tr><td colspan="' + (cols.length + 1) + '" class="hint">Is month ka P&amp;L reconcile nahi hua \u2014 pehle P&amp;L upload karo, phir "Run P&amp;L reconciliation" dabao.</td></tr>') +
+      '</tbody>');
+    note('plMsg', 'ok', monthLabel(period) + ' load ho gaya.');
+    CTX.plReady = true;
+  } catch (e) {
+    note('plMsg', 'err', errText(e));
+  }
+}
+
+async function plPreview() {
+  const f = el('plFile') && el('plFile').files && el('plFile').files[0];
+  if (!f) return toast('Pehle P&L file choose karo.', 'err');
+  if (!plCompany()) return toast('Header me company select karo.', 'err');
+  showId('plPreviewCard');
+  setHtml('plPreviewBody', '<div class="hint">parsing\u2026</div>');
+  try {
+    const out = await postFile('/api/pl/preview?company=' + enc(plCompany()) + '&name=' + enc(f.name), f);
+    CTX.plPreviewName = f.name;
+    CTX.plReady = true;
+    if (el('plImportBtn')) el('plImportBtn').disabled = false;
+    const rows = out.rows || [];
+    setHtml('plPreviewBody',
+      '<div class="tiles" style="margin-bottom:12px">' +
+      '<div class="tile"><div class="k">Lines</div><div class="v">' + cnt(out.count) + '</div></div>' +
+      '<div class="tile"><div class="k">Header row</div><div class="v">' + cnt(out.headerRowIndex) + '</div></div>' +
+      '<div class="tile ' + ((out.unknownHeads || []).length ? 'warn' : 'good') + '"><div class="k">Unknown heads</div><div class="v">' + cnt((out.unknownHeads || []).length) + '</div></div>' +
+      '<div class="tile ' + ((out.skipped || []).length ? 'warn' : 'good') + '"><div class="k">Skipped</div><div class="v">' + cnt((out.skipped || []).length) + '</div></div>' +
+      '</div>' +
+      ((out.unknownHeads || []).length ? '<div class="msg warn">Ye head master me nahi hain: ' + esc(out.unknownHeads.join(', ')) + '</div>' : '') +
+      '<div class="scroll"><table>' + tableHtml([['headName', 'P&L Head'], ['period', 'Period'], ['amount', 'Amount'], ['remarks', 'Remarks']], rows, 'Koi line nahi.') + '</table></div>');
+    note('plMsg', 'ok', f.name + ' padh li gayi \u2014 ab "Confirm import".');
+  } catch (e) {
+    showInline('plMsg', 'err', errText(e));
+    if (el('plImportBtn')) el('plImportBtn').disabled = true;
+  }
+}
+
+async function plImport() {
+  const f = el('plFile') && el('plFile').files && el('plFile').files[0];
+  if (!f) return toast('Pehle P&L file choose karo.', 'err');
+  note('plMsg', 'hint', 'importing\u2026');
+  try {
+    const out = await postFile('/api/pl/import?company=' + enc(plCompany()) + '&name=' + enc(f.name), f);
+    note('plMsg', 'ok', 'P&L import ho gaya: ' + cnt(out.lines) + ' line, ' + cnt(out.inserted) + ' nayi' +
+      ((out.periods || []).length ? ' \u00b7 months ' + out.periods.join(', ') : '') + '.');
+    await plLoadHeads();
+    await plLoad();
+  } catch (e) {
+    showInline('plMsg', 'err', errText(e));
+  }
+}
+
+async function plRecon() {
+  if (!plCompany()) return toast('Header me company select karo.', 'err');
+  const period = (el('plPeriod') && el('plPeriod').value.trim()) || CTX.period;
+  if (!period) return toast('P&L month daalo.', 'err');
+  note('plMsg', 'hint', 'reconciling ' + monthLabel(period) + '\u2026');
+  try {
+    const out = await postJson('/api/pl/recon', { company: plCompany(), period: period });
+    const r = out.result || {};
+    note('plMsg', 'ok', 'Reconciliation ho gaya \u2014 matched ' + cnt(r.matchedHeads) + ', pending ' + cnt(r.pendingHeads) + ', unmapped ' + cnt(r.unmappedHeads) + '.');
+    await plLoad();
+  } catch (e) {
+    showInline('plMsg', 'err', errText(e));
+  }
+}
+
+async function plExplain(id) {
+  const reason = prompt('Difference ka reason code (jaise TIMING, RATE_DIFF, UNMAPPED):');
+  if (!reason) return undefined;
+  const remarks = prompt('Remarks (optional):') || '';
+  try {
+    const out = await postJson('/api/pl/explain', { id: id, reason: reason, remarks: remarks });
+    if (out.ok === false) return showInline('plMsg', 'err', out.reason || 'Reason save nahi hua.');
+    note('plMsg', 'ok', 'Reason save ho gaya.');
+    await plLoad();
+  } catch (e) {
+    showInline('plMsg', 'err', errText(e));
+  }
+  return undefined;
+}
+
+function plTpl(fmt) {
+  const q = '?company=' + enc(plCompany()) + '&period=' + enc((el('plPeriod') && el('plPeriod').value) || CTX.period);
+  return download('/api/template/pl.' + fmt + q, 'P&L Upload Template.' + fmt);
+}
+
+// ---------------------------------------------------------------------------
+// Purchase register
+// ---------------------------------------------------------------------------
+function loadPurchase() {
+  wireDrop('purchaseDrop', 'purchaseFile', () => purchasePreview());
+  loadRecon();
+}
+
+async function purchasePreview() {
+  const f = el('purchaseFile') && el('purchaseFile').files && el('purchaseFile').files[0];
+  if (!f) return toast('Pehle purchase register file choose karo.', 'err');
+  showId('purchasePreviewCard');
+  setHtml('purchasePreview', '<div class="hint">parsing\u2026</div>');
+  try {
+    const out = await postFile('/api/purchase-file/preview?name=' + enc(f.name), f);
+    CTX.purchaseFileName = f.name;
+    if (el('purchaseImportBtn')) el('purchaseImportBtn').disabled = false;
+
+    // The purchase upload preview and the paste preview carry DIFFERENT columns
+    // on purpose, and this list is the upload one: it is the only screen that
+    // shows the e-invoice / e-way bill answers AND the document type with its
+    // original vs signed amount — the one mistake that moves money in the return
+    // is a credit note booked as an invoice.
+    const cols = [
+      ['document_type', 'Type'], ['document_type_raw', 'Type in file'],
+      'our_gstin', 'unit_name', 'supplier_gstin', 'party_name',
+      'invoice_no', 'invoice_date', ['source_taxable_value', 'Source taxable'],
+      ['taxable_value', 'Signed taxable'], 'igst', 'cgst', 'sgst', 'cess',
+      'book_entry_date', 'book_entry_month', 'period', 'remark',
+      'has_e_invoice', 'e_invoice_no', 'has_e_way_bill', 'e_way_bill_no',
+    ];
+
+    const dt = out.documentTypes || {};
+    const tot = out.totals || {};
+    const gross = tot.gross || {};
+    const credit = tot.creditNotes || {};
+    const net = tot.net || {};
+    const money2 = (v) => (v === null || v === undefined ? '\u2014' : money(v));
+
+    const problems = [];
+    if ((out.invalidDocumentTypes || []).length) {
+      problems.push('<div class="msg err"><b>Galat Document Type</b> \u2014 ye rows import nahi hongi, file me theek karein: ' +
+        esc(out.invalidDocumentTypes.slice(0, 8).map((s) => 'row ' + s.row + ': ' + s.reason).join(' | ')) + '</div>');
+    }
+    if ((out.duplicates || []).length) {
+      problems.push('<div class="msg warn"><b>Duplicate documents</b> \u2014 same supplier + number + type ek se zyada baar: ' +
+        esc(out.duplicates.slice(0, 8).map((d) => d.document_type + ' ' + d.invoice_no + ' \u00d7' + d.count).join(', ')) + '</div>');
+    }
+    if ((out.signConflicts || []).length) {
+      problems.push('<div class="msg warn"><b>Sign warnings</b> \u2014 ' +
+        esc(out.signConflicts.slice(0, 6).join(' | ')) + '</div>');
+    }
+
+    setHtml('purchasePreview',
+      '<div class="tiles" style="margin-bottom:12px">' +
+      '<div class="tile"><div class="k">Rows</div><div class="v">' + cnt(out.count) + '</div></div>' +
+      '<div class="tile good"><div class="k">Tax invoices</div><div class="v">' + cnt(dt.invoice) + '</div></div>' +
+      '<div class="tile"><div class="k">Debit notes</div><div class="v">' + cnt(dt.debit) + '</div></div>' +
+      '<div class="tile ' + (dt.credit ? 'warn' : '') + '"><div class="k">Credit notes</div><div class="v">' + cnt(dt.credit) + '</div></div>' +
+      '<div class="tile"><div class="k">Gross taxable</div><div class="v" style="font-size:15px">' + money2(gross.taxable) + '</div></div>' +
+      '<div class="tile"><div class="k">Credit-note reduction</div><div class="v" style="font-size:15px">' + money2(credit.taxable) + '</div></div>' +
+      '<div class="tile good"><div class="k">Net taxable</div><div class="v" style="font-size:15px">' + money2(net.taxable) + '</div></div>' +
+      '<div class="tile"><div class="k">Net tax</div><div class="v" style="font-size:15px">' + money2(tot.netTax) + '</div></div>' +
+      '<div class="tile ' + ((out.skipped || []).length ? 'warn' : 'good') + '"><div class="k">Skipped</div><div class="v">' + cnt((out.skipped || []).length) + '</div></div>' +
+      '<div class="tile ' + ((out.periodCount || 0) > 1 ? 'good' : '') + '"><div class="k">GST months</div><div class="v">' + cnt(out.periodCount || 0) + '</div></div>' +
+      '</div>' +
+      problems.join('') +
+      // Which months this file actually touches. Without this, a multi-month
+      // upload looked like one month's register and a wrong date was invisible
+      // until the reconciliation quietly disagreed with the books.
+      ((out.periods || []).length
+        ? '<div style="margin:8px 0"><div class="hint" style="margin-bottom:6px"><b>' +
+          ((out.periodCount || 0) > 1
+            ? esc(out.periodCount) + ' GST month milenge — har month alag reconcile hoga.'
+            : 'Ek hi GST month.') +
+          '</b> Ek file me ek se zyada month chalte hain; har row apne Period se apne mahine me jaati hai.</div>' +
+          '<div class="scroll"><table>' +
+          tableHtml([['period', 'Month'], ['gstin', 'GSTIN'], ['lines', 'Lines'],
+            ['taxable', 'Net taxable'], ['tax', 'Net tax']], out.periods, 'Koi month nahi.') +
+          '</table></div></div>'
+        : '') +
+      ((out.unmappedHeaders || []).length ? '<div class="msg warn">Ye columns samajh nahi aaye: ' + esc(out.unmappedHeaders.join(', ')) + '</div>' : '') +
+      '<div class="hint" style="margin:8px 0">Type aur amounts: <b>Source taxable</b> wahi hai jo file me likha tha, ' +
+      '<b>Signed taxable</b> usi par Document Type ka sign lagane ke baad. Credit Note ka signed amount negative hoga, ' +
+      'isliye Net taxable = invoices + debit notes \u2212 credit notes.</div>' +
+      '<div class="scroll"><table>' + tableHtml(cols, out.rows || [], 'Koi row nahi.') + '</table></div>');
+    note('purchaseMsg', 'ok', f.name + ' padh li gayi \u2014 ab "Confirm import".');
+  } catch (e) {
+    showInline('purchaseMsg', 'err', errText(e));
+    if (el('purchaseImportBtn')) el('purchaseImportBtn').disabled = true;
+  }
+}
+
+async function purchaseImport() {
+  const f = el('purchaseFile') && el('purchaseFile').files && el('purchaseFile').files[0];
+  if (!f) return toast('Pehle purchase register file choose karo.', 'err');
+  note('purchaseMsg', 'hint', 'importing\u2026');
+  try {
+    const out = await postFile('/api/purchase-file/import?name=' + enc(f.name), f);
+    // A register may carry several months, so the message lists every month the
+    // import touched and how many lines landed in each. Naming only
+    // `out.key` made a multi-month file look like it imported one month and
+    // dropped the rest.
+    const keys = Array.isArray(out.keys) ? out.keys : [];
+    const months = keys.length > 1
+      ? keys.map((k) => esc(k.period) + ' (' + cnt(k.lines) + ')').join(', ')
+      : esc((out.key && out.key.period) || (keys[0] && keys[0].period));
+    const gstins = [...new Set(keys.map((k) => k.gstin).filter(Boolean))];
+    note('purchaseMsg', 'ok', 'Import ho gaya: ' + cnt(out.lines) + ' line, ' +
+      (keys.length > 1 ? cnt(keys.length) + ' month ' : 'month ') + months +
+      (gstins.length ? ', GSTIN ' + gstins.map(esc).join(' / ') : '') + '.');
+    if (Array.isArray(out.blocked) && out.blocked.length) {
+      note('purchaseMsg', 'warn', 'Import ho gaya, lekin ye month reconcile nahi ho paaye: ' +
+        out.blocked.map((b) => esc(b.period) + ' ' + esc(b.gstin)).join(', ') + ' \u2014 ' + esc(out.blocked[0].reason));
+    }
+    // The import reconciles the month it imported, so the table below is now
+    // out of date. Re-read it rather than leaving a stale matched/missing count
+    // on screen next to a message that says the register was imported.
+    await loadContext();
+    if (RECON.loaded) await loadRecon();
+  } catch (e) {
+    showInline('purchaseMsg', 'err', errText(e));
+  }
+}
+
+// ---------------------------------------------------------------------------
+// GSTR-2B upload
+// ---------------------------------------------------------------------------
+/**
+ * Upload the portal's GSTR-2B — JSON, CSV or Excel.
+ *
+ * `andReconcile` is what makes this a workflow rather than a file drop: the 2B
+ * only reaches the database through a run, so the same button that accepted the
+ * file starts that run and re-reads the reconciliation when it finishes. The
+ * file still lands in the scratch folder either way, so "Upload only" stays
+ * available for the operator who wants to stage several files first.
+ */
+async function upload2b(andReconcile) {
+  const f = el('twobFile') && el('twobFile').files && el('twobFile').files[0];
+  if (!f) return toast('Pehle GSTR-2B file choose karo.', 'err');
+  note('twobMsg', 'hint', 'uploading ' + f.name + '\u2026');
+  try {
+    const out = await postFile('/api/upload?name=' + enc(f.name), f);
+    const kb = Math.round((out.size || 0) / 1024);
+    if (!andReconcile) {
+      note('twobMsg', 'ok', out.name + ' upload ho gaya (' + kb + ' KB). Ab "Upload + reconcile" ya Dashboard se run chalao.');
+      return out;
+    }
+    note('twobMsg', 'hint', out.name + ' (' + kb + ' KB) upload ho gaya \u2014 2B import aur reconciliation chal rahi hai\u2026');
+    await runUploadedFolder();
+    if (RECON.loaded) await loadRecon();
+    return out;
+  } catch (e) {
+    showInline('twobMsg', 'err', errText(e));
+    return undefined;
+  }
+}
+
+/**
+ * Run the monthly pipeline over the uploaded folder and wait for it.
+ *
+ * The same job the Dashboard's "Run reconciliation" starts: it reads every
+ * uploaded file — register AND 2B — writes the lines and reconciles them. A 2B
+ * upload only reaches the database through this run, which is why the screen
+ * offers it beside the file picker instead of leaving the operator to find the
+ * Dashboard.
+ *
+ * Bounded: a run reads tens of thousands of rows, but it does not run forever,
+ * and a screen that waits on one forever is worse than one that says so.
+ */
+async function runUploadedFolder() {
+  const dir = CTX.uploadDir || (el('runDir') && el('runDir').value.trim());
+  if (!dir) {
+    note('twobMsg', 'err', 'Upload folder pata nahi chala — Dashboard par "Uploaded folder use karo" dabao, phir dobara try karo.');
+    return null;
+  }
+  let job = null;
+  try {
+    const { jobId } = await postJson('/api/run', { dir: dir, period: CTX.period || undefined });
+    for (let i = 0; i < 150; i++) {
+      job = await api('/api/run/' + enc(jobId));
+      if (job.status === 'done' || job.status === 'failed') break;
+      await new Promise((r) => setTimeout(r, 1200));
+    }
+  } catch (e) {
+    note('twobMsg', 'err', errText(e));
+    return null;
+  }
+  if (!job) return null;
+  if (job.status === 'running') {
+    note('twobMsg', 'warn', 'Run abhi bhi chal raha hai \u2014 thodi der baad "Refresh" dabao.');
+    return job;
+  }
+  if (job.status === 'failed') {
+    note('twobMsg', 'err', 'Run fail: ' + (job.error || ''));
+    return job;
+  }
+  const said = (job.log || []).filter((l) => /loaded ->|detected as|2B rows/i.test(l)).slice(-3).join('  \u00b7  ');
+  note('twobMsg', 'ok', 'Run ho gaya' + (said ? ' \u2014 ' + said : '') + '.');
+  await loadContext();
+  return job;
+}
+
+// ---------------------------------------------------------------------------
+// Purchase register vs GSTR-2B — invoice-level reconciliation
+// ---------------------------------------------------------------------------
+/**
+ * This screen's own working state.
+ *
+ * Deliberately not in CTX: CTX holds the four header pickers that every screen
+ * shares, while this is one screen's working set — what the last read returned,
+ * and which invoice is open for editing.
+ */
+const RECON = { loaded: false, editing: null, rows: [], data: null };
+
+function reconUri() {
+  const q = [];
+  if (CTX.gstin) q.push('gstin=' + enc(CTX.gstin));
+  if (CTX.period) q.push('period=' + enc(CTX.period));
+  const st = el('reconStatus') && el('reconStatus').value;
+  if (st) q.push('status=' + enc(st));
+  const s = el('reconSearch') && el('reconSearch').value.trim();
+  if (s) q.push('q=' + enc(s));
+  return '/api/recon/purchase' + (q.length ? '?' + q.join('&') : '');
+}
+
+async function loadRecon() {
+  RECON.editing = null;
+  setHtml('reconCtx', esc(CTX.gstin || '(koi GSTIN nahi)') + ' \u00b7 ' + esc(monthLabel(CTX.period)) + ' \u00b7 reading\u2026');
+  try {
+    const out = await api(reconUri());
+    RECON.data = out;
+    RECON.rows = out.rows || [];
+    RECON.loaded = true;
+    renderRecon();
+  } catch (e) {
+    setHtml('reconCtx', esc(errText(e)));
+    setHtml('reconTiles', '<div class="msg err">' + esc(errText(e)) + '</div>');
+    setHtml('reconTable', '<tbody><tr><td class="hint">' + esc(errText(e)) + '</td></tr></tbody>');
+    setHtml('reconTwoBTable', '<tbody><tr><td class="hint">' + esc(errText(e)) + '</td></tr></tbody>');
+  }
+}
+
+/** The columns of the reconciliation table. `k` is the field the server sent. */
+const RECON_COLS = [
+  ['our_gstin', 'Our GSTIN'], ['supplier_gstin', 'Supplier GSTIN'], ['invoice_no', 'Document no'],
+  ['book_document_type', 'Type'], ['invoice_date', 'Document date'], ['party_name', 'Vendor'],
+  ['source_taxable_value', 'Source taxable'],
+  ['book_taxable_value', 'Signed taxable'], ['itc_amount', 'Signed ITC'],
+  ['twob_taxable_value', '2B taxable'], ['twob_itc', '2B ITC'],
+  ['taxable_difference', 'Taxable diff'], ['itc_difference', 'ITC diff'],
+  ['twoB', '2B month'], ['status', 'Status'], ['itc', 'ITC decision'], ['edit', ''],
+];
+
+const RECON_NUM = new Set([
+  'source_taxable_value', 'book_taxable_value', 'itc_amount', 'twob_taxable_value', 'twob_itc',
+  'taxable_difference', 'itc_difference',
+]);
+
+function reconIsLocked() {
+  const s = (RECON.data && RECON.data.summary) || {};
+  return (s.locked || []).some(
+    (l) => String(l.our_gstin).toUpperCase() === String(CTX.gstin).toUpperCase() && l.period === CTX.period,
+  );
+}
+
+function renderRecon() {
+  const out = RECON.data || {};
+  const s = out.summary || {};
+  const by = s.byStatus || {};
+  const n = (v) => (v === null || v === undefined ? 0 : Number(v));
+  const locked = reconIsLocked();
+
+  setHtml('reconCtx',
+    esc(CTX.gstin || '(koi GSTIN nahi)') + ' \u00b7 ' + esc(monthLabel(CTX.period)) +
+    ' \u00b7 FY ' + esc(CTX.fy || '') +
+    (locked
+      ? ' \u00b7 <span class="pill bad">Month locked</span> \u2014 corrections blocked, unlock as admin first.'
+      : ' \u00b7 <span class="pill good">Month open</span> \u2014 corrections allowed, every change is logged.'));
+
+  setHtml('reconTiles',
+    '<div class="tile"><div class="k">Books lines</div><div class="v">' + cnt(s.lines) + '</div></div>' +
+    '<div class="tile good"><div class="k">Matched</div><div class="v">' + cnt(by['Matched']) + '</div></div>' +
+    '<div class="tile ' + (by['Missing in 2B'] ? 'bad' : 'good') + '"><div class="k">Missing in 2B</div><div class="v">' + cnt(by['Missing in 2B']) + '</div></div>' +
+    '<div class="tile ' + (by['Amount Mismatch'] ? 'warn' : 'good') + '"><div class="k">Amount mismatch</div><div class="v">' + cnt(by['Amount Mismatch']) + '</div></div>' +
+    '<div class="tile ' + (by['Duplicate'] ? 'bad' : 'good') + '"><div class="k">Duplicate</div><div class="v">' + cnt(by['Duplicate']) + '</div></div>' +
+    '<div class="tile ' + (by['Blocked'] ? 'bad' : 'good') + '"><div class="k">ITC blocked</div><div class="v">' + cnt(by['Blocked']) + '</div></div>' +
+    '<div class="tile ' + (out.twoBTotal ? 'warn' : 'good') + '"><div class="k">2B not in books</div><div class="v">' + cnt(out.twoBTotal) + '</div></div>' +
+    '<div class="tile"><div class="k">2B lines stored</div><div class="v">' + cnt(s.twobLines) + '</div></div>' +
+    // Gross, credit-note reduction and net are three answers to three different
+    // questions; a month with only credit notes must not read as "no purchases".
+    '<div class="tile"><div class="k">Gross taxable</div><div class="v" style="font-size:15px">' + money(n(s.taxableGross)) + '</div></div>' +
+    '<div class="tile ' + (n(s.taxableCredit) ? 'warn' : '') + '"><div class="k">Credit notes</div><div class="v" style="font-size:15px">' + money(n(s.taxableCredit)) + '</div></div>' +
+    '<div class="tile good"><div class="k">Net taxable</div><div class="v" style="font-size:15px">' + money(n(s.taxableNet)) + '</div></div>');
+
+  // ---- the invoice table ----
+  const head = '<thead><tr>' + RECON_COLS.map((c) =>
+    '<th class="' + (RECON_NUM.has(c[0]) ? 'num' : '') + '">' + esc(c[1]) + '</th>').join('') + '</tr></thead>';
+
+  let body;
+  if (!RECON.rows.length) {
+    const why = (RECON.data && RECON.data.total)
+      ? 'Is filter par koi row nahi.'
+      : 'Is GSTIN aur month ka koi purchase line nahi. Pehle register upload karo, phir 2B, phir "Upload + reconcile".';
+    body = '<tbody><tr><td colspan="' + RECON_COLS.length + '" class="hint">' + esc(why) + '</td></tr></tbody>';
+  } else {
+    body = '<tbody>' + RECON.rows.map((r) => {
+      const open = String(RECON.editing) === String(r.id);
+      const cells = RECON_COLS.map((c) => {
+        const k = c[0];
+        if (k === 'edit') {
+          return '<td class="row-actions">' +
+            '<button class="ghost sm" onclick="reconEdit(' + r.id + ')">Edit</button>' +
+            '<button class="ghost sm" onclick="reconHistory(' + r.id + ')" title="Correction history">Log</button>' +
+            '</td>';
+        }
+        if (k === 'status') {
+          const st = r.match_status || 'Not reconciled';
+          return '<td><span class="pill ' + pillClass(slug(st)) + '">' + esc(st) + '</span>' +
+            (r.recon_edited ? ' <span class="pill info" title="Recon values were corrected">edited</span>' : '') + '</td>';
+        }
+        if (k === 'itc') return '<td>' + (r.itc_decision ? esc(r.itc_decision) : '<span class="hint">Pending Review</span>') + '</td>';
+        if (k === 'twoB') {
+          return '<td>' + (r.matched_2b_month ? esc(r.twoBMonthLabel || monthLabel(r.matched_2b_month)) : '&mdash;') + '</td>';
+        }
+        if (RECON_NUM.has(k)) {
+          const v = r[k];
+          const zero = v === null || v === undefined;
+          return '<td class="num">' + (zero ? '&mdash;' : money(v)) + '</td>';
+        }
+        if (k === 'invoice_date') {
+          return '<td>' + (r.invoice_date ? esc(fmtDmy(r.invoice_date)) : '&mdash;') + '</td>';
+        }
+        const v = r[k];
+        return '<td>' + (v === null || v === undefined || v === '' ? '&mdash;' : esc(v)) + '</td>';
+      }).join('');
+      const cls = (open ? 'editing' : '') + (r.mismatch_reason || r.suggested_action ? ' clickable' : '');
+      const row = '<tr class="' + (cls || '') + '" title="' +
+        esc([r.mismatch_reason, r.suggested_action].filter(Boolean).join(' \u2014 ')) + '">' + cells + '</tr>';
+      return open ? row + reconEditRow(r) : row;
+    }).join('') + '</tbody>';
+  }
+  setHtml('reconTable', head + body);
+
+  // ---- 2B side, not in the books ----
+  const twoBCols = ['our_gstin', 'twob_month', 'supplier_gstin', 'supplier_name', 'invoice_no', 'invoice_date',
+    'document_type', 'taxable_value', 'itc', 'itc_availability', 'reason'];
+  const twoBRows = (out.twoBOnly || []).map((r) => Object.assign({}, r, { itc: n(r.itc) }));
+  setHtml('reconTwoBTable', tableHtml(twoBCols, twoBRows,
+    'GSTR-2B ka har invoice books me mil gaya \u2014 is month me kuch pending nahi.'));
+}
+
+/**
+ * The invoice editor, opened under the row it belongs to.
+ *
+ * Four values, because those four decide whether two independent systems agree:
+ * the company's own GSTIN, the supplier's GSTIN, the invoice number and the
+ * invoice date. Amounts are NOT editable here — a wrong amount is a books
+ * problem, and this screen reconciles the two systems, it does not rewrite one
+ * of them.
+ */
+function reconEditRow(r) {
+  const inp = (id, value, type, extra) =>
+    '<div><label for="' + id + '">' + esc(extra || '') + '</label>' +
+    '<input id="' + id + '" type="' + (type || 'text') + '" value="' + esc(value == null ? '' : value) + '" /></div>';
+  return '<tr class="editrow"><td colspan="' + RECON_COLS.length + '">' +
+    '<div class="editgrid">' +
+      inp('re_inv', r.recon_invoice_no, 'text', 'Invoice no') +
+      inp('re_dt', (r.recon_invoice_date || '').slice(0, 10), 'date', 'Invoice date') +
+      inp('re_sup', r.recon_supplier_gstin, 'text', 'Supplier GSTIN') +
+      inp('re_our', r.our_gstin, 'text', 'Our GSTIN (moves the line)') +
+    '</div>' +
+    '<div class="editgrid" style="margin-top:12px">' +
+      '<div><label for="re_why">Reason (audit trail me jaata hai)</label>' +
+      '<input id="re_why" type="text" value="" placeholder="jaise: supplier ne invoice no. amend kiya" /></div>' +
+    '</div>' +
+    '<div class="edit-note">Register me is row ki asli value: <b>' + esc(r.book_supplier_gstin) + '</b> \u00b7 <b>' +
+      esc(r.book_invoice_no) + '</b> \u00b7 <b>' + esc(fmtDmy(r.book_invoice_date)) + '</b>. ' +
+      'Invoice number aur date sirf MATCH ke liye change hote hain \u2014 books ki original value jaisi hai waisi hi rehti hai ' +
+      'aur yahan likhi dikhti hai. Amount badalna ho to register sudhar kar dobara upload karo.</div>' +
+    '<div class="edit-actions">' +
+      '<button onclick="reconSave(' + r.id + ')">Save &amp; re-reconcile</button>' +
+      '<button class="ghost" onclick="reconCancel()">Cancel</button>' +
+      '<button class="ghost" onclick="reconHistory(' + r.id + ')">Correction history</button>' +
+    '</div></td></tr>';
+}
+
+function reconEdit(id) {
+  RECON.editing = id;
+  renderRecon();
+  const first = el('re_inv');
+  if (first) { first.focus(); first.select(); }
+}
+
+function reconCancel() {
+  RECON.editing = null;
+  renderRecon();
+}
+
+function reconVal(id) {
+  const node = el(id);
+  return node ? String(node.value || '').trim() : '';
+}
+
+/**
+ * Save the corrections and re-reconcile.
+ *
+ * Order matters: the three recon_* values are written first (the server
+ * validates the date and the GSTIN, refuses a locked month, and re-runs the
+ * matcher), and only then the line is moved to another GSTIN — which
+ * re-reconciles BOTH the month it left and the month it joined. Doing it the
+ * other way round would match the line under the new GSTIN using the old
+ * invoice number.
+ */
+async function reconSave(id) {
+  const row = RECON.rows.find((r) => String(r.id) === String(id));
+  if (!row) return undefined;
+  const why = reconVal('re_why');
+  const inv = reconVal('re_inv');
+  const dt = reconVal('re_dt');
+  const sup = reconVal('re_sup').toUpperCase();
+  const our = reconVal('re_our').toUpperCase();
+
+  const patch = {};
+  if (inv && inv !== String(row.recon_invoice_no || '')) patch.recon_invoice_no = inv;
+  if (dt && dt !== String(row.recon_invoice_date || '').slice(0, 10)) patch.recon_invoice_date = dt;
+  if (sup && sup !== String(row.recon_supplier_gstin || '').toUpperCase()) patch.recon_supplier_gstin = sup;
+  const moves = !!our && our !== String(row.our_gstin || '').toUpperCase();
+
+  if (!Object.keys(patch).length && !moves) return toast('Kuch badla nahi.', 'warn');
+  if (!why) return toast('Reason likhna zaroori hai \u2014 wahi audit trail me jaata hai.', 'err');
+
+  note('reconMsg', 'hint', 'saving\u2026');
+  try {
+    let changed = [];
+    if (Object.keys(patch).length) {
+      const out = await postJson('/api/lines/' + id + '/recon', Object.assign({ reason: why }, patch));
+      changed = changed.concat(out.changed || []);
+    }
+    if (moves) {
+      const out = await postJson('/api/lines/' + id + '/our-gstin', { gstin: our, reason: why });
+      changed = changed.concat(out.changed || []);
+    }
+    RECON.editing = null;
+    note('reconMsg', 'ok', 'Save ho gaya: ' + (changed.join(', ') || 'kuch nahi') + '. Reconciliation dobara chal gayi.');
+    await loadRecon();
+    await loadContext();
+    if (CTX.view === 'home') loadHome();
+    return changed;
+  } catch (e) {
+    note('reconMsg', 'err', errText(e));
+    return undefined;
+  }
+}
+
+/** One line's correction history: who changed what, when, and why. */
+async function reconHistory(id) {
+  const row = RECON.rows.find((r) => String(r.id) === String(id));
+  showId('reconHistoryCard');
+  setHtml('reconHistoryFor', esc(row ? (row.invoice_no + ' \u00b7 ' + row.supplier_gstin) : 'line ' + id));
+  setHtml('reconHistoryTable', '<tbody><tr><td class="hint">reading\u2026</td></tr></tbody>');
+  try {
+    const out = await api('/api/lines/' + id);
+    const cols = ['field_name', 'old_value', 'new_value', 'changed_by', 'changed_at', 'reason', 'rerefreshed'];
+    setHtml('reconHistoryTable', tableHtml(cols, out.history || [], 'Is line par abhi koi correction nahi hui.'));
+  } catch (e) {
+    setHtml('reconHistoryTable', '<tbody><tr><td class="hint">' + esc(errText(e)) + '</td></tr></tbody>');
+  }
+}
+
+/** Re-run the matcher over the stored lines for the month on screen. */
+async function rerunMonth() {
+  if (!CTX.gstin || !CTX.period) return toast('Upar se GSTIN aur month choose karo.', 'err');
+  note('reconMsg', 'hint', 're-reconciling ' + monthLabel(CTX.period) + '\u2026');
+  try {
+    const out = await postJson('/api/rereconcile', { gstin: CTX.gstin, period: CTX.period });
+    if (!out.ok) note('reconMsg', 'warn', out.reason || 'Reconcile nahi hua.');
+    else note('reconMsg', 'ok', 'Reconcile ho gaya \u2014 ' + cnt(out.matched) + ' matched, ' + cnt(out.changed) + ' line badli.');
+    await loadRecon();
+  } catch (e) {
+    note('reconMsg', 'err', errText(e));
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Paste
+// ---------------------------------------------------------------------------
+function loadPaste() { /* nothing to load until something is pasted */ }
+
+function pasteRows() {
+  const text = (el('pasteBox') && el('pasteBox').value) || '';
+  if (!text.trim()) return null;
+  return text.split(/\r?\n/).filter((l) => l.trim() !== '').map((line) => line.split('\t'));
+}
+
+async function pastePreview() {
+  const rows = pasteRows();
+  if (!rows) return toast('Pehle Excel se rows paste karo.', 'err');
+  showId('pastePreviewCard');
+  setHtml('pastePreview', '<div class="hint">parsing\u2026</div>');
+  try {
+    const out = await postJson('/api/paste/preview', { rows: rows });
+    CTX.pasteReady = out.count > 0;
+    if (el('pasteImportBtn')) el('pasteImportBtn').disabled = !out.count;
+
+    // The paste screen has its own column list because it has no e-invoice or
+    // e-way bill columns at all — a pasted block carries none. It shows the
+    // invoice date and the book entry date side by side, which is the whole
+    // point of the book entry column.
+    const cols = ['our_gstin', 'party_name', 'supplier_gstin', 'invoice_no', 'invoice_date', 'book_entry_date', 'book_entry_month', 'period', 'taxable_value', 'igst', 'cgst', 'sgst', 'cess'];
+
+    setHtml('pastePreview',
+      '<div class="tiles" style="margin-bottom:12px">' +
+      '<div class="tile"><div class="k">Rows</div><div class="v">' + cnt(out.count) + '</div></div>' +
+      '<div class="tile ' + (out.mapped ? 'good' : 'warn') + '"><div class="k">Columns mapped</div><div class="v" style="font-size:14px">' + (out.mapped ? 'yes' : 'partly') + '</div></div>' +
+      '<div class="tile ' + ((out.skipped || []).length ? 'warn' : 'good') + '"><div class="k">Skipped</div><div class="v">' + cnt((out.skipped || []).length) + '</div></div>' +
+      '</div>' +
+      ((out.unmappedHeaders || []).length ? '<div class="msg warn">Ye columns samajh nahi aaye: ' + esc(out.unmappedHeaders.join(', ')) + '</div>' : '') +
+      '<div class="scroll"><table>' + tableHtml(cols, out.rows || [], 'Koi row nahi.') + '</table></div>');
+    note('pasteMsg', 'ok', cnt(out.count) + ' row(s) samajh me aayi \u2014 ab "Confirm import".');
+  } catch (e) {
+    showInline('pasteMsg', 'err', errText(e));
+    if (el('pasteImportBtn')) el('pasteImportBtn').disabled = true;
+  }
+}
+
+async function pasteImport() {
+  const rows = pasteRows();
+  if (!rows) return toast('Pehle Excel se rows paste karo.', 'err');
+  note('pasteMsg', 'hint', 'importing\u2026');
+  try {
+    const out = await postJson('/api/paste/import', { rows: rows });
+    note('pasteMsg', 'ok', 'Import ho gaya: ' + cnt(out.lines) + ' line, GSTIN ' + esc(out.key && out.key.gstin) + ', period ' + esc(out.key && out.key.period) + '.');
+  } catch (e) {
+    showInline('pasteMsg', 'err', errText(e));
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Reports and masters
+// ---------------------------------------------------------------------------
+async function loadReports() {
+  note('reportsMsg', 'hint', 'loading\u2026');
+  try {
+    const out = await api('/api/reports');
+    const rows = (out && out.reports) ? out.reports : [];
+    setHtml('reportsTable',
+      '<thead><tr><th>Report</th><th>Category</th><th class="num">Columns</th><th>Note</th><th>Download</th></tr></thead><tbody>' +
+      (rows.length
+        ? rows.map((r) => '<tr><td>' + esc(r.title) + '</td><td>' + esc(r.category) + '</td>' +
+            '<td class="num">' + numCell(r.columns) + '</td><td class="hint">' + esc(r.note || '') + '</td>' +
+            '<td><a href="#" onclick="download(\'/api/report/' + enc(r.name) + '?format=xlsx' + filterQuery() + '\', \'' + esc(r.title).replace(/[^A-Za-z0-9 _-]/g, '') + '.xlsx\'); return false;">.xlsx</a> ' +
+            '<a href="#" onclick="download(\'/api/report/' + enc(r.name) + '?format=csv' + filterQuery() + '\', \'' + esc(r.title).replace(/[^A-Za-z0-9 _-]/g, '') + '.csv\'); return false;">.csv</a></td></tr>').join('')
+        : '<tr><td colspan="5" class="hint">Koi report nahi mili.</td></tr>') +
+      '</tbody>');
+    note('reportsMsg', 'ok', cnt(rows.length) + ' report(s).');
+  } catch (e) {
+    note('reportsMsg', 'err', errText(e));
+  }
+}
+
+function filterQuery() {
+  const q = [];
+  if (CTX.gstin) q.push('gstin=' + enc(CTX.gstin));
+  if (CTX.period) q.push('period=' + enc(CTX.period));
+  return q.length ? '&' + q.join('&') : '';
+}
+
+async function loadMasters() {
+  note('mastersMsg', 'hint', 'loading\u2026');
+  try {
+    const out = await api('/api/masters');
+    const rows = (out && out.ok && out.rows) ? out.rows : [];
+    setHtml('mastersTable',
+      '<thead><tr><th>Company</th><th>PAN</th><th>Unit</th><th>GSTIN</th><th>State</th><th>Trade name</th></tr></thead><tbody>' +          (rows.length
+        ? rows.map((r) => '<tr><td>' + esc(dispCompany(r.company)) + '</td><td>' + esc(r.pan) + '</td><td>' + esc(dispUnit(r.unit)) + '</td>' +
+            '<td><code>' + esc(r.gstin || '') + '</code></td><td>' + esc(r.state) + '</td><td>' + esc(dispCompany(r.trade_name)) + '</td></tr>').join('')
+        : '<tr><td colspan="6" class="hint">Koi master nahi mili. ' + esc(out && out.reason ? out.reason : '') + '</td></tr>') +
+      '</tbody>');
+
+    const u = CTX.user || {};
+    setHtml('whoTiles',
+      '<div class="tile"><div class="k">User</div><div class="v" style="font-size:15px">' + esc(u.displayName || '') + '</div></div>' +
+      '<div class="tile"><div class="k">Role</div><div class="v" style="font-size:15px">' + esc(u.role || '') + '</div></div>' +
+      '<div class="tile"><div class="k">Companies</div><div class="v" style="font-size:15px">' + (u.companyIds === null ? 'all' : cnt((u.companyIds || []).length)) + '</div></div>' +
+      '<div class="tile"><div class="k">GSTINs</div><div class="v" style="font-size:15px">' + (u.gstinIds === null ? 'all' : cnt((u.gstinIds || []).length)) + '</div></div>' +
+      '<div class="tile"><div class="k">Permissions</div><div class="v" style="font-size:15px">' + cnt((u.permissions || []).length) + '</div></div>');
+
+    try {
+      const c = await api('/api/companies');
+      const cos = (c && c.companies) ? c.companies : [];
+      if (cos.length) {
+        showId('companiesCard');
+        setHtml('companiesTable',
+          '<thead><tr><th>Company</th><th>Legal name</th><th>PAN</th><th>GSTINs</th><th>Logo</th></tr></thead><tbody>' +
+          cos.map((r) => '<tr><td>' + esc(dispCompany(r.name)) + '</td><td>' + esc(r.legal_name || '') + '</td><td>' + esc(r.tax_identifier || '') + '</td>' +
+            '<td class="num">' + numCell(r.gstin_count) + '</td>' +
+            '<td>' + (r.logo_file ? '<span class="pill good">' + esc(r.logo_file) + '</span>' : '<span class="pill warn">none</span>') + '</td></tr>').join('') +
+          '</tbody>');
+      }
+    } catch (e) { hideId('companiesCard'); }
+
+    note('mastersMsg', 'ok', cnt(rows.length) + ' registration(s).');
+  } catch (e) {
+    note('mastersMsg', 'err', errText(e));
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Drag and drop helper
+// ---------------------------------------------------------------------------
+function wireDrop(dropId, inputId, onFiles) {
+  const drop = el(dropId);
+  const input = el(inputId);
+  if (!drop || !input || drop.dataset.wired === '1') return;
+  drop.dataset.wired = '1';
+  drop.onclick = () => input.click();
+  drop.ondragover = (e) => { e.preventDefault(); drop.classList.add('over'); };
+  drop.ondragleave = () => drop.classList.remove('over');
+  drop.ondrop = (e) => {
+    e.preventDefault();
+    drop.classList.remove('over');
+    const files = Array.prototype.slice.call(e.dataTransfer.files);
+    if (files.length) { onFiles(files); }
+  };
+  input.onchange = () => onFiles(Array.prototype.slice.call(input.files));
+}
+
+// ---------------------------------------------------------------------------
+// Boot
+// ---------------------------------------------------------------------------
+function showGate(message) {
+  show(el('gate'));
+  hide(el('shell'));
+  const m = el('gateMsg');
+  if (m) { m.hidden = !message; m.textContent = message || ''; }
+}
+
+/**
+ * Show/hide the typed password.
+ *
+ * `type="button"` on the toggle matters: without it the browser treats it as
+ * the form's submit button and pressing it tries to sign in.
+ */
+function togglePassword() {
+  const pass = el('signinPass');
+  const btn = el('passToggle');
+  if (!pass || !btn) return;
+  const hidden = pass.type === 'password';
+  pass.type = hidden ? 'text' : 'password';
+  btn.textContent = hidden ? 'Hide' : 'Show';
+  btn.setAttribute('aria-label', hidden ? 'Hide password' : 'Show password');
+  pass.focus();
+}
+
+async function boot() {
+  const form = el('signinForm');
+  if (form) {
+    form.addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      const btn = el('signinBtn');
+      const msg = el('gateMsg');
+      if (btn) { btn.disabled = true; btn.textContent = 'Signing in\u2026'; }
+      try {
+        const out = await signIn(el('signinUser').value.trim(), el('signinPass').value);
+        if (msg) msg.hidden = true;
+        await enter(out.user);
+      } catch (e) {
+        if (msg) { msg.hidden = false; msg.textContent = errText(e); }
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = 'Sign in'; }
+      }
+    });
+  }
+  const out = el('btnSignOut');
+  if (out) out.onclick = async () => {
+    try { await postJson('/api/auth/logout', {}); } catch (e) { /* session may already be gone */ }
+    CTX.user = null;
+    showGate('');
+  };
+
+  let me = null;
+  try { me = await api('/api/auth/me'); } catch (e) { me = null; }
+  if (me && me.user) { await enter(me.user); return; }
+  showGate('');
+}
+
+boot();
+</script>
+</body>
+</html>
