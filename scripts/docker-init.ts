@@ -5,12 +5,18 @@
  *     Coolify PostgreSQL server).
  *  2. Applies all SQL migrations in `migrations/*.sql` idempotently.
  *  3. Seeds Company / Unit / GSTIN / Financial Year masters and company logos.
- *  4. Initialises default team accounts (MASTER, USER-1, USER-2, USER-3) ONLY
+ *  4. Restores the authoritative baseline snapshot (`templates/gst-erp-seed-snapshot.json.gz`)
+ *     on a fresh database (`purchase_lines = 0`), bringing all 9,641 purchase
+ *     lines, 10,952 GSTR-2B lines, 4,099 sales invoices, and 443 GSTR-1 docs online.
+ *  5. Initialises default team accounts (MASTER, USER-1, USER-2, USER-3) ONLY
  *     when a user still carries the sentinel `LOGIN_NOT_ENABLED` hash — never
  *     overwrites a password changed by the team.
  */
 
 import { spawnSync } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
+import zlib from 'node:zlib';
 import { Client } from 'pg';
 import { loadEnv, pgConfig } from '../src/config/env';
 import { hashPassword } from '../src/app/auth';
@@ -66,6 +72,92 @@ function runScript(scriptName: string): void {
   });
   if (res.status !== 0) {
     throw new Error(`npm run ${scriptName} exited with code ${res.status}`);
+  }
+}
+
+async function restoreBaselineSnapshotIfEmpty(): Promise<void> {
+  const snapFile = path.join(process.cwd(), 'templates', 'gst-erp-seed-snapshot.json.gz');
+  if (!fs.existsSync(snapFile)) return;
+
+  const c = new Client(pgConfig());
+  await c.connect();
+  try {
+    const chk = await c.query('SELECT count(*) AS n FROM purchase_lines');
+    const existingCount = Number(chk.rows[0]?.n || 0);
+    if (existingCount > 0) {
+      console.log(`[docker-init] Database already has ${existingCount} purchase_lines — skipping baseline snapshot restore.`);
+      return;
+    }
+
+    console.log(`[docker-init] Fresh database detected — restoring baseline snapshot from ${snapFile}...`);
+    const rawJson = zlib.gunzipSync(fs.readFileSync(snapFile)).toString('utf8');
+    const parsed = JSON.parse(rawJson);
+    const tables: Record<string, any[]> = parsed.tables || {};
+
+    const RESTORE_ORDER = [
+      'companies',
+      'units',
+      'gstins',
+      'financial_years',
+      'periods',
+      'users',
+      'user_roles',
+      'user_company_access',
+      'gstr2b_files',
+      'gstr2b_lines',
+      'purchase_lines',
+      'recon_corrections',
+      'sales_invoices',
+      'sales_invoice_items',
+      'gstr1_documents',
+      'pl_heads',
+      'pl_gst_mapping',
+    ];
+
+    for (const table of RESTORE_ORDER) {
+      const rows = tables[table];
+      if (!Array.isArray(rows) || rows.length === 0) continue;
+
+      const cols = Object.keys(rows[0]);
+      const colList = cols.map((col) => `"${col}"`).join(', ');
+      const batchSize = Math.max(1, Math.floor(40000 / cols.length));
+
+      await c.query('BEGIN');
+      try {
+        for (let i = 0; i < rows.length; i += batchSize) {
+          const chunk = rows.slice(i, i + batchSize);
+          const params: unknown[] = [];
+          const valueGroups: string[] = [];
+          chunk.forEach((row, rIdx) => {
+            const ph: string[] = [];
+            cols.forEach((col, cIdx) => {
+              params.push(row[col]);
+              ph.push(`$${rIdx * cols.length + cIdx + 1}`);
+            });
+            valueGroups.push(`(${ph.join(',')})`);
+          });
+
+          await c.query(
+            `INSERT INTO "${table}" (${colList}) VALUES ${valueGroups.join(',')} ON CONFLICT DO NOTHING`,
+            params,
+          );
+        }
+
+        if (cols.includes('id')) {
+          await c.query(
+            `SELECT setval(pg_get_serial_sequence($1, 'id'), COALESCE((SELECT MAX(id) FROM "${table}"), 1), true)`,
+            [table],
+          ).catch(() => {});
+        }
+        await c.query('COMMIT');
+        console.log(`[docker-init]   restored ${table.padEnd(22)} : ${rows.length} rows`);
+      } catch (e: any) {
+        await c.query('ROLLBACK');
+        console.warn(`[docker-init]   warning restoring ${table}: ${e.message}`);
+      }
+    }
+  } finally {
+    await c.end();
   }
 }
 
@@ -165,6 +257,7 @@ async function main() {
   if (!ready) return;
   runScript('migrate');
   runScript('seed');
+  await restoreBaselineSnapshotIfEmpty();
   runScript('seed:logos');
   await ensureTeamAccounts();
   console.log('[docker-init] Initialisation complete.');
