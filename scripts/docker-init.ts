@@ -1,6 +1,8 @@
 /**
  * Production / Coolify container startup initializer:
- *  1. Waits up to 45s for PostgreSQL to accept connections.
+ *  1. Waits up to 30s for PostgreSQL to accept connections (and auto-creates
+ *     the target database `gst_erp` if it does not exist yet on a shared
+ *     Coolify PostgreSQL server).
  *  2. Applies all SQL migrations in `migrations/*.sql` idempotently.
  *  3. Seeds Company / Unit / GSTIN / Financial Year masters and company logos.
  *  4. Initialises default team accounts (MASTER, USER-1, USER-2, USER-3) ONLY
@@ -15,8 +17,12 @@ import { hashPassword } from '../src/app/auth';
 
 loadEnv();
 
-async function waitForPostgres(maxWaitMs = 45000): Promise<void> {
+async function ensureDatabaseAndWait(maxWaitMs = 30000): Promise<boolean> {
   const cfg = pgConfig();
+  if (!cfg.password) {
+    console.warn('[docker-init] PGPASSWORD / DATABASE_URL is not set yet — skipping DB init until configured in Coolify.');
+    return false;
+  }
   const start = Date.now();
   let lastErr = '';
   while (Date.now() - start < maxWaitMs) {
@@ -26,15 +32,30 @@ async function waitForPostgres(maxWaitMs = 45000): Promise<void> {
       await client.query('SELECT 1');
       await client.end();
       console.log(`[docker-init] PostgreSQL ready at ${cfg.host}:${cfg.port}/${cfg.database}`);
-      return;
+      return true;
     } catch (e: any) {
-      lastErr = e.message || String(e);
       await client.end().catch(() => {});
+      lastErr = e.message || String(e);
+      if (e.code === '3D000' || /does not exist/i.test(lastErr)) {
+        const adminClient = new Client({ ...cfg, database: 'postgres' });
+        try {
+          await adminClient.connect();
+          const safeDb = cfg.database.replace(/[^a-zA-Z0-9_]/g, '');
+          await adminClient.query(`CREATE DATABASE "${safeDb}"`);
+          console.log(`[docker-init] Created database "${safeDb}" on ${cfg.host}:${cfg.port}`);
+          await adminClient.end();
+          continue;
+        } catch (ce: any) {
+          await adminClient.end().catch(() => {});
+          lastErr = ce.message || String(ce);
+        }
+      }
       console.log(`[docker-init] Waiting for PostgreSQL (${cfg.host}:${cfg.port})... ${lastErr}`);
       await new Promise((r) => setTimeout(r, 2000));
     }
   }
-  throw new Error(`PostgreSQL did not become ready within ${maxWaitMs}ms: ${lastErr}`);
+  console.warn(`[docker-init] PostgreSQL not reachable within ${maxWaitMs}ms (${lastErr}) — starting web server anyway.`);
+  return false;
 }
 
 function runScript(scriptName: string): void {
@@ -140,7 +161,8 @@ async function ensureTeamAccounts(): Promise<void> {
 }
 
 async function main() {
-  await waitForPostgres();
+  const ready = await ensureDatabaseAndWait();
+  if (!ready) return;
   runScript('migrate');
   runScript('seed');
   runScript('seed:logos');
@@ -149,6 +171,6 @@ async function main() {
 }
 
 main().catch((e) => {
-  console.error('[docker-init] Fatal error:', e.message || e);
-  process.exit(1);
+  console.error('[docker-init] Warning during init:', e.message || e);
+  process.exit(0);
 });

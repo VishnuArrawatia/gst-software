@@ -52,8 +52,21 @@ export function loadEnv(file = path.join(process.cwd(), '.env')): void {
   }
 }
 
-/** PostgreSQL connection built from the environment. */
+/** PostgreSQL connection built from the environment (supports DATABASE_URL or PG* vars). */
 export function pgConfig() {
+  if (process.env.DATABASE_URL) {
+    try {
+      const u = new URL(process.env.DATABASE_URL);
+      if (!process.env.PGHOST && u.hostname) process.env.PGHOST = u.hostname;
+      if (!process.env.PGPORT && u.port) process.env.PGPORT = u.port;
+      if (!process.env.PGUSER && u.username) process.env.PGUSER = decodeURIComponent(u.username);
+      if (!process.env.PGPASSWORD && u.password) process.env.PGPASSWORD = decodeURIComponent(u.password);
+      const dbPath = u.pathname.replace(/^\//, '');
+      if (!process.env.PGDATABASE && dbPath) process.env.PGDATABASE = dbPath;
+    } catch {
+      // Ignore malformed DATABASE_URL and fall back to PG* variables
+    }
+  }
   return {
     host: process.env.PGHOST || 'localhost',
     port: Number(process.env.PGPORT || 5432),
