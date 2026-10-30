@@ -314,7 +314,7 @@ function toPortalJson(rows: typeof twob.rows, gstin: string, fp: string) {
       val: r.invoice_value || r2(r.taxable_value + r.igst + r.cgst + r.sgst + r.cess),
       pos: r.place_of_supply || gstin.slice(0, 2),
       rchrg: r.reverse_charge ? 'Y' : 'N',
-      inv_typ: 'R',
+      inv_typ: r.invoice_type || 'R',
       itms: [
         {
           num: 1,
@@ -356,7 +356,7 @@ for (const r of w) {
 const fromJson = { rows: [] as ReturnType<typeof parseGstr2bJson>['rows'] };
 for (const [p, rows] of [...byPeriod.entries()].sort()) {
   // YYYY-MM -> the portal's MMYYYY fp
-  const fp = /^\d{4}-(\d{2})-(\d{2})$/.test(p)
+  const fp = /^\d{4}-(\d{2})$/.test(p)
     ? `${p.slice(5, 7)}${p.slice(0, 4)}`
     : '';
   const doc = toPortalJson(rows, g, fp);

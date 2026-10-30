@@ -27,6 +27,8 @@ import { matchPercent, reconcilePurchases } from '../engine/match';
 import { buildGstr3b, gstr3bPortalJson, gstr3bWorkingRows, itcDetailFromRecon } from '../engine/gstr3b';
 import { buildGstr1, gstr1HsnSheetRows, gstr1PortalJson, gstr1SheetRows } from '../engine/gstr1';
 import { buildItcControl, lapseRisk } from '../engine/control';
+import { buildImsActions } from '../engine/ims';
+import { buildGstr9, buildGstr9c, gstr9PortalJson, gstr9WorkingRows, gstr9cWorkingRows } from '../engine/gstr9';
 import { dbReady, itcWorking, persistRun, reconMapOf, sha256, type TwoBFileInput } from './store';
 import {
   fyOf,
@@ -621,6 +623,53 @@ export async function runMonthly(opts: RunOptions): Promise<MonthlyRun> {
   }
   add('Vendor Follow-up', followup);
 
+  // ---- IMS Action Sheet (Accept / Reject / Pending) -----------------------
+  const imsSheet: unknown[][] = [[
+    'GSTIN', 'Period', '2B Month', 'Supplier GSTIN', 'Supplier Name', 'Document Type',
+    'Invoice No', 'Invoice Date', 'Taxable Value', 'IGST', 'CGST', 'SGST', 'Cess',
+    'Total ITC', 'Recon Status', 'ITC Decision', 'IMS Action', 'IMS Remark',
+  ]];
+  for (const x of bundles) {
+    const ims = buildImsActions(x.recon.rows, x.recon.unbooked2b);
+    for (const r of ims.rows) {
+      imsSheet.push([
+        r.our_gstin, labelOf(r.period), labelOf(r.twob_month), r.supplier_gstin, r.supplier_name,
+        r.document_type, r.invoice_no, r.invoice_date, r.taxable_value, r.igst, r.cgst, r.sgst, r.cess,
+        r.total_itc, r.recon_status, r.itc_decision, r.ims_action, r.ims_remark,
+      ]);
+    }
+  }
+  add('IMS Actions', imsSheet);
+
+  // ---- GSTR-9 Annual & GSTR-9C Audit Reconciliation -----------------------
+  const fys = [...new Set(periods.map((p) => fyOf(p)).filter(Boolean))].sort();
+  const gstr9Sheet: unknown[][] = [[
+    'GSTIN', 'Financial Year', 'Part', 'Table', 'Description', 'Taxable Value',
+    'IGST', 'CGST', 'SGST', 'Cess', 'Total Tax / ITC',
+  ]];
+  const gstr9cSheet: unknown[][] = [[
+    'GSTIN', 'Financial Year', 'Table', 'Description', 'Amount (Rs)',
+  ]];
+  const compiledGstr9: Array<{ gstin: string; fy: string; g9: ReturnType<typeof buildGstr9> }> = [];
+  for (const g of gstins) {
+    for (const fy of fys) {
+      const g9 = buildGstr9({ gstin: g, fy, sales, books, twob });
+      const g9c = buildGstr9c(g9, { sales: sales.filter((s) => (!s.our_gstin || s.our_gstin === g) && fyOf(s.period) === fy) });
+      compiledGstr9.push({ gstin: g, fy, g9 });
+      for (const r of gstr9WorkingRows(g9)) {
+        gstr9Sheet.push([
+          g, fy, r.part, r.table, r.description, r.taxable,
+          r.igst, r.cgst, r.sgst, r.cess, r.totalTax,
+        ]);
+      }
+      for (const r of gstr9cWorkingRows(g9c)) {
+        gstr9cSheet.push([g, fy, r.table, r.description, r.amount]);
+      }
+    }
+  }
+  add('GSTR-9 Annual', gstr9Sheet);
+  add('GSTR-9C Recon', gstr9cSheet);
+
   const workbookPath = path.join(opts.out, `GST Monthly ${new Date().toISOString().slice(0, 10)}.xlsx`);
   XLSX.writeFile(wb, workbookPath, { bookType: 'xlsx' });
 
@@ -634,6 +683,14 @@ export async function runMonthly(opts: RunOptions): Promise<MonthlyRun> {
       JSON.stringify(gstr3bPortalJson(x.g3, x.itcDetail.available, x.itcDetail.reversed), null, 2),
     );
     fs.writeFileSync(path.join(returnsDir, `${base}_GSTR1.json`), JSON.stringify(gstr1PortalJson(x.g1), null, 2));
+  }
+  for (const item of compiledGstr9) {
+    fs.writeFileSync(
+      path.join(returnsDir, `${item.gstin}_${item.fy}_GSTR9.json`),
+      JSON.stringify(gstr9PortalJson(item.g9), null, 2),
+    );
+  }
+  {
   }
 
   // Register-level checks first (they are about the numbers themselves), then

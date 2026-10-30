@@ -11,6 +11,8 @@
     "migrate": "tsx scripts/apply-migrations.ts",
     "seed": "tsx scripts/seed-masters.ts",
     "serve": "tsx src/server/server.ts",
+    "docker:init": "tsx scripts/docker-init.ts",
+    "start": "tsx scripts/docker-init.ts && tsx src/server/server.ts",
     "test:p0": "tsx tests/phase0-db.ts",
     "test:p0:test": "tsx scripts/test-db.ts scripts/seed-test-fixtures.ts && tsx scripts/test-db.ts tests/phase0-db.ts",
     "test:all": "npm test && npm run test:p0",

@@ -50,8 +50,13 @@ import {
   RETURN_CLASSIFICATIONS,
   type ReconField,
 } from '../app/store';
-import { parsePurchaseRegister, parseSalesRegister, sniffKind } from '../engine/ingest';
-import { normGstin as normGstinOf, r2 } from '../engine/core';
+import { isGstr2bJson, parseGstr2b, parseGstr2bJson, parsePurchaseRegister, parseSalesRegister, sniffKind } from '../engine/ingest';
+import { buildGstr3b } from '../engine/gstr3b';
+import { persistRun, sha256 } from '../app/store';
+import { normGstin as normGstinOf, r2, isoDate, normInvoiceType } from '../engine/core';
+import { reconcilePurchases } from '../engine/match';
+import { buildImsActions } from '../engine/ims';
+import { buildGstr9, buildGstr9c, fyMonths, gstr9PortalJson, gstr9WorkingRows, gstr9cWorkingRows } from '../engine/gstr9';
 import { summarisePurchaseDocuments } from '../app/purchase-summary';
 import XLSX from 'xlsx';
 import {
@@ -213,7 +218,7 @@ function startJob(opts: { inputDir: string; outDir: string; onlyPeriod?: string;
     if (code !== 0) {
       job.status = 'failed';
       job.error = job.error || `run exited with code ${code}`;
-      try { fs.unlinkSync(jsonOut); } catch {}
+      try { fs.unlinkSync(jsonOut); } catch { }
       return;
     }
     try {
@@ -223,7 +228,7 @@ function startJob(opts: { inputDir: string; outDir: string; onlyPeriod?: string;
       job.status = 'failed';
       job.error = `run finished but its result could not be read back: ${e.message}`;
     } finally {
-      try { fs.unlinkSync(jsonOut); } catch {}
+      try { fs.unlinkSync(jsonOut); } catch { }
     }
   });
 
@@ -288,7 +293,7 @@ async function readMasters() {
   } catch (e: any) {
     return { ok: false as const, reason: e.message };
   } finally {
-    await client.end().catch(() => {});
+    await client.end().catch(() => { });
   }
 }
 
@@ -298,7 +303,7 @@ async function readMasters() {
 
 const app = express();
 app.disable('x-powered-by');
-app.use(express.json({ limit: '2mb' }));
+app.use(express.json({ limit: '50mb' }));
 
 /**
  * Session gate. Every /api route except the health check and the login itself
@@ -416,9 +421,11 @@ app.get('/api/masters', async (_req, res) => {
  * The browser posts the raw bytes with the file name in `?name=`, which avoids
  * pulling in a multipart parser for something this small.
  */
-app.post('/api/upload', requirePerm('data', 'upload_2b'),  express.raw({ type: '*/*', limit: '400mb' }), (req, res) => {
-  void audit((req as any).user, { action: 'GSTR2B_UPLOAD', module: 'Data',
-    details: { name: path.basename(String(req.query.name || 'upload')) } });
+app.post('/api/upload', requirePerm('data', 'upload_2b'), express.raw({ type: '*/*', limit: '400mb' }), (req, res) => {
+  void audit((req as any).user, {
+    action: 'GSTR2B_UPLOAD', module: 'Data',
+    details: { name: path.basename(String(req.query.name || 'upload')) }
+  });
   const name = path.basename(String(req.query.name || 'upload.bin'));
   if (!name || name.startsWith('.')) {
     return res.status(400).json({ error: 'bad file name' });
@@ -456,8 +463,10 @@ app.delete('/api/uploads', (_req, res) => {
 app.post('/api/portal-g1/upload', requirePerm('data', 'import_sales'),
   express.raw({ type: '*/*', limit: '200mb' }),
   (req, res) => {
-    void audit((req as any).user, { action: 'PORTAL_G1_UPLOAD', module: 'Data',
-      details: { name: path.basename(String(req.query.name || 'portal-g1.xlsx')) } });
+    void audit((req as any).user, {
+      action: 'PORTAL_G1_UPLOAD', module: 'Data',
+      details: { name: path.basename(String(req.query.name || 'portal-g1.xlsx')) }
+    });
     const name = path.basename(String(req.query.name || 'portal-g1.xlsx'));
     if (!name || name.startsWith('.')) {
       return res.status(400).json({ error: 'bad file name' });
@@ -535,8 +544,10 @@ app.post('/api/portal-g1/preview', requirePerm('data', 'import_sales'),
 app.post('/api/sales-register/upload', requirePerm('data', 'import_sales'),
   express.raw({ type: '*/*', limit: '200mb' }),
   (req, res) => {
-    void audit((req as any).user, { action: 'SALES_REGISTER_UPLOAD', module: 'Data',
-      details: { name: path.basename(String(req.query.name || 'sales-register.xlsx')) } });
+    void audit((req as any).user, {
+      action: 'SALES_REGISTER_UPLOAD', module: 'Data',
+      details: { name: path.basename(String(req.query.name || 'sales-register.xlsx')) }
+    });
     const name = path.basename(String(req.query.name || 'sales-register.xlsx'));
     if (!name || name.startsWith('.')) {
       return res.status(400).json({ error: 'bad file name' });
@@ -548,9 +559,11 @@ app.post('/api/sales-register/upload', requirePerm('data', 'import_sales'),
   });
 
 /** Start a run. Body: { dir?, period?, salesGstin? }. Returns the job id. */
-app.post('/api/run', requirePerm('data', 'run'),  (req, res) => {
-  void audit((req as any).user, { action: 'RECONCILIATION_RUN', module: 'Data',
-    period: str(req.body?.period) || null });
+app.post('/api/run', requirePerm('data', 'run'), (req, res) => {
+  void audit((req as any).user, {
+    action: 'RECONCILIATION_RUN', module: 'Data',
+    period: str(req.body?.period) || null
+  });
   const dir = String(req.body?.dir || INPUT);
   if (!fs.existsSync(dir)) {
     return res.status(400).json({ error: `Folder not found: ${dir}` });
@@ -632,15 +645,15 @@ app.get('/api/vendor-followup', (req, res) => {
  */
 const wrap =
   (fn: (req: any, res: any) => Promise<unknown>) =>
-  (req: any, res: any) => {
-    fn(req, res).catch((e) => {
-      if (res.headersSent) {
-        console.error(`[${req.method} ${req.originalUrl}] failed after the response was sent:`, e?.message || e);
-        return;
-      }
-      res.status(500).json({ error: e.message });
-    });
-  };
+    (req: any, res: any) => {
+      fn(req, res).catch((e) => {
+        if (res.headersSent) {
+          console.error(`[${req.method} ${req.originalUrl}] failed after the response was sent:`, e?.message || e);
+          return;
+        }
+        res.status(500).json({ error: e.message });
+      });
+    };
 
 /** Who is making the change. Phase 0 has no login, so this is a typed name. */
 /**
@@ -720,13 +733,283 @@ app.get('/api/recon/purchase', requirePerm('recon', 'view'), wrap(async (req, re
   const twoB = await runReportNamed('twob-not-in-books', f);
   const twoBRows = (twoB?.rows ?? []).slice(0, 1000);
 
+  // Probable 2B Bill suggestion for 'Missing in 2B' rows against unbooked 2B rows + GSTR-3B Table 4 bucket
+  const usedTwoBIdx = new Set<number>();
+  for (const r of rows) {
+    const cls = String(r.return_classification || '').trim();
+    const dec = String(r.itc_decision || '').trim();
+    const st = String(r.match_status || '');
+    if (cls && cls !== 'Pending Review') {
+      r.gstr3b_bucket = cls;
+    } else if (dec === 'Ineligible' || dec === 'Reversed' || st === 'ITC Blocked' || r.itc_availability === 'No') {
+      r.gstr3b_bucket = '4(B) — Blocked';
+    } else if (dec === 'Do Not Claim' || st === 'Duplicate') {
+      r.gstr3b_bucket = 'Not in 3B — Carried';
+    } else if (dec === 'Reclaim Later' || dec === 'Query Vendor' || st === 'Missing in 2B') {
+      r.gstr3b_bucket = '4(A)(i) — Books only';
+    } else {
+      r.gstr3b_bucket = '4(A) — Claimed';
+    }
+
+    if (r.match_status !== 'Missing in 2B') continue;
+    const sup = normGstinOf(r.recon_supplier_gstin || r.book_supplier_gstin);
+    const bTax = Number(r.book_taxable_value ?? 0);
+    const bItc = Number(r.itc_amount ?? r.book_itc ?? 0);
+    for (let i = 0; i < twoBRows.length; i++) {
+      if (usedTwoBIdx.has(i)) continue;
+      const u = twoBRows[i];
+      if (normGstinOf(u.supplier_gstin) !== sup) continue;
+      if (Math.abs(bTax - Number(u.taxable_value ?? 0)) <= 2 && Math.abs(bItc - Number(u.itc ?? 0)) <= 2) {
+        usedTwoBIdx.add(i);
+        r.suggested_2b_invoice_no = u.invoice_no;
+        r.suggested_2b_date = u.invoice_date ? String(u.invoice_date).slice(0, 10) : '';
+        break;
+      }
+    }
+  }
+
+  // Live GSTR-3B Input Credit (Table 4) roll-up from bill-to-bill rows
+  const allMonthRows = (f.q || f.status)
+    ? (await listLines({ gstin: f.gstin, period: f.period, limit: 5000 })).rows
+    : rows;
+  const reconLike = allMonthRows.map((r: any) => ({
+    our_gstin: r.our_gstin,
+    party_name: r.party_name || '',
+    supplier_gstin: r.recon_supplier_gstin || r.book_supplier_gstin || '',
+    invoice_no: r.recon_invoice_no || r.book_invoice_no || '',
+    invoice_date: r.recon_invoice_date || r.book_invoice_date || '',
+    period: r.period,
+    taxable_value: Number(r.book_taxable_value ?? 0),
+    igst: Number(r.book_igst ?? 0),
+    cgst: Number(r.book_cgst ?? 0),
+    sgst: Number(r.book_sgst ?? 0),
+    cess: Number(r.book_cess ?? 0),
+    itc: Number(r.itc_amount ?? r.book_itc ?? 0),
+    status: (r.match_status || 'Missing in 2B') as any,
+    two_b_taxable: r.twob_taxable_value !== null && r.twob_taxable_value !== undefined ? Number(r.twob_taxable_value) : undefined,
+    two_b_igst: r.twob_igst !== null && r.twob_igst !== undefined ? Number(r.twob_igst) : undefined,
+    two_b_cgst: r.twob_cgst !== null && r.twob_cgst !== undefined ? Number(r.twob_cgst) : undefined,
+    two_b_sgst: r.twob_sgst !== null && r.twob_sgst !== undefined ? Number(r.twob_sgst) : undefined,
+    two_b_cess: r.twob_cess !== null && r.twob_cess !== undefined ? Number(r.twob_cess) : undefined,
+    two_b_itc: r.twob_itc !== null && r.twob_itc !== undefined ? Number(r.twob_itc) : undefined,
+    itc_availability: r.itc_availability || 'Yes',
+    reverse_charge: Boolean(r.reverse_charge),
+    itc_decision: r.itc_decision || undefined,
+    itc_decision_month: r.itc_decision_month || undefined,
+    return_classification: r.return_classification || undefined,
+  }));
+  const g3b = buildGstr3b({
+    gstin: f.gstin || '',
+    period: f.period || '',
+    reconRows: reconLike,
+    sales: [],
+  });
+  const unbooked2bItc = r2(twoBRows.reduce((s: number, u: any) => s + Number(u.itc ?? 0), 0));
+  const booksItcTotal = r2(allMonthRows.reduce((s: number, r: any) => s + Number(r.itc_amount ?? r.book_itc ?? 0), 0));
+  const gstr3bItc = {
+    booksItc: booksItcTotal,
+    table4A3_rcmItc: g3b.rcmItc,
+    table4A5_otherItc: r2(g3b.itcAvailable - g3b.rcmItc),
+    table4A_totalAvailable: g3b.itcAvailable,
+    table4B_reversedBlocked: g3b.itcReversed,
+    table4C_netItcAvailed: g3b.itcAvailed,
+    pending4ai_booksOnly: g3b.reconciliation.pending_4ai,
+    unbooked2bItc,
+    itcByTax: g3b.itcByTax,
+  };
+
   res.json({
     total,
     rows,
     summary,
     twoBOnly: twoBRows,
     twoBTotal: twoB?.rows?.length ?? 0,
+    gstr3bItc,
   });
+}));
+
+function parseDataUrl(data: unknown): Buffer | null {
+  const s = String(data ?? '').trim();
+  if (!s) return null;
+  const idx = s.indexOf('base64,');
+  const b64 = idx >= 0 ? s.slice(idx + 7) : s;
+  try { return Buffer.from(b64, 'base64'); } catch { return null; }
+}
+
+/** Auto-apply GSTR-3B Input Credit (ITC) decisions & table classifications bill-to-bill for a GSTIN + period. */
+app.post('/api/recon/purchase/auto-decide', requirePerm('itc', 'decide'), wrap(async (req, res) => {
+  const ready = await dbReady();
+  if (!ready.ok) return res.status(503).json({ error: ready.reason });
+  const gstin = str(req.body?.gstin);
+  const period = str(req.body?.period);
+  if (!gstin || !period) return res.status(400).json({ error: 'gstin aur period zaroori hain.' });
+  const lock = await isLocked(gstin, period);
+  if (lock.locked) return res.status(423).json({ error: `Period ${period} locked hai.` });
+
+  const { rows: lines } = await listLines({ gstin, period, limit: 10000, offset: 0 });
+  const actor = actorOf(req);
+  let updated = 0;
+
+  for (const r of lines as any[]) {
+    if (r.itc_decision && r.itc_decision !== 'Pending Review' && r.itc_decision !== 'PENDING') continue;
+    const st = String(r.match_status || r.recon_status || '');
+    const note = String(r.mismatch_reason || r.eligibility_note || '').toLowerCase();
+    const isBlocked =
+      st === 'ITC Blocked' ||
+      r.itc_availability === 'No' ||
+      note.includes('17(5)') ||
+      note.includes('blocked') ||
+      r.return_classification === '4(B) — Blocked' ||
+      r.return_classification === 'Ineligible';
+    let decision = '';
+    let decisionMonth = period;
+    let table3b = r.return_classification || '';
+
+    if (isBlocked) {
+      decision = 'Ineligible';
+      table3b = '4(B) — Blocked';
+    } else if (st === 'Matched' || st === 'Amount Mismatch' || st === 'Mismatch') {
+      decision = 'Claim';
+      table3b = '4(A) — Claimed';
+    } else if (st === 'Missing in 2B') {
+      decision = 'Reclaim Later';
+      table3b = '4(A)(i) — Books only';
+      decisionMonth = '';
+    } else if (st === 'Duplicate') {
+      decision = 'Do Not Claim';
+      table3b = 'Not in 3B — Carried';
+    }
+
+    if (decision) {
+      await setItcDecision(
+        r.id,
+        {
+          decision,
+          decisionMonth: decisionMonth || undefined,
+          reason: 'Auto-decided via Bill-to-Bill GSTR-3B ITC rules',
+        },
+        { changedBy: actor },
+      );
+      if (table3b && table3b !== r.return_classification) {
+        await setReturnClassification(r.id, table3b, {
+          changedBy: actor,
+          reason: 'Auto-classified for GSTR-3B Table 4',
+        });
+      }
+      updated++;
+    }
+  }
+
+  await audit(req.user, {
+    action: 'RECON_ITC_AUTO_DECIDE', module: 'Reconciliation',
+    details: { gstin, period, updated },
+  });
+  res.json({ ok: true, updated });
+}));
+
+/** Direct GSTR-2B file preview (.json / .xlsx / .csv) for Bill-to-Bill Input Credit matching. */
+app.post('/api/twob-file/preview', requirePerm('data', 'import_purchase'), wrap(async (req, res) => {
+  const name = str(req.body?.name) || 'GSTR2B.xlsx';
+  const buf = parseDataUrl(req.body?.data);
+  if (!buf) return res.status(400).json({ error: 'File payload khali hai (base64 expected).' });
+
+  try {
+    let rows: any[] = [];
+    let isJson = false;
+    if (name.toLowerCase().endsWith('.json')) {
+      const json = JSON.parse(buf.toString('utf8'));
+      if (!isGstr2bJson(json)) return res.status(400).json({ error: `${name} valid GSTR-2B JSON file nahi hai.` });
+      isJson = true;
+      rows = parseGstr2bJson(json, name).rows;
+    } else {
+      const sheets = readAllSheets(buf);
+      const picked = pickDataSheet(sheets, ['invoice_no', 'supplier_gstin', 'taxable_value', 'itc_availability'], { profile: 'twob' });
+      rows = parseGstr2b(picked.rows, name).rows;
+    }
+    const tax = rows.reduce((s, r) => s + (r.igst || 0) + (r.cgst || 0) + (r.sgst || 0), 0);
+    const taxable = rows.reduce((s, r) => s + (r.taxable_value || 0), 0);
+    res.json({
+      file: name,
+      format: isJson ? 'GSTR-2B Portal JSON' : 'GSTR-2B Excel/CSV',
+      rowCount: rows.length,
+      totalTaxable: Math.round(taxable * 100) / 100,
+      totalTax: Math.round(tax * 100) / 100,
+      sample: rows.slice(0, 25),
+    });
+  } catch (e: any) {
+    res.status(400).json({ error: `${name} parse nahi ho saka: ${e.message}` });
+  }
+}));
+
+/** Direct GSTR-2B file import (.json / .xlsx / .csv) into PostgreSQL + immediate Bill-to-Bill reconciliation with Books. */
+app.post('/api/twob-file/import', requirePerm('data', 'import_purchase'), wrap(async (req, res) => {
+  const ready = await dbReady();
+  if (!ready.ok) return res.status(503).json({ error: ready.reason });
+  const gstin = normGstinOf(req.body?.gstin);
+  const period = str(req.body?.period);
+  const name = str(req.body?.name) || 'GSTR2B.xlsx';
+  const buf = parseDataUrl(req.body?.data);
+  if (!gstin || !period) return res.status(400).json({ error: 'gstin aur period zaroori hain.' });
+  if (!buf) return res.status(400).json({ error: 'File payload khali hai.' });
+  if (!(await checkGstinAccess(req, res, gstin))) return;
+
+  const lock = await isLocked(gstin, period);
+  if (lock.locked) return res.status(423).json({ error: `Period ${period} locked hai.` });
+
+  try {
+    let rows: any[] = [];
+    const isJson = name.toLowerCase().endsWith('.json');
+    if (isJson) {
+      const json = JSON.parse(buf.toString('utf8'));
+      if (!isGstr2bJson(json)) return res.status(400).json({ error: `${name} valid GSTR-2B JSON file nahi hai.` });
+      rows = parseGstr2bJson(json, name).rows;
+    } else {
+      const sheets = readAllSheets(buf);
+      const picked = pickDataSheet(sheets, ['invoice_no', 'supplier_gstin', 'taxable_value', 'itc_availability'], { profile: 'twob' });
+      rows = parseGstr2b(picked.rows, name).rows;
+    }
+    if (!rows.length) return res.status(400).json({ error: `${name} me koi GSTR-2B bill nahi mila.` });
+
+    const stamped = rows.map((r: any, idx: number) => ({
+      ...r,
+      our_gstin: normGstinOf(r.our_gstin) || gstin,
+      period: r.period || period,
+      portal_fp: r.portal_fp || r.period || period,
+      source_file: name,
+      source_row: r.source_row ?? idx + 1,
+    }));
+    const blockedCount = stamped.filter((r: any) => String(r.itc_availability || '').toLowerCase() === 'no').length;
+    const saved = await persistRun({
+      books: [],
+      twob: stamped,
+      sales: [],
+      reconByBundle: new Map(),
+      twoBFiles: [
+        {
+          file_name: name,
+          sha256: sha256(buf),
+          file_size: buf.length,
+          our_gstin: gstin,
+          twob_month: period,
+          portal_fp: period,
+          record_count: stamped.length,
+          blocked_count: blockedCount,
+          source_format: isJson ? 'json' : 'xlsx',
+        },
+      ],
+      uploadedBy: actorOf(req),
+    });
+    if (!saved.ok) return res.status(400).json({ error: saved.reason || 'GSTR-2B save nahi ho saka.' });
+
+    const recon = await reReconcile(gstin, period, { changedBy: actorOf(req), reason: `GSTR-2B import: ${name}` });
+    await audit(req.user, {
+      action: 'GSTR2B_FILE_IMPORT', module: 'Reconciliation',
+      details: { gstin, period, file: name, imported2b: stamped.length, recon },
+    });
+    res.json({ ok: true, file: name, imported2b: stamped.length, recon });
+  } catch (e: any) {
+    res.status(400).json({ error: `${name} import nahi ho saka: ${e.message}` });
+  }
 }));
 
 /** One line plus its full correction history. */
@@ -756,7 +1039,7 @@ app.get('/api/lines/:id', wrap(async (req, res) => {
  * `applyEdits` so a locked month refuses the change and every field change
  * lands in the audit trail, same as any other correction.
  */
-app.post('/api/lines/:id/e-docs', requirePerm('recon', 'edit'),  wrap(async (req, res) => {
+app.post('/api/lines/:id/e-docs', requirePerm('recon', 'edit'), wrap(async (req, res) => {
   const ready = await dbReady();
   if (!ready.ok) return res.status(503).json({ error: ready.reason });
 
@@ -798,7 +1081,7 @@ app.post('/api/lines/:id/e-docs', requirePerm('recon', 'edit'),  wrap(async (req
   res.json({ ok: true, changed: row.changed, diff: row.diff ?? [] });
 }));
 
-app.post('/api/lines/:id/recon', requirePerm('recon', 'edit'),  wrap(async (req, res) => {
+app.post('/api/lines/:id/recon', requirePerm('recon', 'edit'), wrap(async (req, res) => {
   const ready = await dbReady();
   if (!ready.ok) return res.status(503).json({ error: ready.reason });
   const id = Number(req.params.id);
@@ -837,7 +1120,7 @@ app.post('/api/lines/:id/recon', requirePerm('recon', 'edit'),  wrap(async (req,
  * months it moved between — leaving one and joining another are two different
  * match results.
  */
-app.post('/api/lines/:id/our-gstin', requirePerm('recon', 'edit'),  wrap(async (req, res) => {
+app.post('/api/lines/:id/our-gstin', requirePerm('recon', 'edit'), wrap(async (req, res) => {
   const ready = await dbReady();
   if (!ready.ok) return res.status(503).json({ error: ready.reason });
 
@@ -879,7 +1162,7 @@ app.post('/api/lines/:id/our-gstin', requirePerm('recon', 'edit'),  wrap(async (
   });
 }));
 
-app.post('/api/lines/:id/itc', requirePerm('itc', 'decide'),  wrap(async (req, res) => {
+app.post('/api/lines/:id/itc', requirePerm('itc', 'decide'), wrap(async (req, res) => {
   const ready = await dbReady();
   if (!ready.ok) return res.status(503).json({ error: ready.reason });
   const id = Number(req.params.id);
@@ -903,7 +1186,7 @@ app.post('/api/lines/:id/itc', requirePerm('itc', 'decide'),  wrap(async (req, r
   res.json({ ...out, line: await getLine(id), history: await lineHistory(id) });
 }));
 
-app.post('/api/lines/:id/classify', requirePerm('recon', 'edit'),  wrap(async (req, res) => {
+app.post('/api/lines/:id/classify', requirePerm('recon', 'edit'), wrap(async (req, res) => {
   const ready = await dbReady();
   if (!ready.ok) return res.status(503).json({ error: ready.reason });
   const out = await setReturnClassification(Number(req.params.id), str(req.body?.value), {
@@ -920,7 +1203,7 @@ app.post('/api/lines/:id/classify', requirePerm('recon', 'edit'),  wrap(async (r
 }));
 
 /** Re-run the matcher for a whole GSTIN + month. */
-app.post('/api/rereconcile', requirePerm('recon', 'rereconcile'),  wrap(async (req, res) => {
+app.post('/api/rereconcile', requirePerm('recon', 'rereconcile'), wrap(async (req, res) => {
   const ready = await dbReady();
   if (!ready.ok) return res.status(503).json({ error: ready.reason });
   const gstin = str(req.body?.gstin);
@@ -945,7 +1228,7 @@ app.get('/api/locks', wrap(async (_req, res) => {
   res.json({ locks: await listLocks() });
 }));
 
-app.post('/api/lock', requirePerm('control', 'lock'),  wrap(async (req, res) => {
+app.post('/api/lock', requirePerm('control', 'lock'), wrap(async (req, res) => {
   const ready = await dbReady();
   if (!ready.ok) return res.status(503).json({ error: ready.reason });
   const gstin = str(req.body?.gstin);
@@ -964,7 +1247,7 @@ app.post('/api/lock', requirePerm('control', 'lock'),  wrap(async (req, res) => 
   res.status(out.ok ? 200 : 400).json(out);
 }));
 
-app.post('/api/unlock', requirePerm('control', 'unlock'),  wrap(async (req, res) => {
+app.post('/api/unlock', requirePerm('control', 'unlock'), wrap(async (req, res) => {
   const ready = await dbReady();
   if (!ready.ok) return res.status(503).json({ error: ready.reason });
   const ugstin = str(req.body?.gstin);
@@ -984,7 +1267,7 @@ app.post('/api/unlock', requirePerm('control', 'unlock'),  wrap(async (req, res)
   res.status(out.ok ? 200 : 400).json(out);
 }));
 
-app.get('/api/audit', requirePerm('control', 'audit'),  wrap(async (req, res) => {
+app.get('/api/audit', requirePerm('control', 'audit'), wrap(async (req, res) => {
   const ready = await dbReady();
   if (!ready.ok) return res.status(503).json({ error: ready.reason });
   const out = await auditTrail({
@@ -1421,6 +1704,8 @@ app.post('/api/purchase-file/preview', express.raw({ type: '*/*', limit: '200mb'
       // for without the register needing a second column for it.
       book_entry_month: String(b.book_entry_date ?? '').slice(0, 7) || null,
       taxable_value: b.taxable_value, igst: b.igst, cgst: b.cgst, sgst: b.sgst, cess: b.cess,
+      reverse_charge: b.reverse_charge ?? null,
+      hsn: b.hsn ?? null,
       remark: b.remark ?? null,
       // Shown so the operator can see the e-invoice / e-way bill answers the
       // file carries BEFORE confirming the import. Omitting them made a working
@@ -1433,7 +1718,7 @@ app.post('/api/purchase-file/preview', express.raw({ type: '*/*', limit: '200mb'
   });
 }));
 
-app.post('/api/purchase-file/import', requirePerm('data', 'import_purchase'),  express.raw({ type: '*/*', limit: '200mb' }), wrap(async (req, res) => {
+app.post('/api/purchase-file/import', requirePerm('data', 'import_purchase'), express.raw({ type: '*/*', limit: '200mb' }), wrap(async (req, res) => {
   const ready = await dbReady();
   if (!ready.ok) return res.status(503).json({ error: ready.reason });
   if (!req.body?.length) return res.status(400).json({ error: 'No file received.' });
@@ -1495,9 +1780,11 @@ app.post('/api/purchase-file/import', requirePerm('data', 'import_purchase'),  e
   // single month's work.
   await audit(req.user, {
     action: 'PURCHASE_IMPORT', module: 'Data',
-    details: { source, file: name, rows: parsed.rows.length, lines: out.lines,
-                gstin: out.key.gstin, period: out.key.period,
-                periods: out.keys.map((k) => `${k.gstin}|${k.period}`) },
+    details: {
+      source, file: name, rows: parsed.rows.length, lines: out.lines,
+      gstin: out.key.gstin, period: out.key.period,
+      periods: out.keys.map((k) => `${k.gstin}|${k.period}`)
+    },
   });
   res.json({ ...out, file: name, sheet: sheetName, detected, unmappedHeaders: parsed.unmappedHeaders, skipped: parsed.skipped.slice(0, 50) });
 }));
@@ -1639,7 +1926,7 @@ app.get('/api/gstr1/coverage', requirePerm('recon', 'view'), wrap(async (req, re
  * alone when it does not — so a download can never imply a reconciliation that
  * could not be performed.
  */
-app.get('/api/gstr1/hsn', requirePerm('recon', 'view'),  wrap(async (req, res) => {
+app.get('/api/gstr1/hsn', requirePerm('recon', 'view'), wrap(async (req, res) => {
   const ready = await dbReady();
   if (!ready.ok) return res.status(503).json({ error: ready.reason });
   const gstin = str(req.query.gstin);
@@ -1899,7 +2186,121 @@ app.post('/api/gstr1/import', requirePerm('data', 'import_sales'), express.raw({
     action: 'GSTR1_FILED_IMPORT', module: 'Reconciliation',
     details: { gstin, file: name, inserted: out.inserted, updated: out.updated, periods: out.periods },
   });
-  res.json({ ...out, file: name, sheets: parsed.sheets, perSheet: parsed.perSheet, skipped: parsed.skipped.slice(0, 40) });
+  const reconResults: any[] = [];
+  const importedPeriods = Array.isArray(out.periods) ? out.periods : Object.keys(out.periods || {});
+  for (const p of (importedPeriods.length ? importedPeriods : [period])) {
+    if (!p) continue;
+    await rebuildDrafts(gstin, p).catch(() => null);
+    const r = await runRecon(gstin, p, req.user?.id ?? undefined).catch(() => null);
+    if (r) reconResults.push({ period: p, ...r });
+  }
+  res.json({ ...out, file: name, sheets: parsed.sheets, perSheet: parsed.perSheet, skipped: parsed.skipped.slice(0, 40), autoRecon: reconResults });
+}));
+
+/** Import a Sales Register workbook/CSV directly into sales_invoices + build GSTR-1 draft + run Bill-to-Bill reconciliation. */
+app.post('/api/sales-register/import', requirePerm('data', 'import_sales'), wrap(async (req, res) => {
+  const ready = await dbReady();
+  if (!ready.ok) return res.status(503).json({ error: ready.reason });
+  const gstin = normGstinOf(req.body?.gstin);
+  const period = str(req.body?.period);
+  const name = str(req.body?.name) || 'Sales.xlsx';
+  const buf = parseDataUrl(req.body?.data);
+  if (!gstin) return res.status(400).json({ error: 'gstin zaroori hai.' });
+  if (!buf) return res.status(400).json({ error: 'File payload khali hai.' });
+  if (!(await checkGstinAccess(req, res, gstin))) return;
+
+  try {
+    const sheets = readAllSheets(buf);
+    if (!sheets.length) return res.status(400).json({ error: `${name} me koi sheet nahi mili.` });
+    const picked = pickDataSheet(sheets, SALES_REQUIRED, { profile: 'sales' });
+    const parsed = parseSalesRegister(picked.rows, name);
+    if (!parsed.rows.length) return res.status(400).json({ error: `${name} me koi valid sales row nahi mili.` });
+
+    const periods = new Set<string>();
+    const stamped = parsed.rows.map((s) => {
+      const p = s.period || period || '';
+      if (p) periods.add(p);
+      return {
+        ...s,
+        our_gstin: normGstinOf(s.our_gstin) || gstin,
+        period: p,
+      };
+    });
+
+    const saved = await persistRun({
+      books: [],
+      twob: [],
+      sales: stamped,
+      reconByBundle: new Map(),
+      uploadedBy: actorOf(req),
+    });
+    if (!saved.ok) return res.status(400).json({ error: saved.reason || 'Sales register save nahi ho saka.' });
+
+    const inserted = saved.salesInserted + saved.salesUpdated;
+    const reconResults: any[] = [];
+    for (const p of periods) {
+      await rebuildDrafts(gstin, p);
+      const r = await runRecon(gstin, p, req.user?.id ?? undefined).catch(() => null);
+      if (r) reconResults.push({ period: p, ...r });
+    }
+    await audit(req.user, {
+      action: 'SALES_REGISTER_IMPORT', module: 'Sales',
+      details: { gstin, file: name, inserted, periods: [...periods] },
+    });
+    res.json({ ok: true, file: name, inserted, periods: [...periods], autoRecon: reconResults });
+  } catch (e: any) {
+    res.status(400).json({ error: `${name} import nahi ho saka: ${e.message}` });
+  }
+}));
+
+/** Export GSTR-1 vs Books Bill-to-Bill reconciliation in Excel (.xlsx) or CSV. */
+app.get('/api/gstr1/recon-export', requirePerm('recon', 'export'), wrap(async (req, res) => {
+  const ready = await dbReady();
+  if (!ready.ok) return res.status(503).json({ error: ready.reason });
+  const gstin = str(req.query.gstin);
+  const period = str(req.query.period);
+  const status = str(req.query.status) || undefined;
+  const format = (str(req.query.format) || 'xlsx').toLowerCase();
+  if (!gstin || !period) return res.status(400).json({ error: 'gstin aur period zaroori hain.' });
+
+  const out = await loadOutcomePage(gstin, period, { status, limit: 5000 });
+  const exportRows = (out.outcomes || []).map((r: any, idx: number) => ({
+    'S.No': idx + 1,
+    'Status': r.status,
+    'GSTR-1 Table': r.gstr1_table || r.table_type || '',
+    'Invoice No': r.invoice_number_raw || '',
+    'Invoice Date': r.invoice_date ? String(r.invoice_date).slice(0, 10) : '',
+    'Customer Name': r.customer_name || '',
+    'Customer GSTIN': r.customer_gstin_norm || '',
+    'Books Taxable': Number(r.draft_taxable || 0),
+    'Portal Taxable': Number(r.filed_taxable || 0),
+    'Taxable Diff (Books - Portal)': Number(r.taxable_difference ?? (Number(r.draft_taxable || 0) - Number(r.filed_taxable || 0))),
+    'Books IGST': Number(r.draft_igst || 0),
+    'Portal IGST': Number(r.filed_igst || 0),
+    'Books CGST': Number(r.draft_cgst || 0),
+    'Portal CGST': Number(r.filed_cgst || 0),
+    'Books SGST': Number(r.draft_sgst || 0),
+    'Portal SGST': Number(r.filed_sgst || 0),
+    'Books Total Tax': Number(r.draft_tax || 0),
+    'Portal Total Tax': Number(r.filed_tax || 0),
+    'Tax Diff (Books - Portal)': Number(r.tax_difference ?? (Number(r.draft_tax || 0) - Number(r.filed_tax || 0))),
+    'Action / Suggestion': r.suggested_fix || (Array.isArray(r.issues) ? r.issues.map((i: any) => i.detail || i.code).join('; ') : ''),
+  }));
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.json_to_sheet(exportRows.length ? exportRows : [{ Note: 'No GSTR-1 reconciliation rows for selected filter' }]);
+  XLSX.utils.book_append_sheet(wb, ws, 'GSTR1_Bill_to_Bill');
+
+  if (format === 'csv') {
+    const csv = XLSX.utils.sheet_to_csv(ws);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="GSTR1_vs_Books_${gstin}_${period}.csv"`);
+    return res.send(csv);
+  }
+  const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="GSTR1_vs_Books_${gstin}_${period}.xlsx"`);
+  res.send(buf);
 }));
 
 /** Compare the stored draft against the stored filed return. */
@@ -1914,9 +2315,11 @@ app.post('/api/gstr1/recon', requirePerm('recon', 'rereconcile'), wrap(async (re
   if (!out.ok) return res.status(400).json(out);
   await audit(req.user, {
     action: 'GSTR1_RECON', module: 'Reconciliation',
-    details: { gstin, period, matched: out.totals.matched, not_declared: out.totals.not_declared,
-               declared_not_in_books: out.totals.declared_not_in_books, amount_mismatch: out.totals.amount_mismatch,
-               tax_difference: out.totals.tax_difference },
+    details: {
+      gstin, period, matched: out.totals.matched, not_declared: out.totals.not_declared,
+      declared_not_in_books: out.totals.declared_not_in_books, amount_mismatch: out.totals.amount_mismatch,
+      tax_difference: out.totals.tax_difference
+    },
   });
   res.json(out);
 }));
@@ -1957,7 +2360,7 @@ app.post('/api/paste/preview', wrap(async (req, res) => {
   });
 }));
 
-app.post('/api/paste/import', requirePerm('data', 'import_purchase'),  wrap(async (req, res) => {
+app.post('/api/paste/import', requirePerm('data', 'import_purchase'), wrap(async (req, res) => {
   const ready = await dbReady();
   if (!ready.ok) return res.status(503).json({ error: ready.reason });
   const rows = pasteRows(req.body);
@@ -1975,8 +2378,10 @@ app.post('/api/paste/import', requirePerm('data', 'import_purchase'),  wrap(asyn
   if (!out.ok) return res.status(423).json(out);
   await audit(req.user, {
     action: 'PURCHASE_IMPORT', module: 'Data',
-    details: { source: 'paste', rows: parsed.rows.length, lines: out.lines,
-                gstin: out.key.gstin, period: out.key.period },
+    details: {
+      source: 'paste', rows: parsed.rows.length, lines: out.lines,
+      gstin: out.key.gstin, period: out.key.period
+    },
   });
   res.json({ ...out, unmappedHeaders: parsed.unmappedHeaders, skipped: parsed.skipped.slice(0, 50) });
 }));
@@ -2008,7 +2413,7 @@ function filtersOf(req: any): ReportFilters {
   };
 }
 
-app.get('/api/reports', requirePerm('report', 'view'),  wrap(async (_req, res) => {
+app.get('/api/reports', requirePerm('report', 'view'), wrap(async (_req, res) => {
   const ready = await dbReady();
   if (!ready.ok) return res.status(503).json({ error: ready.reason });
   res.json({
@@ -2045,7 +2450,7 @@ const COMPLETE_SHEETS: Array<{ name: string; report: string; title: string }> = 
   { name: 'Audit Trail', report: 'audit-trail', title: 'Audit Trail' },
 ];
 
-app.get('/api/report/complete.xlsx', requirePerm('report', 'export'),  wrap(async (req, res) => {
+app.get('/api/report/complete.xlsx', requirePerm('report', 'export'), wrap(async (req, res) => {
   const ready = await dbReady();
   if (!ready.ok) return res.status(503).json({ error: ready.reason });
   const f = filtersOf(req);
@@ -2168,7 +2573,7 @@ async function reportMeta(
  * sheet lists every column, whether it is compulsory, and what the engine does
  * with it.
  */
-app.get('/api/template/sales-register.xlsx', requirePerm('data', 'import_sales'),  wrap(async (req, res) => {
+app.get('/api/template/sales-register.xlsx', requirePerm('data', 'import_sales'), wrap(async (req, res) => {
   const company = await companyDisplayName(str(req.query.company));
   const buf = salesTemplateBuffer({ companyName: company });
   await audit(req.user, { action: 'SALES_TEMPLATE_DOWNLOAD', module: 'Data', details: { company } });
@@ -2180,7 +2585,7 @@ app.get('/api/template/sales-register.xlsx', requirePerm('data', 'import_sales')
   res.send(buf);
 }));
 
-app.get('/api/template/sales-register.csv', requirePerm('data', 'import_sales'),  wrap(async (req, res) => {
+app.get('/api/template/sales-register.csv', requirePerm('data', 'import_sales'), wrap(async (req, res) => {
   await audit(req.user, { action: 'SALES_TEMPLATE_DOWNLOAD', module: 'Data', details: { format: 'csv' } });
   res.setHeader('Content-Disposition', `attachment; filename="Sales Register Template.csv"`);
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
@@ -2194,7 +2599,7 @@ app.get('/api/template/sales-register.csv', requirePerm('data', 'import_sales'),
  * the parameterised one. `.xlsx` and `.csv` differ only in the buffer, so both
  * come from the same column list.
  */
-app.get('/api/template/purchase-register.xlsx', requirePerm('data', 'import_purchase'),  wrap(async (req, res) => {
+app.get('/api/template/purchase-register.xlsx', requirePerm('data', 'import_purchase'), wrap(async (req, res) => {
   const company = await companyDisplayName(str(req.query.company));
   const buf = purchaseTemplateBuffer({ companyName: company });
   await audit(req.user, { action: 'PURCHASE_TEMPLATE_DOWNLOAD', module: 'Data', details: { company } });
@@ -2206,7 +2611,7 @@ app.get('/api/template/purchase-register.xlsx', requirePerm('data', 'import_purc
   res.send(buf);
 }));
 
-app.get('/api/template/purchase-register.csv', requirePerm('data', 'import_purchase'),  wrap(async (req, res) => {
+app.get('/api/template/purchase-register.csv', requirePerm('data', 'import_purchase'), wrap(async (req, res) => {
   await audit(req.user, { action: 'PURCHASE_TEMPLATE_DOWNLOAD', module: 'Data', details: { format: 'csv' } });
   res.setHeader('Content-Disposition', `attachment; filename="Purchase Register Template.csv"`);
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
@@ -2226,7 +2631,7 @@ app.get('/api/template/purchase-register.csv', requirePerm('data', 'import_purch
  * the Accounts team to line up two registers by hand is how a month gets filed
  * on a recollection.
  */
-app.get('/api/template/twob-recon.xlsx', requirePerm('data', 'import_purchase'),  wrap(async (req, res) => {
+app.get('/api/template/twob-recon.xlsx', requirePerm('data', 'import_purchase'), wrap(async (req, res) => {
   const company = await companyDisplayName(str(req.query.company));
   const blank = String(req.query.blank ?? '') === '1';
   let rows: Array<Record<string, any>> = [];
@@ -2268,14 +2673,14 @@ app.get('/api/template/twob-recon.xlsx', requirePerm('data', 'import_purchase'),
  * (Excel turns a long number in a CSV into a float). The file that goes back into
  * the software is the .xlsx; this one is for reading.
  */
-app.get('/api/template/twob-recon.csv', requirePerm('data', 'import_purchase'),  wrap(async (req, res) => {
+app.get('/api/template/twob-recon.csv', requirePerm('data', 'import_purchase'), wrap(async (req, res) => {
   await audit(req.user, { action: 'TWOB_RECON_TEMPLATE_DOWNLOAD', module: 'Data', details: { format: 'csv' } });
   res.setHeader('Content-Disposition', `attachment; filename="GSTR-2B vs Books - Invoice-wise Reconciliation.csv"`);
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.send(twobReconTemplateCsv());
 }));
 
-app.get('/api/report/:name', requirePerm('report', 'view'),  wrap(async (req, res) => {
+app.get('/api/report/:name', requirePerm('report', 'view'), wrap(async (req, res) => {
   const ready = await dbReady();
   if (!ready.ok) return res.status(503).json({ error: ready.reason });
   const def = findReport(req.params.name);
@@ -2384,7 +2789,7 @@ app.post('/api/import/preview', express.raw({ type: '*/*', limit: '200mb' }), wr
 }));
 
 /** Confirm the upload. Only the permitted fields are written, and only when they differ. */
-app.post('/api/import/apply', requirePerm('data', 'import_excel'),  express.raw({ type: '*/*', limit: '200mb' }), wrap(async (req, res) => {
+app.post('/api/import/apply', requirePerm('data', 'import_excel'), express.raw({ type: '*/*', limit: '200mb' }), wrap(async (req, res) => {
   const ready = await dbReady();
   if (!ready.ok) return res.status(503).json({ error: ready.reason });
   if (!req.body?.length) return res.status(400).json({ error: 'No file received.' });
@@ -2417,7 +2822,7 @@ app.post('/api/import/apply', requirePerm('data', 'import_excel'),  express.raw(
 }));
 
 /** Attach follow-up notes to one line from the screen. */
-app.post('/api/lines/:id/followup', requirePerm('followup', 'edit'),  wrap(async (req, res) => {
+app.post('/api/lines/:id/followup', requirePerm('followup', 'edit'), wrap(async (req, res) => {
   const ready = await dbReady();
   if (!ready.ok) return res.status(503).json({ error: ready.reason });
   const body = req.body ?? {};
@@ -2431,17 +2836,205 @@ app.post('/api/lines/:id/followup', requirePerm('followup', 'edit'),  wrap(async
   res.json({ ...out, line: await getLine(Number(req.params.id)) });
 }));
 
-app.get('/api/download/workbook', (_req, res) => {  if (!lastResult || !fs.existsSync(lastResult.workbookPath)) {
+app.get('/api/download/workbook', (_req, res) => {
+  if (!lastResult || !fs.existsSync(lastResult.workbookPath)) {
     return res.status(404).json({ error: 'no run yet' });
   }
   res.download(lastResult.workbookPath);
 });
+
+async function loadFyDataFromDb(gstin: string, fyInput: string) {
+  const { fy, months, spilloverMonths } = fyMonths(fyInput || '2025-26');
+  const allPeriods = [...months, ...spilloverMonths];
+  const ready = await dbReady();
+  if (!ready.ok) {
+    return { fy, sales: [], books: [], twob: [] };
+  }
+  return withClient(async (c) => {
+    const pRes = await c.query(
+      `SELECT id, our_gstin, unit_name, party_name, book_supplier_gstin, book_invoice_no,
+              book_invoice_date, period, document_type, book_taxable_value, book_igst,
+              book_cgst, book_sgst, book_cess, recon_supplier_gstin, recon_invoice_no,
+              recon_invoice_date, itc_decision, itc_decision_month, return_classification
+         FROM purchase_lines
+        WHERE ($1 = '' OR our_gstin = $1)
+          AND period = ANY($2::text[])
+        ORDER BY id`,
+      [gstin, allPeriods],
+    );
+    const wRes = await c.query(
+      `SELECT id, our_gstin, supplier_gstin, supplier_name, invoice_no, invoice_type,
+              invoice_date, invoice_value, place_of_supply, reverse_charge, taxable_value,
+              igst, cgst, sgst, cess, twob_month, portal_fp, itc_availability, reason
+         FROM gstr2b_lines
+        WHERE ($1 = '' OR our_gstin = $1)
+          AND twob_month = ANY($2::text[])
+        ORDER BY id`,
+      [gstin, allPeriods],
+    );
+    const sRes = await c.query(
+      `SELECT id, our_gstin, unit_name, customer_name, customer_gstin, invoice_no,
+              invoice_date, period, invoice_type, place_of_supply, reverse_charge,
+              taxable_value, igst, cgst, sgst, cess, invoice_value, hsn, note_ref_no, note_ref_date
+         FROM sales_invoices
+        WHERE ($1 = '' OR our_gstin = $1)
+          AND period = ANY($2::text[])
+        ORDER BY id`,
+      [gstin, allPeriods],
+    );
+    const books = pRes.rows.map((r: any) => ({
+      id: `db#${r.id}`,
+      our_gstin: r.our_gstin,
+      unit_name: r.unit_name ?? undefined,
+      party_name: r.party_name ?? '',
+      supplier_gstin: r.book_supplier_gstin,
+      invoice_no: r.book_invoice_no,
+      document_type: r.document_type ?? 'Tax Invoice',
+      invoice_date: isoDate(r.book_invoice_date),
+      period: r.period,
+      taxable_value: Number(r.book_taxable_value),
+      igst: Number(r.book_igst),
+      cgst: Number(r.book_cgst),
+      sgst: Number(r.book_sgst),
+      cess: Number(r.book_cess),
+      recon_supplier_gstin: r.recon_supplier_gstin ?? undefined,
+      recon_invoice_no: r.recon_invoice_no ?? undefined,
+      recon_invoice_date: isoDate(r.recon_invoice_date) || undefined,
+      itc_decision: r.itc_decision ?? undefined,
+      itc_decision_month: r.itc_decision_month ?? undefined,
+      return_classification: r.return_classification ?? undefined,
+    }));
+    const twob = wRes.rows.map((r: any) => ({
+      id: `2b#${r.id}`,
+      our_gstin: r.our_gstin,
+      supplier_gstin: r.supplier_gstin,
+      supplier_name: r.supplier_name ?? '',
+      invoice_no: r.invoice_no,
+      invoice_type: r.invoice_type ?? 'Regular',
+      invoice_date: isoDate(r.invoice_date),
+      invoice_value: Number(r.invoice_value ?? 0),
+      place_of_supply: r.place_of_supply ?? '',
+      reverse_charge: Boolean(r.reverse_charge),
+      taxable_value: Number(r.taxable_value),
+      igst: Number(r.igst),
+      cgst: Number(r.cgst),
+      sgst: Number(r.sgst),
+      cess: Number(r.cess),
+      period: r.twob_month,
+      portal_fp: r.portal_fp ?? r.twob_month,
+      itc_availability: r.itc_availability ?? 'Yes',
+      reason: r.reason ?? undefined,
+    }));
+    const sales = sRes.rows.map((r: any) => ({
+      id: `s#${r.id}`,
+      our_gstin: r.our_gstin,
+      unit_name: r.unit_name ?? undefined,
+      customer_name: r.customer_name ?? '',
+      customer_gstin: r.customer_gstin ?? '',
+      invoice_no: r.invoice_no,
+      invoice_date: isoDate(r.invoice_date),
+      period: r.period,
+      invoice_type: normInvoiceType(r.invoice_type),
+      place_of_supply: r.place_of_supply ?? '',
+      reverse_charge: Boolean(r.reverse_charge),
+      taxable_value: Number(r.taxable_value),
+      igst: Number(r.igst),
+      cgst: Number(r.cgst),
+      sgst: Number(r.sgst),
+      cess: Number(r.cess),
+      invoice_value: Number(r.invoice_value),
+      hsn: r.hsn ?? undefined,
+      note_ref_no: r.note_ref_no ?? undefined,
+      note_ref_date: isoDate(r.note_ref_date) || undefined,
+    }));
+    return { fy, sales, books, twob };
+  });
+}
+
+app.get('/api/gstr9', wrap(async (req, res) => {
+  const gstin = normGstinOf(str(req.query.gstin));
+  const fyReq = str(req.query.fy) || '2025-26';
+  const periodReq = str(req.query.period);
+  const { fy, sales, books, twob } = await loadFyDataFromDb(gstin, fyReq);
+  const g9 = buildGstr9({ gstin, fy, sales, books, twob });
+  const g9c = buildGstr9c(g9, { sales });
+  const imsBooks = periodReq ? books.filter((b) => b.period === periodReq) : books;
+  const imsTwob = periodReq ? twob.filter((w) => w.period === periodReq) : twob;
+  const recon = reconcilePurchases(imsBooks, imsTwob);
+  const ims = buildImsActions(recon.rows, recon.unbooked2b);
+  res.json({
+    ok: true,
+    gstin,
+    fy,
+    gstr9: g9,
+    gstr9Rows: gstr9WorkingRows(g9),
+    gstr9c: g9c,
+    gstr9cRows: gstr9cWorkingRows(g9c),
+    imsSummary: ims.summary,
+    imsRows: ims.rows.slice(0, 250),
+  });
+}));
+
+app.get('/api/gstr9/json', wrap(async (req, res) => {
+  const gstin = normGstinOf(str(req.query.gstin));
+  const fyReq = str(req.query.fy) || '2025-26';
+  const { fy, sales, books, twob } = await loadFyDataFromDb(gstin, fyReq);
+  const g9 = buildGstr9({ gstin, fy, sales, books, twob });
+  const json = JSON.stringify(gstr9PortalJson(g9), null, 2);
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${gstin || 'ALL'}_${fy}_GSTR9.json"`);
+  res.send(json);
+}));
+
+app.get('/api/ims/csv', wrap(async (req, res) => {
+  const gstin = normGstinOf(str(req.query.gstin));
+  const fyReq = str(req.query.fy) || '2025-26';
+  const periodReq = str(req.query.period);
+  const { fy, books, twob } = await loadFyDataFromDb(gstin, fyReq);
+  const imsBooks = periodReq ? books.filter((b) => b.period === periodReq) : books;
+  const imsTwob = periodReq ? twob.filter((w) => w.period === periodReq) : twob;
+  const recon = reconcilePurchases(imsBooks, imsTwob);
+  const ims = buildImsActions(recon.rows, recon.unbooked2b);
+  const head = [
+    'Our GSTIN', 'Supplier GSTIN', 'Supplier Name', 'Document Type', 'Invoice No', 'Invoice Date',
+    'Period', '2B Month', 'Taxable Value', 'IGST', 'CGST', 'SGST', 'Cess', 'Total ITC',
+    'Recon Status', 'ITC Decision', 'IMS Action', 'IMS Remark',
+  ];
+  const lines = [
+    head.join(','),
+    ...ims.rows.map((r) =>
+      [
+        r.our_gstin, r.supplier_gstin, `"${String(r.supplier_name || '').replace(/"/g, '""')}"`,
+        r.document_type, `"${String(r.invoice_no || '').replace(/"/g, '""')}"`, r.invoice_date,
+        r.period, r.twob_month, r.taxable_value, r.igst, r.cgst, r.sgst, r.cess, r.total_itc,
+        r.recon_status, r.itc_decision, r.ims_action, `"${String(r.ims_remark || '').replace(/"/g, '""')}"`,
+      ].join(','),
+    ),
+  ];
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="IMS_Actions_${gstin || 'ALL'}_${periodReq || fy}.csv"`);
+  res.send('\uFEFF' + lines.join('\r\n'));
+}));
 
 app.get('/api/returns/:gstin/:period/:kind', (req, res) => {
   const { gstin, period, kind } = req.params;
   const file = path.join(OUT, 'returns', `${gstin}_${period}_${String(kind).toUpperCase()}.json`);
   if (!fs.existsSync(file)) return res.status(404).json({ error: 'return not generated for that period' });
   res.download(file);
+});
+
+app.get('/api/guide/pdf', (req, res) => {
+  const isEn = String(req.query.lang || '').toLowerCase() === 'en';
+  const fname = isEn
+    ? 'GST_Control_ERP_User_Manual_English.pdf'
+    : 'GST_Control_ERP_Step_by_Step_Guide_With_Screenshots.pdf';
+  const candidates = [
+    path.join(process.cwd(), fname),
+    path.join(OUT, fname),
+  ];
+  const pdfFile = candidates.find((p) => fs.existsSync(p));
+  if (!pdfFile) return res.status(404).json({ error: 'User Guide PDF not found' });
+  res.download(pdfFile, fname);
 });
 
 fs.mkdirSync(OUT, { recursive: true });

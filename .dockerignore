@@ -1,0 +1,14 @@
+node_modules
+.git
+.freebuff
+.env
+backup
+f
+m10
+output
+test-input
+tests
+*.log
+*.html
+Local host.txt
+START SERVER.bat

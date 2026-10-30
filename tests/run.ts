@@ -44,8 +44,11 @@ import {
   summarise,
   type Gstr1Document,
 } from '../src/engine/gstr1-recon';
-import { detectTable, parseFiledWorkbook, parseMoney } from '../src/engine/gstr1-import';
+import { detectTable, isGstr1Json, parseFiledJson, parseFiledWorkbook, parseMoney } from '../src/engine/gstr1-import';
 import { buildGstr3b, gstr3bWorkingRows, itcDetailFromRecon } from '../src/engine/gstr3b';
+import { isSec16_4TimeBarred } from '../src/engine/core';
+import { buildImsActions } from '../src/engine/ims';
+import { buildGstr9, buildGstr9c, fyMonths, gstr9PortalJson, gstr9WorkingRows, gstr9cWorkingRows } from '../src/engine/gstr9';
 import XLSX from 'xlsx';
 
 let pass = 0;
@@ -1273,6 +1276,53 @@ section('15. multi-sheet workbooks pick the data sheet, not the first sheet');
     const junk = [{ name: 'Notes', rows: [['a', 'b'], ['c', 'd']] }];
     eq('an unmatched workbook falls back to the first sheet', pickDataSheet(junk, REQUIRED).name, 'Notes');
   }
+}
+
+section('15b. the generated template opens in Excel, not only in SheetJS');
+
+{
+  const { purchaseTemplateBuffer } = await import('../src/app/template');
+  const { zipRead } = await import('../src/app/xlsx-format');
+  const buf = purchaseTemplateBuffer({});
+  const files = zipRead(buf);
+
+  const xmls = [...files.entries()]
+    .filter(([n]) => /^xl\/worksheets\/sheet\d+\.xml$/.test(n))
+    .map(([, b]) => b.toString('utf8'));
+  const xml = xmls.join('\n');
+
+  // WHAT WENT WRONG, so it cannot come back: the data-validation block was
+  // inserted just before `</worksheet>`, i.e. AFTER the `<ignoredErrors>` that
+  // SheetJS writes below `<sheetData>`. `dataValidations` must precede it, and
+  // Excel does not shrug at the wrong order — it refuses the workbook, so the
+  // downloaded template opened as an empty sheet.
+  check('the dropdown is present', /<dataValidations\b/.test(xml));
+  // Per sheet: comparing positions across two sheets would compare the wrong
+  // things, since every sheet carries its own `<sheetData>`.
+  const withDv = xmls.filter((s) => /<dataValidations\b/.test(s));
+  eq('exactly one sheet carries the dropdown', withDv.length, 1);
+  for (const s of withDv) {
+    const dv = s.indexOf('<dataValidations');
+    check('validation sits after the rows', dv > s.indexOf('</sheetData>'));
+    for (const after of ['<ignoredErrors', '<hyperlinks', '<drawing', '<tableParts']) {
+      const i = s.indexOf(after);
+      check(`validation sits before ${after}>`, i < 0 || dv < i);
+    }
+  }
+
+  // And the file still says what the importer needs to read.
+  const wb = XLSX.read(buf, { type: 'buffer' });
+  const grid = XLSX.utils.sheet_to_json(wb.Sheets['Purchase Register']!, { header: 1 }) as string[][];
+  eq('header row is intact', grid[0]?.[0], 'Our GSTIN');
+  eq('Period is a real column', grid[0]?.[2], 'Period');
+  eq('the three example rows are there', grid.length, 5);
+
+  const r = parsePurchaseRegister(
+    [grid[0], ...grid.slice(1).filter((row) => row.length && row[0])],
+    'template.xlsx',
+  );
+  eq('the generated file parses', r.rows.length, 3);
+  eq('the credit note example survives', r.rows[2]?.document_type, 'Credit Note');
 }
 
 section('16. e-invoice / e-way bill — three states, not two');
@@ -3498,6 +3548,357 @@ section('33. GSTR-2B vs Books working sheet — invoice-wise rows, uploadable li
       server.includes('/api/template/twob-recon.xlsx') && server.includes('/api/template/twob-recon.csv'));
     const html = fs2.readFileSync(nodePath2.join(process.cwd(), 'src', 'server', 'public', 'index.html'), 'utf8');
     check('the UI offers the download', html.includes('downloadTwobRecon('));
+  }
+}
+
+// ---------------------------------------------------------------------------
+section('34. Category 1 fixes — 40% slab, 2B JSON edge cases, 3B ITC decisions, GSTR-1 Table 8 & 6A');
+// ---------------------------------------------------------------------------
+{
+  const { GST_RATES, gstRatesForPeriod, normInvoiceType } = await import('../src/engine/core');
+  const { gstr3bPortalJson } = await import('../src/engine/gstr3b');
+
+  // 1. 40% GST Slab & period-aware rates
+  check('GST_RATES includes 40% slab', GST_RATES.includes(40));
+  eq('effectiveRate snaps 40% to 40 (not 28)', effectiveRate(100000, 40000), 40);
+  check('pre-Sep 2025 legacy slabs include 12 and 28', gstRatesForPeriod('2025-04').includes(12) && gstRatesForPeriod('2025-04').includes(28));
+  check('GST 2.0 slabs (from Oct 2025) include 40 and omit 12/28',
+    gstRatesForPeriod('2025-10').includes(40) && !gstRatesForPeriod('2025-10').includes(12));
+  eq('pre-Sep 2025 period snaps 38% to 28 when period is specified', effectiveRate(100000, 38000, '2025-04'), 28);
+  eq('post-Sep 2025 period snaps 38% to 40 when period is specified', effectiveRate(100000, 38000, '2025-10'), 40);
+
+  // 2. GSTR-2B Portal JSON edge cases & normInvoiceType('Debit Note')
+  eq('normInvoiceType("Debit Note") maps to DN, not DE', normInvoiceType('Debit Note'), 'DN');
+  eq('normInvoiceType("Deemed Export") still maps to DE', normInvoiceType('Deemed Export'), 'DE');
+  {
+    const p2b = parseGstr2bJson({
+      gstin: '26AALCS9985J1ZC',
+      fp: '042025',
+      b2b: [
+        {
+          ctin: '27AAECA2190C1Z3',
+          inv: [
+            {
+              inum: 'POS-INV-1',
+              idt: '10-04-2025',
+              val: 11800,
+              pos: '26',
+              rchrg: 'N',
+              inv_typ: 'Debit Note',
+              itc_elg: 'Yes',
+              itms: [
+                { num: 1, itm_det: { rt: 'NA', txval: 0, iamt: 0, camt: 0, samt: 0, csamt: 0 } },
+                { num: 2, itm_det: { rt: 18, txval: 10000, iamt: 1800, camt: 0, samt: 0, csamt: 0 } },
+              ],
+            },
+          ],
+        },
+      ],
+    }, 'edge2b.json');
+    eq('2B JSON reads invoice-level pos when group has no pos', p2b.rows[0]?.place_of_supply, '26');
+    eq('2B JSON skips NaN item rates instead of recording NaN', p2b.rows[0]?.applicable_pct, '18');
+    eq('2B JSON Debit Note keeps DN type', p2b.rows[0]?.invoice_type, 'DN');
+  }
+
+  // 3. ITC Decision & Return Classification Wiring in GSTR-3B
+  {
+    const recon = reconcilePurchases(
+      [
+        BILL({ invoice_no: 'DEC-CLAIM', igst: 1000, itc_decision: 'Claim' }),
+        BILL({ invoice_no: 'DEC-SKIP', igst: 2000, itc_decision: 'Do Not Claim' }),
+        BILL({ invoice_no: 'DEC-INELIG', igst: 3000, itc_decision: 'Ineligible' }),
+        BILL({ invoice_no: 'CLS-BLOCKED', igst: 4000, return_classification: '4(B) — Blocked' }),
+        BILL({ invoice_no: 'CLS-CARRIED', igst: 5000, return_classification: 'Not in 3B — Carried' }),
+      ],
+      [
+        TWO({ invoice_no: 'DEC-CLAIM', igst: 1000 }),
+        TWO({ invoice_no: 'DEC-SKIP', igst: 2000 }),
+        TWO({ invoice_no: 'DEC-INELIG', igst: 3000 }),
+        TWO({ invoice_no: 'CLS-BLOCKED', igst: 4000 }),
+        TWO({ invoice_no: 'CLS-CARRIED', igst: 5000 }),
+      ],
+    );
+    const m3b = buildGstr3b({ gstin: '26AALCS9985J1ZC', period: '2025-04', reconRows: recon.rows, sales: [] });
+    eq('3B: only Claim row enters 4(A) itcAvailable', m3b.itcAvailable, 1000);
+    eq('3B: Ineligible + 4(B) Blocked rows enter 4(B) itcReversed', m3b.itcReversed, 7000);
+    const itcDet = itcDetailFromRecon(recon.rows);
+    const j3b = gstr3bPortalJson(m3b, itcDet.available, itcDet.reversed) as any;
+    eq('3B portal JSON: itcNtAvail reflects m.itcReversed instead of 0', j3b.itcNtAvail, 7000);
+  }
+
+  // 4. GSTR-1 Table 8 (nil / exempt / non-GST) and Table 6A (exports)
+  {
+    const sales: SalesInvoice[] = [
+      { our_gstin: '26AALCS9985J1ZC', customer_name: 'Inter Reg Nil', customer_gstin: '27AAECA2190C1Z3', invoice_no: 'NIL-1', invoice_date: '2025-04-10', period: '2025-04', invoice_type: 'NIL', place_of_supply: '27', reverse_charge: false, taxable_value: 10000, igst: 0, cgst: 0, sgst: 0, cess: 0, invoice_value: 10000 },
+      { our_gstin: '26AALCS9985J1ZC', customer_name: 'Intra Reg Exempt', customer_gstin: '26AAECS9012J1Z3', invoice_no: 'EX-1', invoice_date: '2025-04-11', period: '2025-04', invoice_type: 'EXEMPT', place_of_supply: '26', reverse_charge: false, taxable_value: 20000, igst: 0, cgst: 0, sgst: 0, cess: 0, invoice_value: 20000 },
+      { our_gstin: '26AALCS9985J1ZC', customer_name: 'Intra B2C NonGST', customer_gstin: '', invoice_no: 'NG-1', invoice_date: '2025-04-12', period: '2025-04', invoice_type: 'NONGST', place_of_supply: '26', reverse_charge: false, taxable_value: 5000, igst: 0, cgst: 0, sgst: 0, cess: 0, invoice_value: 5000 },
+      { our_gstin: '26AALCS9985J1ZC', customer_name: 'Export Buyer', customer_gstin: '', invoice_no: 'EXP-1', invoice_date: '2025-04-13', period: '2025-04', invoice_type: 'EXPWOP', place_of_supply: '97', reverse_charge: false, taxable_value: 50000, igst: 0, cgst: 0, sgst: 0, cess: 0, invoice_value: 50000 },
+    ];
+    const g1 = buildGstr1('26AALCS9985J1ZC', sales);
+    eq('GSTR-1: export invoice routed to exp (Table 6A)', g1.exp.length, 1);
+    eq('GSTR-1: Table 8 nil has 3 supply buckets', g1.nil.length, 3);
+    eq('GSTR-1: INTRB2B nil_amt is 10000', g1.nil.find((r) => r.sply_ty === 'INTRB2B')?.nil_amt, 10000);
+    eq('GSTR-1: INTRAB2B expt_amt is 20000', g1.nil.find((r) => r.sply_ty === 'INTRAB2B')?.expt_amt, 20000);
+    eq('GSTR-1: INTRAB2C ngsup_amt is 5000', g1.nil.find((r) => r.sply_ty === 'INTRAB2C')?.ngsup_amt, 5000);
+    eq('GSTR-1: explicit NIL/EXEMPT/NONGST rows do not pollute B2B or B2CS', g1.b2b.length + g1.b2cs.length, 0);
+
+    const pj = gstr1PortalJson(g1) as any;
+    eq('GSTR-1 portal JSON: exp grouped by WOPAY', pj.exp[0]?.exp_typ, 'WOPAY');
+    eq('GSTR-1 portal JSON: nil.inv populated', pj.nil?.inv?.length, 3);
+    check('GSTR-1 portal JSON: sect includes EXP and NIL', pj.sect.includes('EXP') && pj.sect.includes('NIL'));
+
+    const m3b = buildGstr3b({ gstin: '26AALCS9985J1ZC', period: '2025-04', reconRows: [], sales });
+    eq('3B: EXPWOP counts in 3.1(b) zeroRated', m3b.zeroRated, 50000);
+    eq('3B: NIL + EXEMPT count in 3.1(c) exempt', m3b.exempt, 30000);
+    eq('3B: NONGST counts in 3.1(e) nonGst', m3b.nonGst, 5000);
+  }
+  {
+    // A regular row with 0 tax also populates Table 8 nil summary
+    const g1Zero = buildGstr1('26AALCS9985J1ZC', [
+      { our_gstin: '26AALCS9985J1ZC', customer_name: 'Walk-in Zero', customer_gstin: '', invoice_no: 'Z-1', invoice_date: '2025-04-14', period: '2025-04', invoice_type: 'R', place_of_supply: '26', reverse_charge: false, taxable_value: 7500, igst: 0, cgst: 0, sgst: 0, cess: 0, invoice_value: 7500 },
+    ]);
+    eq('GSTR-1: zero-tax regular sale also populates Table 8 nil summary', g1Zero.nil.find((r) => r.sply_ty === 'INTRAB2C')?.nil_amt, 7500);
+  }
+
+  // 5. Phase 1: GSTR-3B RCM Liability 3.1(d), RCM ITC 4(A)(3), and component-wise ITC (itcByTax)
+  section('35. Complete GST Control Platform — Phase 1 to Phase 4 (RCM, Sec 16(4), IMS, GSTR-9 & 9C)');
+  {
+    const books: PurchaseBill[] = [
+      {
+        our_gstin: '26AALCS9985J1ZC',
+        party_name: 'GTA Transporter',
+        supplier_gstin: '27AAECA2190C1Z3',
+        invoice_no: 'GTA-01',
+        invoice_date: '2025-04-10',
+        period: '2025-04',
+        reverse_charge: true,
+        hsn: '9965',
+        taxable_value: 20000,
+        igst: 1000,
+        cgst: 0,
+        sgst: 0,
+        cess: 0,
+        invoice_total: 21000,
+      },
+      {
+        our_gstin: '26AALCS9985J1ZC',
+        party_name: 'Regular Supplier',
+        supplier_gstin: '26AABCS1429B1Z1',
+        invoice_no: 'REG-01',
+        invoice_date: '2025-04-12',
+        period: '2025-04',
+        reverse_charge: false,
+        hsn: '8471',
+        taxable_value: 100000,
+        igst: 0,
+        cgst: 9000,
+        sgst: 9000,
+        cess: 0,
+        invoice_total: 118000,
+      },
+    ];
+    const twob: Gstr2bRecord[] = [
+      {
+        our_gstin: '26AALCS9985J1ZC',
+        supplier_name: 'GTA Transporter',
+        supplier_gstin: '27AAECA2190C1Z3',
+        invoice_no: 'GTA-01',
+        invoice_type: 'R',
+        invoice_date: '2025-04-10',
+        place_of_supply: '26',
+        period: '2025-04',
+        taxable_value: 20000,
+        igst: 1000,
+        cgst: 0,
+        sgst: 0,
+        cess: 0,
+        invoice_value: 21000,
+        itc_availability: 'Yes',
+        reverse_charge: true,
+      },
+      {
+        our_gstin: '26AALCS9985J1ZC',
+        supplier_name: 'Regular Supplier',
+        supplier_gstin: '26AABCS1429B1Z1',
+        invoice_no: 'REG-01',
+        invoice_type: 'R',
+        invoice_date: '2025-04-12',
+        place_of_supply: '26',
+        period: '2025-04',
+        taxable_value: 100000,
+        igst: 0,
+        cgst: 9000,
+        sgst: 9000,
+        cess: 0,
+        invoice_value: 118000,
+        itc_availability: 'Yes',
+        reverse_charge: false,
+      },
+    ];
+    const rec = reconcilePurchases(books, twob);
+    const m3b = buildGstr3b({ gstin: '26AALCS9985J1ZC', period: '2025-04', reconRows: rec.rows, sales: [] });
+    eq('3B RCM: Table 3.1(d) inwardRcm.taxable is 20000', m3b.inwardRcm.taxable, 20000);
+    eq('3B RCM: Table 3.1(d) inwardRcm.igst is 1000', m3b.inwardRcm.igst, 1000);
+    eq('3B RCM: Table 4(A)(3) rcmItc is 1000', m3b.rcmItc, 1000);
+    eq('3B RCM: Table 4(A) total available ITC is 19000', m3b.itcAvailable, 19000);
+    eq('3B RCM: net ITC availed is 19000', m3b.itcAvailed, 19000);
+    eq('3B itcByTax: net IGST is 1000, CGST is 9000, SGST is 9000', [m3b.itcByTax.net.igst, m3b.itcByTax.net.cgst, m3b.itcByTax.net.sgst], [1000, 9000, 9000]);
+  }
+
+  // 6. Phase 2: Sec 16(4) Time-Barred Check, Probable Match, and IMS Action Builder
+  {
+    eq('Sec 16(4): FY 2024-25 invoice claimed in Oct 2025 is allowed (not time-barred)', isSec16_4TimeBarred('2024-05-10', '2025-10'), false);
+    eq('Sec 16(4): FY 2024-25 invoice claimed in Nov 2025 is time-barred', isSec16_4TimeBarred('2024-05-10', '2025-11'), true);
+    eq('Sec 16(4): FY 2025-26 invoice claimed in Dec 2025 is allowed', isSec16_4TimeBarred('2025-04-15', '2025-12'), false);
+
+    // Probable match when invoice number is completely different (e.g. PO number recorded in books vs tax inv in 2B)
+    const booksProb: PurchaseBill[] = [
+      {
+        our_gstin: '26AALCS9985J1ZC',
+        party_name: 'Vendor X',
+        supplier_gstin: '27AAECA2190C1Z3',
+        invoice_no: 'PO-REF-99',
+        invoice_date: '2025-04-18',
+        period: '2025-04',
+        taxable_value: 45000,
+        igst: 8100,
+        cgst: 0,
+        sgst: 0,
+        cess: 0,
+        invoice_total: 53100,
+      },
+    ];
+    const twobProb: Gstr2bRecord[] = [
+      {
+        our_gstin: '26AALCS9985J1ZC',
+        supplier_name: 'Vendor X',
+        supplier_gstin: '27AAECA2190C1Z3',
+        invoice_no: 'TAX-INV-7788',
+        invoice_type: 'R',
+        invoice_date: '2025-04-19',
+        place_of_supply: '26',
+        period: '2025-04',
+        taxable_value: 45000,
+        igst: 8100,
+        cgst: 0,
+        sgst: 0,
+        cess: 0,
+        invoice_value: 53100,
+        itc_availability: 'Yes',
+        reverse_charge: false,
+      },
+    ];
+    const recProb = reconcilePurchases(booksProb, twobProb);
+    eq('Probable Match: Missing in 2B row gets suggested_2b_invoice_no', recProb.rows[0]?.suggested_2b_invoice_no, 'TAX-INV-7788');
+    check('Probable Match: match_hint mentions probable 2B invoice', (recProb.rows[0]?.match_hint || '').includes('TAX-INV-7788'));
+
+    // IMS Action Builder
+    const ims = buildImsActions(recProb.rows, recProb.unbooked2b);
+    eq('IMS Builder: unbooked 2B row produces 1 Pending IMS action', ims.summary.pending_count, 1);
+    eq('IMS Builder: pending ITC is 8100', ims.summary.pending_itc, 8100);
+  }
+
+  // 7. Phase 3: GSTR-9 Annual Return & GSTR-9C Reconciliation Compiler
+  {
+    const fyInfo = fyMonths('2025-26');
+    eq('fyMonths: 2025-26 has 12 months from 2025-04 to 2026-03', [fyInfo.months.length, fyInfo.months[0], fyInfo.months[11]], [12, '2025-04', '2026-03']);
+
+    const salesFy: SalesInvoice[] = [
+      // B2C row
+      { our_gstin: '26AALCS9985J1ZC', customer_name: 'Walk-in', customer_gstin: '', invoice_no: 'S-1', invoice_date: '2025-04-05', period: '2025-04', invoice_type: 'R', place_of_supply: '26', reverse_charge: false, hsn: '8471', taxable_value: 50000, igst: 0, cgst: 4500, sgst: 4500, cess: 0, invoice_value: 59000 },
+      // B2B row
+      { our_gstin: '26AALCS9985J1ZC', customer_name: 'Corp Buyer', customer_gstin: '27AAECA2190C1Z3', invoice_no: 'S-2', invoice_date: '2025-05-10', period: '2025-05', invoice_type: 'R', place_of_supply: '27', reverse_charge: false, hsn: '8471', taxable_value: 100000, igst: 18000, cgst: 0, sgst: 0, cess: 0, invoice_value: 118000 },
+      // Export without payment
+      { our_gstin: '26AALCS9985J1ZC', customer_name: 'Foreign Co', customer_gstin: '', invoice_no: 'EXP-9', invoice_date: '2025-06-15', period: '2025-06', invoice_type: 'EXPWOP', place_of_supply: '97', reverse_charge: false, hsn: '8471', taxable_value: 40000, igst: 0, cgst: 0, sgst: 0, cess: 0, invoice_value: 40000 },
+      // Exempt supply
+      { our_gstin: '26AALCS9985J1ZC', customer_name: 'Exempt Buyer', customer_gstin: '', invoice_no: 'EX-9', invoice_date: '2025-06-20', period: '2025-06', invoice_type: 'EXEMPT', place_of_supply: '26', reverse_charge: false, hsn: '8471', taxable_value: 10000, igst: 0, cgst: 0, sgst: 0, cess: 0, invoice_value: 10000 },
+    ];
+    const booksFy: PurchaseBill[] = [
+      { our_gstin: '26AALCS9985J1ZC', party_name: 'Matched Vendor', supplier_gstin: '27AAECA2190C1Z3', invoice_no: 'P-1', invoice_date: '2025-04-10', period: '2025-04', reverse_charge: false, hsn: '8473', taxable_value: 80000, igst: 14400, cgst: 0, sgst: 0, cess: 0, invoice_total: 94400 },
+      { our_gstin: '26AALCS9985J1ZC', party_name: 'Blocked Vendor', supplier_gstin: '26AABCS1429B1Z1', invoice_no: 'P-2', invoice_date: '2025-05-12', period: '2025-05', reverse_charge: false, hsn: '8703', taxable_value: 30000, igst: 0, cgst: 2700, sgst: 2700, cess: 0, invoice_total: 35400 },
+      { our_gstin: '26AALCS9985J1ZC', party_name: 'Spillover Vendor', supplier_gstin: '27AAECA2190C1Z3', invoice_no: 'P-3', invoice_date: '2026-03-20', period: '2026-03', reverse_charge: false, hsn: '8473', taxable_value: 25000, igst: 4500, cgst: 0, sgst: 0, cess: 0, invoice_total: 29500, itc_decision: 'Claim', itc_decision_month: '2026-05' },
+    ];
+    const twobFy: Gstr2bRecord[] = [
+      { our_gstin: '26AALCS9985J1ZC', supplier_name: 'Matched Vendor', supplier_gstin: '27AAECA2190C1Z3', invoice_no: 'P-1', invoice_type: 'R', invoice_date: '2025-04-10', place_of_supply: '26', period: '2025-04', taxable_value: 80000, igst: 14400, cgst: 0, sgst: 0, cess: 0, invoice_value: 94400, itc_availability: 'Yes', reverse_charge: false },
+      { our_gstin: '26AALCS9985J1ZC', supplier_name: 'Blocked Vendor', supplier_gstin: '26AABCS1429B1Z1', invoice_no: 'P-2', invoice_type: 'R', invoice_date: '2025-05-12', place_of_supply: '26', period: '2025-05', taxable_value: 30000, igst: 0, cgst: 2700, sgst: 2700, cess: 0, invoice_value: 35400, itc_availability: 'No', reverse_charge: false },
+    ];
+    const g9 = buildGstr9({
+      gstin: '26AALCS9985J1ZC',
+      fy: '2025-26',
+      sales: salesFy,
+      books: booksFy,
+      twob: twobFy,
+    });
+
+    eq('GSTR-9 Table 4A (B2C): taxable 50000', g9.table4.b2c.taxable, 50000);
+    eq('GSTR-9 Table 4B (B2B): taxable 100000, igst 18000', [g9.table4.b2b.taxable, g9.table4.b2b.igst], [100000, 18000]);
+    eq('GSTR-9 Table 4N (Taxable turnover): 150000', g9.table4.totalTaxable4N.taxable, 150000);
+    eq('GSTR-9 Table 5A (Zero-rated export WOPAY): 40000', g9.table5.expWop, 40000);
+    eq('GSTR-9 Table 5D (Exempt): 10000', g9.table5.exempted, 10000);
+    eq('GSTR-9 Table 5N (Total Turnover incl advances): 200000', g9.table5.totalTurnover5N, 200000);
+    eq('GSTR-9 Table 6O (Total ITC availed in 6B): 14400', g9.table6.totalAvailed6O.total, 14400);
+    eq('GSTR-9 Table 7E (Sec 17(5) reversal): 5400', g9.table7.sec17_5_7E.total, 5400);
+    eq('GSTR-9 Table 13 (ITC availed in next FY): 4500', g9.partV.table13ItcAvailed.total, 4500);
+    eq('GSTR-9 Table 17 (Outward HSN summary): 2 HSN rate groups (8471 @ 18% and 8471 @ 0%)', g9.table17OutwardHsn.length, 2);
+    eq('GSTR-9 Table 18 (Inward HSN summary): 2 HSN groups (8473, 8703)', g9.table18InwardHsn.length, 2);
+    eq('GSTR-9 monthlySummary: 12 months generated', g9.monthlySummary.length, 12);
+
+    const g9c = buildGstr9c(g9);
+    eq('GSTR-9C Table 5R: unreconciled turnover is 0 when books match GSTR-9', g9c.turnoverRecon.unreconciledTurnover5R, 0);
+    eq('GSTR-9C Table 7G: unreconciled taxable turnover is 0', g9c.turnoverRecon.unreconciledTaxable7G, 0);
+    eq('GSTR-9C Table 9R: unreconciled tax payable is 0', g9c.taxLiabilityRecon.unreconciledTax9R.total, 0);
+    check('GSTR-9 Portal JSON has table4, table5, table6, table7, table8, table9, table17', Boolean((gstr9PortalJson(g9) as any).table4 && (gstr9PortalJson(g9) as any).table17));
+    check('GSTR-9 & 9C working rows build cleanly', gstr9WorkingRows(g9).length > 20 && gstr9cWorkingRows(g9c).length > 10);
+
+    // 8. GSTR-1 Portal JSON -> parseFiledJson -> Bill-to-Bill Reconciliation with Books
+    const g1Model = buildGstr1('26AALCS9985J1ZC', [
+      { our_gstin: '26AALCS9985J1ZC', customer_name: 'Buyer One', customer_gstin: '27AAECA2190C1Z3', invoice_no: 'INV-101', invoice_date: '2025-04-10', period: '2025-04', invoice_type: 'R', place_of_supply: '27', reverse_charge: false, hsn: '8471', taxable_value: 100000, igst: 18000, cgst: 0, sgst: 0, cess: 0, invoice_value: 118000 },
+      { our_gstin: '26AALCS9985J1ZC', customer_name: 'Walk-in', customer_gstin: '', invoice_no: 'B2C-01', invoice_date: '2025-04-12', period: '2025-04', invoice_type: 'R', place_of_supply: '26', reverse_charge: false, hsn: '8471', taxable_value: 20000, igst: 0, cgst: 1800, sgst: 1800, cess: 0, invoice_value: 23600 },
+    ]);
+    const portalJsonObj = gstr1PortalJson(g1Model, '2025-04');
+    check('isGstr1Json detects portal GSTR-1 JSON object', isGstr1Json(portalJsonObj));
+    const parsedJson = parseFiledJson(portalJsonObj, { our_gstin: '26AALCS9985J1ZC', period: '2025-04' });
+    eq('parseFiledJson extracts our_gstin and period from fp=042025', [parsedJson.rows[0]?.our_gstin, parsedJson.rows[0]?.period], ['26AALCS9985J1ZC', '2025-04']);
+    eq('parseFiledJson extracts B2B + B2CS rows', parsedJson.rows.length, 2);
+    const viaBuffer = parseFiledWorkbook(Buffer.from(JSON.stringify(portalJsonObj), 'utf8'), { our_gstin: '26AALCS9985J1ZC', period: '2025-04' });
+    eq('parseFiledWorkbook auto-detects JSON buffer', viaBuffer.rows.length, 2);
+    const draftDocs = draftDocuments(g1Model);
+    const filedDocs = classifyFiledRows(parsedJson.rows);
+    const b2bRecon = reconcile(draftDocs, filedDocs);
+    eq('Bill-to-Bill GSTR-1 JSON vs Books: all documents Matched', b2bRecon.every((o) => o.status === 'Matched'), true);
+
+    // 9. Sales & Purchase Template Audit Fixes + State Codes + Positive Sales CN Normalization
+    const { salesTemplateBuffer } = await import('../src/app/sales-template');
+    const salesWb = XLSX.read(salesTemplateBuffer(), { type: 'buffer', raw: true });
+    const salesSheetRows = XLSX.utils.sheet_to_json(salesWb.Sheets['Sales Register'], {
+      header: 1, raw: true, defval: null, blankrows: false,
+    }) as unknown[][];
+    const parsedSalesTpl = parseSalesRegister(salesSheetRows, 'Sales Register Template.xlsx');
+    eq('salesTemplateBuffer() parses 4 invoices (multi-line B2B + B2CS + B2CL + CDNR)', parsedSalesTpl.rows.length, 4);
+    eq('salesTemplateBuffer() has 0 ERROR issues', parsedSalesTpl.issues.filter((i) => i.severity === 'ERROR').length, 0);
+    eq('salesTemplateBuffer() multi-line B2B invoice value is 146000', parsedSalesTpl.rows[0]?.invoice_value, 146000);
+    eq('salesTemplateBuffer() includes CDNR credit note CN-889015', parsedSalesTpl.rows[3]?.invoice_no, 'CN-889015');
+
+    eq('normPos resolves Haryana, Assam, Meghalaya, Chandigarh, Sikkim, Tripura & prefixed POS', [
+      normPos('Haryana'),
+      normPos('Assam'),
+      normPos('Meghalaya'),
+      normPos('Chandigarh'),
+      normPos('Sikkim'),
+      normPos('Tripura'),
+      normPos('06-Haryana'),
+      normPos('24 - Gujarat'),
+    ], ['06', '18', '17', '04', '11', '16', '06', '24']);
+
+    const posCnSales = parseSalesRegister([
+      ['Our GSTIN', 'Invoice No', 'Invoice Date', 'Invoice Type', 'Customer GSTIN', 'Customer Name', 'Place of Supply', 'Taxable Value', 'IGST', 'Invoice Value', 'Original Invoice No', 'Original Invoice Date'],
+      ['26AALCS9985J1ZC', 'CN-POS-1', '2026-04-20', 'CN', '27AAFCC9473R1ZP', 'ACME', '27', '5000', '900', '5900', 'INV-1', '2026-04-01'],
+    ], 'pos-cn.csv');
+    eq('positive Sales Credit Note normalizes to negative taxable & tax', [
+      posCnSales.rows[0]?.taxable_value,
+      posCnSales.rows[0]?.igst,
+      posCnSales.rows[0]?.invoice_value,
+    ], [-5000, -900, -5900]);
   }
 }
 

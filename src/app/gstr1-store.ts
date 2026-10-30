@@ -1121,19 +1121,31 @@ export async function loadOutcomePage(
       const outres = await c.query(
         `SELECT sr.id, sr.status::text AS status, sr.difference_amount, sr.difference_json,
                 sr.table_type::text AS table_type, sr.sales_invoice_id,
-                si.invoice_number_raw, si.invoice_number_norm, si.invoice_date,
-                si.customer_name, si.customer_gstin_norm,
+                COALESCE(si.invoice_number_raw, dd.invoice_number_raw, fd.invoice_number_raw) AS invoice_number_raw,
+                COALESCE(si.invoice_number_norm, dd.invoice_number_norm, fd.invoice_number_norm) AS invoice_number_norm,
+                COALESCE(si.invoice_date, dd.invoice_date, fd.invoice_date) AS invoice_date,
+                COALESCE(si.customer_name, dd.recipient_name, fd.recipient_name) AS customer_name,
+                COALESCE(si.customer_gstin_norm, dd.recipient_gstin_norm, fd.recipient_gstin_norm) AS customer_gstin_norm,
+                COALESCE(si.place_of_supply, dd.place_of_supply, fd.place_of_supply) AS place_of_supply,
                 dd.table_type::text AS draft_table_type, dd.taxable_value AS draft_taxable,
+                dd.igst AS draft_igst, dd.cgst AS draft_cgst, dd.sgst AS draft_sgst, dd.cess AS draft_cess,
                 (dd.igst + dd.cgst + dd.sgst + dd.cess) AS draft_tax,
+                dd.invoice_value AS draft_invoice_value,
                 fd.table_type::text AS filed_table_type, fd.taxable_value AS filed_taxable,
+                fd.igst AS filed_igst, fd.cgst AS filed_cgst, fd.sgst AS filed_sgst, fd.cess AS filed_cess,
                 (fd.igst + fd.cgst + fd.sgst + fd.cess) AS filed_tax,
+                fd.invoice_value AS filed_invoice_value,
+                (COALESCE(dd.taxable_value, 0) - COALESCE(fd.taxable_value, 0)) AS taxable_difference,
+                ((COALESCE(dd.igst, 0) + COALESCE(dd.cgst, 0) + COALESCE(dd.sgst, 0) + COALESCE(dd.cess, 0)) -
+                 (COALESCE(fd.igst, 0) + COALESCE(fd.cgst, 0) + COALESCE(fd.sgst, 0) + COALESCE(fd.cess, 0))) AS tax_difference,
                 sr.resolved_at, sr.resolved_by
            FROM sales_reconciliation sr
            LEFT JOIN gstr1_documents dd ON dd.id = sr.gstr1_draft_id
            LEFT JOIN gstr1_documents fd ON fd.id = sr.gstr1_filed_id
            LEFT JOIN sales_invoices si   ON si.id = sr.sales_invoice_id
           WHERE sr.gstin_id = $1 AND sr.period = $2
-          ORDER BY sr.status, si.invoice_date NULLS LAST, si.invoice_number_norm`,
+          ORDER BY sr.status, COALESCE(si.invoice_date, dd.invoice_date, fd.invoice_date) NULLS LAST,
+                   COALESCE(si.invoice_number_norm, dd.invoice_number_norm, fd.invoice_number_norm)`,
         [gid, period],
       );
       const totres = await c.query(

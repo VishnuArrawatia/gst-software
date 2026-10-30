@@ -84,16 +84,20 @@ export function supplyType(
 const STATE_NAME_TO_CODE: Record<string, string> = {
   'andaman and nicobar islands': '35', 'andaman & nicobar': '35',
   'andhra pradesh': '37', arunachal: '12', 'arunachal pradesh': '12',
-  assam: '04', bihar: '10', chhattisgarh: '22',
+  assam: '18', bihar: '10', chandigarh: '04', chhattisgarh: '22',
   dadra: '26', 'dadra and nagar haveli': '26', 'daman and diu': '26',
-  delhi: '07', goa: '30', gujarat: '24', 'himachal pradesh': '02', hp: '02',
+  delhi: '07', 'new delhi': '07', goa: '30', gujarat: '24',
+  haryana: '06', 'himachal pradesh': '02', hp: '02',
   'himachal': '02', karnataka: '29', kerala: '32',
-  'jammu and kashmir': '01', jharkhand: '20',
-  ladakh: '38', 'lakshadweep islands': '31', 'madhya pradesh': '23', mp: '23',
-  maharashtra: '27', manipur: '14', meghalaya: '01', mizoram: '15',
-  nagaland: '13', odisha: '21', orissa: '21', puducherry: '34',
-  punjab: '03', rajasthan: '08', 'tamil nadu': '33', telangana: '36',
-  'uttar pradesh': '09', 'uttarakhand': '05', 'west bengal': '19',
+  'jammu and kashmir': '01', 'jammu & kashmir': '01', jharkhand: '20',
+  ladakh: '38', 'lakshadweep islands': '31', lakshadweep: '31',
+  'madhya pradesh': '23', mp: '23',
+  maharashtra: '27', manipur: '14', meghalaya: '17', mizoram: '15',
+  nagaland: '13', odisha: '21', orissa: '21', puducherry: '34', pondicherry: '34',
+  punjab: '03', rajasthan: '08', sikkim: '11',
+  'tamil nadu': '33', tamilnadu: '33', telangana: '36', tripura: '16',
+  'uttar pradesh': '09', up: '09', 'uttarakhand': '05', uttaranchal: '05',
+  'west bengal': '19',
   'other territory': '97', 'other country': '96',
 };
 
@@ -102,11 +106,13 @@ export function normPos(v: unknown): string {
   const s = String(v ?? '').trim();
   if (!s) return '';
   if (/^\d{2}$/.test(s)) return s;
+  const prefixed = /^(\d{2})\s*[-:]/.exec(s);
+  if (prefixed) return prefixed[1];
   const key = s.toLowerCase().replace(/\s+/g, ' ').trim();
   if (STATE_NAME_TO_CODE[key]) return STATE_NAME_TO_CODE[key];
   // "Dadra and Nagar Haveli and Daman and Diu" and similar long forms.
   for (const [name, code] of Object.entries(STATE_NAME_TO_CODE)) {
-    if (key.includes(name)) return code;
+    if (name.length > 2 && key.includes(name)) return code;
   }
   return '';
 }
@@ -326,7 +332,22 @@ export function monthRange(from: string, to: string): string[] {
 // ---------------------------------------------------------------------------
 
 /** GSTR-1 / GSTR-3B invoice type codes. */
-export type InvoiceType = 'R' | 'Regular' | 'B2B' | 'SEZWP' | 'SEWOP' | 'DE' | 'DN' | 'CDNR' | 'C' | 'CANCEL';
+export type InvoiceType =
+  | 'R'
+  | 'Regular'
+  | 'B2B'
+  | 'SEZWP'
+  | 'SEWOP'
+  | 'DE'
+  | 'EXPWP'
+  | 'EXPWOP'
+  | 'NIL'
+  | 'EXEMPT'
+  | 'NONGST'
+  | 'DN'
+  | 'CDNR'
+  | 'C'
+  | 'CANCEL';
 
 export function normInvoiceType(v: unknown): Exclude<InvoiceType, 'CANCEL'> {
   const s = String(v ?? '').trim().toUpperCase();
@@ -334,10 +355,17 @@ export function normInvoiceType(v: unknown): Exclude<InvoiceType, 'CANCEL'> {
   // Portal "Regular"/"SEZWP"/"SEWOP"/"Deemed Export"
   if (s.startsWith('SEZ')) return 'SEZWP';
   if (s.startsWith('SEW')) return 'SEWOP';
+  if (s.startsWith('CDN') || s === 'CREDIT NOTE' || s.startsWith('CN') || s === 'C') return 'CDNR';
+  if (s.startsWith('DN') || s === 'DEBIT NOTE' || s === 'D') return 'DN';
   if (s.startsWith('DE') || s.startsWith('DEEMED')) return 'DE';
+  if (s.startsWith('EXPWP') || s === 'WPAY') return 'EXPWP';
+  if (s.startsWith('EXPWOP') || s === 'WOPAY' || s === 'EXP' || s === 'EXPORT') return 'EXPWOP';
+  if (s === 'NIL' || s === 'NIL RATED' || s === 'NIL-RATED') return 'NIL';
+  if (s === 'EXEMPT' || s === 'EXEMPTED') return 'EXEMPT';
+  if (s === 'NONGST' || s === 'NON-GST' || s === 'NON GST') return 'NONGST';
   // Credit / debit notes
-  if (s.startsWith('CDN') || s === 'CREDIT NOTE' || s.startsWith('CN')) return 'CDNR';
-  if (s.startsWith('DN') || s === 'DEBIT NOTE') return 'DN';
+  // Credit / debit notes checked above before DE (Deemed Export)
+
   return 'R';
 }
 
@@ -459,13 +487,27 @@ export function signCheckOf(type: DocType, amounts: number[]): SignCheck {
  * GST slabs, expressed as PERCENTAGES (the figures the return shows).
  * Note there is no 10% or 25% slab in GST — 0.25% and 3% are the small ones.
  */
-export const GST_RATES = [0, 0.25, 3, 5, 12, 18, 28] as const;
+export const GST_RATES = [0, 0.25, 3, 5, 12, 18, 28, 40] as const;
+export const GST_RATES_LEGACY = [0, 0.25, 3, 5, 12, 18, 28] as const;
+export const GST_RATES_2_0 = [0, 0.25, 3, 5, 18, 40] as const;
+
+export function gstRatesForPeriod(period?: string): readonly number[] {
+  if (!period) return GST_RATES;
+  const p = period.slice(0, 7);
+  if (/^\d{4}-\d{2}$/.test(p)) {
+    if (p < '2025-09') return GST_RATES_LEGACY;
+    if (p === '2025-09') return GST_RATES;
+    return GST_RATES_2_0;
+  }
+  return GST_RATES;
+}
 
 /** Snap a computed effective rate (in percent) onto the nearest legal slab. */
-export function nearestRate(effective: number): number {
-  let best: number = GST_RATES[0];
+export function nearestRate(effective: number, period?: string): number {
+  const slabs = period ? gstRatesForPeriod(period) : GST_RATES;
+  let best: number = slabs[0];
   let bestDiff = Infinity;
-  for (const r of GST_RATES) {
+  for (const r of slabs) {
     const d = Math.abs(r - effective);
     if (d < bestDiff) { bestDiff = d; best = r; }
   }
@@ -477,10 +519,10 @@ export function nearestRate(effective: number): number {
  * For a credit note or a negative document we take the absolute ratio so the
  * rate stays a positive slab number in the B2CS/HSN summaries.
  */
-export function effectiveRate(taxable: number, tax: number): number {
+export function effectiveRate(taxable: number, tax: number, period?: string): number {
   const t = Math.abs(r2(taxable));
   if (t === 0) return 0;
-  return nearestRate((Math.abs(r2(tax)) / t) * 100);
+  return nearestRate((Math.abs(r2(tax)) / t) * 100, period);
 }
 
 // ---------------------------------------------------------------------------
@@ -569,10 +611,15 @@ export interface PurchaseBill {
   sgst: number;
   cess: number;
   invoice_total?: number;
+  reverse_charge?: boolean;
+  hsn?: string;
   /** Free-text note carried from the source row, used in follow-up lists. */
   remark?: string;
   source_file?: string;
   source_row?: number;
+  itc_decision?: string;
+  itc_decision_month?: string;
+  return_classification?: string;
 
   // ---- reconciliation overrides (Phase 0) -------------------------------
   // The Accounts user may correct the supplier GSTIN / invoice number / date
@@ -611,6 +658,9 @@ export interface Gstr2bRecord {
   applicable_pct?: string;
   source_file?: string;
   source_row?: number;
+  itc_decision?: string;
+  itc_decision_month?: string;
+  return_classification?: string;
 }
 
 /**
@@ -645,6 +695,9 @@ export interface SalesItem {
   freight?: number;
   other_charges?: number;
   source_row?: number;
+  itc_decision?: string;
+  itc_decision_month?: string;
+  return_classification?: string;
 }
 
 /** A sales invoice from the books (SAP sales register). Drives GSTR-1. */
@@ -691,6 +744,9 @@ export interface SalesInvoice {
   doc_series_cancelled?: number;
   source_file?: string;
   source_row?: number;
+  itc_decision?: string;
+  itc_decision_month?: string;
+  return_classification?: string;
 }
 
 /**
@@ -699,6 +755,23 @@ export interface SalesInvoice {
  * side of the ledger — the two sides have different fields.
  */
 export type GstInvoiceForReturn = SalesInvoice;
+
+/**
+ * Section 16(4) CGST Act: ITC for an invoice dated in Financial Year YYYY-(YY+1)
+ * cannot be claimed in a return period after October of (YYYY+1) (filed by 30 Nov).
+ */
+export function isSec16_4TimeBarred(invoiceDate?: string, claimPeriod?: string): boolean {
+  if (!invoiceDate || !claimPeriod) return false;
+  const invPeriod = periodFromAny(invoiceDate);
+  const claim = periodFromAny(claimPeriod);
+  if (!invPeriod || !claim) return false;
+  const invFy = fyOf(invPeriod);
+  const m = /^(\d{4})-(\d{2})$/.exec(invFy);
+  if (!m) return false;
+  const startYear = Number(m[1]);
+  const lastAllowedReturnPeriod = `${startYear + 1}-10`;
+  return claim > lastAllowedReturnPeriod;
+}
 
 /** Reconciliation outcome for one book-side document. */
 export type ReconStatus =
@@ -729,6 +802,16 @@ export interface ReconRow {
   itc: number;
   /** Populated when a 2B line was found. */
   matched_2b_id?: string;
+  reverse_charge?: boolean;
+  hsn?: string;
+  two_b_igst?: number;
+  two_b_cgst?: number;
+  two_b_sgst?: number;
+  two_b_cess?: number;
+  sec16_4_barred?: boolean;
+  suggested_2b_invoice_no?: string;
+  suggested_2b_date?: string;
+  match_hint?: string;
   two_b_taxable?: number;
   two_b_itc?: number;
   itc_difference?: number;
@@ -748,4 +831,7 @@ export interface ReconRow {
   /** Source file and row this row came from — its stable identity. */
   source_file?: string;
   source_row?: number;
+  itc_decision?: string;
+  itc_decision_month?: string;
+  return_classification?: string;
 }

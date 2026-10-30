@@ -737,7 +737,7 @@ function lineParams(
     matched ? r2(twob?.sgst) : null, matched ? r2(twob?.cess) : null,
     row?.two_b_itc ?? null, row?.itc_availability ?? null,
     row?.reason ?? null, itc, row?.taxable_difference ?? null, row?.itc_difference ?? null,
-    row?.duplicate_count ?? null, row?.action ?? null, row ? new Date() : null, new Date(),
+    row?.duplicate_count ?? null, [row?.action, row?.match_hint].filter(Boolean).join(' | ') || null, row ? new Date() : null, new Date(),
     b.has_e_invoice ?? null, b.e_invoice_no ?? null, b.has_e_way_bill ?? null, b.e_way_bill_no ?? null,
   ];
 }
@@ -815,6 +815,23 @@ export function shapeLine(r: Record<string, any>): Record<string, any> {
     // May reads as two different months — the reason the column exists.
     book_entry_month: bookEntryMonth || null,
     bookEntryMonthLabel: bookEntryMonth ? labelOf(bookEntryMonth) : '',
+    gstr3b_bucket: (() => {
+      const cls = String(r.return_classification ?? '').trim();
+      const dec = String(r.itc_decision ?? '').trim();
+      const st = String(r.match_status ?? '').trim();
+      if (cls && cls !== 'Pending Review') return cls;
+      if (dec && dec !== 'Pending Review') {
+        if (dec === 'Claim') return '4(A) — Claimed';
+        if (dec === 'Ineligible' || dec === 'Reversed') return '4(B) — Blocked';
+        if (dec === 'Reclaim Later' || dec === 'Query Vendor') return st === 'Missing in 2B' ? '4(A)(i) — Books only' : 'Not in 3B — Carried';
+        if (dec === 'Do Not Claim') return 'Not Claimed';
+      }
+      if (st === 'Matched' || st === 'Amount Mismatch') return '4(A) — Claimed';
+      if (st === 'ITC Blocked') return '4(B) — Blocked';
+      if (st === 'Missing in 2B') return '4(A)(i) — Books only';
+      if (st === 'Duplicate') return 'Duplicate (Excluded)';
+      return 'Pending Review';
+    })(),
   };
 }
 
@@ -887,6 +904,9 @@ export async function loadBundleForReconcile(gstin: string, period: string) {
       source_row: r.source_row ?? undefined,
       recon_supplier_gstin: r.recon_supplier_gstin,
       recon_invoice_no: r.recon_invoice_no,
+      itc_decision: r.itc_decision ?? undefined,
+      itc_decision_month: r.itc_decision_month ?? undefined,
+      return_classification: r.return_classification ?? undefined,
       recon_invoice_date:
         r.recon_invoice_date instanceof Date ? iso(r.recon_invoice_date) : r.recon_invoice_date,
     });
@@ -1030,7 +1050,7 @@ export async function reReconcile(
            r.matched_2b_id ? r.invoice_date || null : null,
            r.two_b_taxable ?? null, r.two_b_itc ?? null, r.itc_availability ?? null,
            r.reason ?? null, r.itc,
-           r.taxable_difference ?? null, r.itc_difference ?? null, r.action ?? null],
+           r.taxable_difference ?? null, r.itc_difference ?? null, [r.action, r.match_hint].filter(Boolean).join(' | ') || null],
         );
       }
       await c.query(

@@ -70,6 +70,23 @@ export interface Gstr3bModel {
   exempt: number;
   nonGst: number;
   zeroRated: number;
+  /** 3.1(d) Inward supplies liable to reverse charge. */
+  inwardRcm: {
+    taxable: number;
+    igst: number;
+    cgst: number;
+    sgst: number;
+    cess: number;
+    tax: number;
+  };
+  /** 4(A)(3) ITC on inward supplies liable to reverse charge. */
+  rcmItc: number;
+  /** Component-wise ITC summary for GSTR-3B and GSTR-9. */
+  itcByTax: {
+    available: { igst: number; cgst: number; sgst: number; cess: number };
+    reversed: { igst: number; cgst: number; sgst: number; cess: number };
+    net: { igst: number; cgst: number; sgst: number; cess: number };
+  };
 
   // 3.2 inward
   inwardTaxable: number;
@@ -188,21 +205,64 @@ export function itcDetailFromRecon(rows: ReconRow[]): {
   for (const r of rows) {
     switch (r.status) {
       case 'Matched':
+        counts.matched_rows++;
+        break;
+      case 'Amount Mismatch':
+        counts.amount_mismatch_rows++;
+        break;
+      case 'ITC Blocked':
+        counts.blocked_rows++;
+        break;
+      case 'Duplicate':
+        counts.duplicate_rows++;
+        break;
+      case 'Missing in 2B':
+      default:
+        counts.missing_in_2b_rows++;
+        break;
+    }
+
+    const rowItc = r.two_b_itc ?? r.itc;
+    const cls = (r.return_classification || '').trim();
+    const dec = (r.itc_decision || '').trim();
+
+    if (cls && cls !== 'Pending Review') {
+      if (cls === '4(A) — Claimed') {
+        availableAmount = r2(availableAmount + rowItc);
+      } else if (cls === '4(A)(i) — Books only') {
+        pending4ai = r2(pending4ai + r.itc);
+      } else if (cls === '4(B) — Blocked' || cls === 'Ineligible') {
+        reversedAmount = r2(reversedAmount + rowItc);
+      }
+      // 'Not in 3B — Carried' contributes neither to 4(A) nor to 4(B) this period.
+      continue;
+    }
+
+    if (dec && dec !== 'Pending Review') {
+      if (dec === 'Claim') {
+        availableAmount = r2(availableAmount + rowItc);
+      } else if (dec === 'Ineligible' || dec === 'Reversed') {
+        reversedAmount = r2(reversedAmount + rowItc);
+      } else if (dec === 'Reclaim Later' || dec === 'Query Vendor') {
+        if (r.status === 'Missing in 2B') pending4ai = r2(pending4ai + r.itc);
+      }
+      // 'Do Not Claim' contributes nothing to 4(A), 4(B) or 4A(i).
+      continue;
+    }
+
+    switch (r.status) {
+      case 'Matched':
       case 'Amount Mismatch':
         // The portal is the authority on the claimable amount.
-        availableAmount = r2(availableAmount + (r.two_b_itc ?? r.itc));
-        counts.matched_rows += r.status === 'Matched' ? 1 : 0;
-        counts.amount_mismatch_rows += r.status === 'Amount Mismatch' ? 1 : 0;
+        availableAmount = r2(availableAmount + rowItc);
         break;
 
       case 'ITC Blocked':
         // cl.16(4) — the portal says the credit is unavailable. Report it in 4(B).
-        reversedAmount = r2(reversedAmount + (r.two_b_itc ?? r.itc));
-        counts.blocked_rows++;
+        reversedAmount = r2(reversedAmount + rowItc);
         break;
 
       case 'Duplicate':
-        counts.duplicate_rows++;
         // A duplicate booking would double-claim, so nothing goes to 4(A).
         break;
 
@@ -211,7 +271,6 @@ export function itcDetailFromRecon(rows: ReconRow[]): {
         // In the books, unsupported by GSTR-2B. Claimable only via a 4A(i)
         // declaration, which is why it is excluded from 4(A) here.
         pending4ai = r2(pending4ai + r.itc);
-        counts.missing_in_2b_rows++;
         break;
     }
   }
@@ -247,7 +306,11 @@ export function buildGstr3b(input: Build3bInput): Gstr3bModel {
   // A zero-rated supply is an export or a supply to an SEZ, which the books
   // mark with these invoice types and on which no tax is charged.
   const isZeroRatedSupply = (s: GstInvoiceForReturn): boolean =>
-    s.invoice_type === 'SEZWP' || s.invoice_type === 'SEWOP' || s.invoice_type === 'DE';
+    s.invoice_type === 'SEZWP' ||
+    s.invoice_type === 'SEWOP' ||
+    s.invoice_type === 'DE' ||
+    s.invoice_type === 'EXPWP' ||
+    s.invoice_type === 'EXPWOP';
 
   const zeroRated = r2(
     input.sales.filter(isZeroRatedSupply).reduce((a, s) => a + r2(s.taxable_value), 0)
@@ -259,7 +322,7 @@ export function buildGstr3b(input: Build3bInput): Gstr3bModel {
   // the full value of every export.
   const exempt = r2(
     input.sales
-      .filter((s) => r2(s.taxable_value) !== 0 && taxOf(s) === 0 && !isZeroRatedSupply(s))
+      .filter((s) => r2(s.taxable_value) !== 0 && taxOf(s) === 0 && !isZeroRatedSupply(s) && s.invoice_type !== 'NONGST')
       .reduce((a, s) => a + r2(s.taxable_value), 0)
   );
 
@@ -268,6 +331,64 @@ export function buildGstr3b(input: Build3bInput): Gstr3bModel {
   // Inward taxable is the 2B taxable for supported lines, plus books taxable for
   // lines awaiting a 4A(i) declaration (reported, not claimed).
   const inwardTaxable = r2(input.reconRows.reduce((a, r) => a + r2(r.taxable_value), 0));
+  const rcmRows = input.reconRows.filter((r) => r.reverse_charge && r.status !== 'Duplicate');
+  const inwardRcm = {
+    taxable: r2(rcmRows.reduce((a, r) => a + r2(r.two_b_taxable ?? r.taxable_value), 0)),
+    igst: r2(rcmRows.reduce((a, r) => a + r2(r.two_b_igst ?? r.igst), 0)),
+    cgst: r2(rcmRows.reduce((a, r) => a + r2(r.two_b_cgst ?? r.cgst), 0)),
+    sgst: r2(rcmRows.reduce((a, r) => a + r2(r.two_b_sgst ?? r.sgst), 0)),
+    cess: r2(rcmRows.reduce((a, r) => a + r2(r.two_b_cess ?? r.cess), 0)),
+    tax: 0,
+  };
+  inwardRcm.tax = r2(inwardRcm.igst + inwardRcm.cgst + inwardRcm.sgst + inwardRcm.cess);
+  const rcmItc = r2(
+    rcmRows
+      .filter((r) => r.status !== 'ITC Blocked' && r.itc_decision !== 'Do Not Claim' && r.itc_decision !== 'Ineligible')
+      .reduce((a, r) => a + r2(r.two_b_itc ?? r.itc), 0),
+  );
+  const availByTax = { igst: 0, cgst: 0, sgst: 0, cess: 0 };
+  const revByTax = { igst: 0, cgst: 0, sgst: 0, cess: 0 };
+  for (const r of input.reconRows) {
+    const ig = r2(r.two_b_igst ?? r.igst);
+    const cg = r2(r.two_b_cgst ?? r.cgst);
+    const sg = r2(r.two_b_sgst ?? r.sgst);
+    const ce = r2(r.two_b_cess ?? r.cess);
+    const cls = (r.return_classification || '').trim();
+    const dec = (r.itc_decision || '').trim();
+    let kind: 'avail' | 'rev' | 'none' = 'none';
+    if (cls && cls !== 'Pending Review') {
+      if (cls === '4(A) — Claimed') kind = 'avail';
+      else if (cls === '4(B) — Blocked' || cls === 'Ineligible') kind = 'rev';
+    } else if (dec && dec !== 'Pending Review') {
+      if (dec === 'Claim') kind = 'avail';
+      else if (dec === 'Ineligible' || dec === 'Reversed') kind = 'rev';
+    } else if (r.status === 'Matched' || r.status === 'Amount Mismatch') {
+      kind = 'avail';
+    } else if (r.status === 'ITC Blocked') {
+      kind = 'rev';
+    }
+    if (kind === 'avail') {
+      availByTax.igst = r2(availByTax.igst + ig);
+      availByTax.cgst = r2(availByTax.cgst + cg);
+      availByTax.sgst = r2(availByTax.sgst + sg);
+      availByTax.cess = r2(availByTax.cess + ce);
+    } else if (kind === 'rev') {
+      revByTax.igst = r2(revByTax.igst + ig);
+      revByTax.cgst = r2(revByTax.cgst + cg);
+      revByTax.sgst = r2(revByTax.sgst + sg);
+      revByTax.cess = r2(revByTax.cess + ce);
+    }
+  }
+  const itcByTax = {
+    available: availByTax,
+    reversed: revByTax,
+    net: {
+      igst: r2(availByTax.igst - revByTax.igst),
+      cgst: r2(availByTax.cgst - revByTax.cgst),
+      sgst: r2(availByTax.sgst - revByTax.sgst),
+      cess: r2(availByTax.cess - revByTax.cess),
+    },
+  };
   const inwardIgst = r2(input.reconRows.reduce((a, r) => a + r2(r.two_b_itc !== undefined ? r2(r.igst) : 0), 0));
   const inwardCgst = r2(input.reconRows.reduce((a, r) => a + r2(r.two_b_itc !== undefined ? r2(r.cgst) : 0), 0));
   const inwardSgst = r2(input.reconRows.reduce((a, r) => a + r2(r.two_b_itc !== undefined ? r2(r.sgst) : 0), 0));
@@ -300,8 +421,15 @@ export function buildGstr3b(input: Build3bInput): Gstr3bModel {
     financialYear: fyOf(period),
     outward,
     exempt,
-    nonGst: 0,
+    nonGst: r2(
+      input.sales
+        .filter((s) => s.invoice_type === 'NONGST')
+        .reduce((a, s) => a + r2(s.taxable_value), 0)
+    ),
     zeroRated,
+    inwardRcm,
+    rcmItc,
+    itcByTax,
     inwardTaxable,
     inwardIgst,
     inwardCgst,
@@ -354,7 +482,7 @@ export function gstr3bWorkingRows(m: Gstr3bModel): SheetRow[] {
   // reported as zero instead of being pointed at an outward figure.
   push('3.1(b)', '3.1(b)', 'Outward taxable supplies (zero rated)', m.zeroRated);
   push('3.1(c)', '3.1(c)', 'Other outward supplies (nil rated, exempted)', m.exempt);
-  push('3.1(d)', '3.1(d)', 'Inward supplies liable to reverse charge (not modelled)', 0);
+  push('3.1(d)', '3.1(d)', 'Inward supplies liable to reverse charge', m.inwardRcm.taxable);
   push('3.1(e)', '3.1(e)', 'Non-GST outward supplies', m.nonGst);
 
   push('3.2', '3.2', 'ITC on inward supplies (registered)', m.inwardTaxable);
@@ -440,7 +568,7 @@ export function gstr3bPortalJson(m: Gstr3bModel, itc: ItcDetailRow, itcRev: ItcD
     itcRedDet: { revRsn: [], othrRsn: [] },
     itcAvail: m.itcAvailable,
     itcRev: m.itcReversed,
-    itcNtAvail: 0,
+    itcNtAvail: m.itcReversed,
     itcReedmDet: { csdAmdItmDet: [], csdItmDet: [], isdItmDet: [], othrItmDet: [] },
     itcReedm: 0,
     itcNtReedm: 0,

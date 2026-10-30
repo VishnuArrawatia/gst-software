@@ -821,6 +821,7 @@ tr.clickable { cursor: default; }
         </div>
         <div class="row" style="margin-top:12px">
           <button id="salesPreviewBtn" onclick="salesPreview()">Preview file</button>
+          <button id="salesImportBtn" onclick="salesImport()">Confirm import to Books + Reconcile GSTR-1</button>
           <button class="ghost" onclick="salesUploadAndRun()">Upload + run monthly reconciliation</button>
           <span class="hint" id="salesFileMsg" style="flex:1;min-width:200px"></span>
         </div>
@@ -842,9 +843,9 @@ tr.clickable { cursor: default; }
           safe hai.
         </div>
         <div class="drop" id="portalG1Drop" style="margin-top:14px">
-          GST Portal pre-filled GSTR-1 (.xlsx/.xlsm/.xlsb/.xls/.csv) yahan drop karo
-          <div class="hint">ya click karo file choose karne ke liye</div>
-          <input type="file" id="portalG1File" hidden accept=".xlsx,.xlsm,.xlsb,.xls,.csv" />
+          GST Portal pre-filled GSTR-1 (<b>.json</b> / .xlsx / .xlsm / .xlsb / .xls / .csv) yahan drop karo
+          <div class="hint">ya click karo file choose karne ke liye (Portal JSON aur Excel dono chalenge)</div>
+          <input type="file" id="portalG1File" hidden accept=".json,.xlsx,.xlsm,.xlsb,.xls,.csv" />
         </div>
         <div class="row" style="margin-top:12px">
           <div style="flex:1;min-width:190px">
@@ -874,6 +875,8 @@ tr.clickable { cursor: default; }
           <button onclick="g1Draft()">Rebuild draft from books</button>
           <button onclick="g1Recon()">Run reconciliation</button>
           <button class="ghost" onclick="loadOutward()">Refresh</button>
+          <button class="ghost" onclick="exportGstr1Recon('xlsx')">Bill-to-Bill Excel (.xlsx)</button>
+          <button class="ghost" onclick="exportGstr1Recon('csv')">Bill-to-Bill CSV (.csv)</button>
           <button class="ghost" onclick="download(g1HsnUrl('xlsx','comparison'), 'HSN Summary.xlsx')">HSN comparison (.xlsx)</button>
           <span class="hint" id="outMsg" style="flex:1;min-width:200px"></span>
         </div>
@@ -1044,6 +1047,19 @@ tr.clickable { cursor: default; }
         source file and re-uploading the month.
       -->
       <div class="card">
+        <h2>GSTR-3B Table 4 — Input Credit (ITC) Live Scorecard (Bill-to-Bill Roll-up)</h2>
+        <div class="hint">
+          Purchase Register vs GSTR-2B ke har bill ke <b>ITC Decision</b> se GSTR-3B Table 4 ka live calculation.
+          <b>Auto-Apply 3B ITC Decisions</b> dabane par Matched bills <code>4(A)(5) Claim Now</code>, Missing in 2B bills <code>Carry Forward (Hold)</code>, aur Sec 17(5) bills <code>4(B)(1) Blocked</code> me set ho jaate hain.
+        </div>
+        <div class="row" style="margin-top:10px">
+          <button onclick="autoDecideItc()">Auto-Apply 3B ITC Decisions (Bill-to-Bill)</button>
+          <button class="ghost" onclick="downloadTwobRecon(false)">Download 2B vs Books Bill-to-Bill Sheet (.xlsx)</button>
+        </div>
+        <div class="tiles" id="gstr3bItcTiles" style="margin-top:12px"></div>
+      </div>
+
+      <div class="card">
         <h2>Purchase register vs GSTR-2B — invoice level</h2>
         <div class="hint" id="reconCtx">&mdash;</div>
         <div class="row" style="margin-top:12px">
@@ -1101,6 +1117,40 @@ tr.clickable { cursor: default; }
       </div>
     </section>
 
+    <!-- ============================= GSTR-9 & 9C ANNUAL ==================== -->
+    <section class="view" id="viewGstr9" hidden>
+      <div class="card">
+        <h2>GSTR-9 Annual Return &amp; GSTR-9C Audit Reconciliation (12-Month Compiler)</h2>
+        <div class="hint">
+          Poore Financial Year (Apr–Mar + next FY Apr–Oct spillover) ka automatic GSTR-1 &rarr; GSTR-2B/IMS &rarr; GSTR-3B &rarr; GSTR-9 &amp; GSTR-9C compilation.
+        </div>
+        <div class="row" style="margin-top:12px">
+          <button onclick="loadGstr9()">Compile / Refresh GSTR-9 &amp; 9C</button>
+          <button class="ghost" onclick="downloadGstr9Json()">Download GSTR-9 Portal JSON</button>
+          <button class="ghost" onclick="downloadImsCsv()">Download IMS Action Sheet (.csv)</button>
+          <span class="hint" id="gstr9Msg" style="flex:1;min-width:200px"></span>
+        </div>
+        <div class="tiles" id="gstr9Tiles" style="margin-top:12px"></div>
+      </div>
+      <div class="card">
+        <h2>12-Month Master Control Matrix (GSTR-1 vs GSTR-3B vs GSTR-2B vs Books)</h2>
+        <div class="scroll"><table id="gstr9MonthlyTable"></table></div>
+      </div>
+      <div class="card">
+        <h2>GSTR-9 Form Summary (Parts II to V — Tables 4, 5, 6, 7, 8, 9, 13)</h2>
+        <div class="scroll"><table id="gstr9Table"></table></div>
+      </div>
+      <div class="card">
+        <h2>GSTR-9C Audit Reconciliation (Tables 5, 7, 9, 12 — Books vs Annual Return)</h2>
+        <div class="scroll"><table id="gstr9cTable"></table></div>
+      </div>
+      <div class="card">
+        <h2>IMS (Invoice Management System) Action Summary — Accept / Reject / Pending</h2>
+        <div class="tiles" id="imsTiles"></div>
+        <div class="scroll" style="margin-top:12px"><table id="imsTable"></table></div>
+      </div>
+    </section>
+
     <!-- =============================== REPORTS ============================= -->
     <section class="view" id="viewReports" hidden>
       <div class="card">
@@ -1108,6 +1158,8 @@ tr.clickable { cursor: default; }
         <div class="row">
           <button class="ghost" onclick="download('/api/report/complete.xlsx','GST_Reconciliation.xlsx')">Download Complete Reconciliation (.xlsx)</button>
           <button class="ghost" onclick="downloadTwobRecon(false)">2B vs Books reco sheet (.xlsx)</button>
+          <button class="ghost" onclick="download('/api/guide/pdf?lang=en','GST_Control_ERP_User_Manual_English.pdf')">User Manual - English (.pdf)</button>
+          <button class="ghost" onclick="download('/api/guide/pdf','GST_Control_ERP_Step_by_Step_Guide_With_Screenshots.pdf')">User Guide - Hinglish (.pdf)</button>
           <button class="ghost" onclick="loadReports()">Refresh list</button>
           <span class="hint" id="reportsMsg" style="flex:1;min-width:200px"></span>
         </div>
@@ -1302,7 +1354,7 @@ const CTX = {
   outStatus: '',
 };
 
-const VIEWS = ['home', 'sales', 'portal', 'outward', 'hsn', 'pl', 'purchase', 'paste', 'reports', 'masters'];
+const VIEWS = ['home', 'sales', 'portal', 'outward', 'hsn', 'pl', 'purchase', 'paste', 'gstr9', 'reports', 'masters'];
 
 /**
  * Icons are inline paths. The office LAN has no internet, so nothing here may
@@ -1338,6 +1390,7 @@ const NAV = [
   { id: 'pl-recon', label: 'P&L vs GSTR-1', view: 'pl', icon: 'pl' },
   { id: 'purchase-register', label: 'Purchase vs GSTR-2B', view: 'purchase', icon: 'recon' },
   { id: 'paste-register', label: 'Paste Register', view: 'paste', icon: 'paste' },
+  { id: 'gstr9-annual', label: 'GSTR-9 & 9C Annual', view: 'gstr9', icon: 'reports' },
   { id: 'reports', label: 'Reports', view: 'reports', icon: 'reports' },
   { id: 'masters', label: 'Masters', view: 'masters', icon: 'masters' },
 ];
@@ -1387,6 +1440,11 @@ const VIEW_META = {
     title: 'Paste register',
     sub: 'Excel se rows copy karke yahan paste karo, header row ke saath. Preview bilkul wahi parser chalata hai jo file upload chalata hai.',
     img: '/assets/gst-blocks-cart.jpg',
+  },
+  gstr9: {
+    title: 'GSTR-9 Annual & GSTR-9C Audit Control',
+    sub: 'GSTR-1 se le kar GSTR-2B/IMS, GSTR-3B aur Annual GSTR-9 / GSTR-9C tak ka poora 12-month reconciliation ek hi jagah.',
+    img: '/assets/gst-rupee.jpg',
   },
   reports: {
     title: 'Reports & downloads',
@@ -1645,9 +1703,11 @@ const NUM_FIELDS = new Set([
   'portalTaxable', 'portalIgst', 'portalCgst', 'portalSgst', 'portalCess',
   'diffTaxable', 'diffIgst', 'diffCgst', 'diffSgst', 'diffCess', 'taxable', 'qty',
   'pl_amount', 'gstr1_amount', 'amount', 'tax', 'draft_taxable', 'filed_taxable', 'draft_tax', 'filed_tax',
+  'draft_igst', 'filed_igst', 'draft_cgst', 'filed_cgst', 'draft_sgst', 'filed_sgst', 'draft_cess', 'filed_cess',
   'taxable_difference', 'tax_difference', 'draft_count', 'filed_count', 'lines', 'matched',
   'missing', 'mismatch', 'blocked', 'duplicate', 'pendingDecision', 'followUp', 'twobFiles',
   'twobRecords', 'itemRows', 'count', 'documents', 'matchedHeads', 'pendingHeads', 'unmappedHeads',
+  'totalTax', 'total_itc', 'gstr1Taxable', 'gstr1Tax', 'gstr3bOutwardTaxable', 'gstr3bOutputTax', 'booksItc', 'twobItc', 'gstr3bItcNet', 'rcmTax', 'cashPaid',
 ]);
 
 function tableHtml(cols, rows, emptyText) {
@@ -1827,6 +1887,7 @@ function showView(v) {
   if (v === 'hsn') loadHsn();
   if (v === 'purchase') loadPurchase();
   if (v === 'paste') loadPaste();
+  if (v === 'gstr9') loadGstr9();
   if (v === 'reports') loadReports();
   if (v === 'masters') loadMasters();
 }
@@ -2258,6 +2319,39 @@ function salesPreviewHtml(out) {
     tableHtml(rowsCols, out.rows || [], 'Koi invoice nahi.') + '</table></div>' + issues + skipped;
 }
 
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(new Error('File read nahi ho saki.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function salesImport() {
+  const input = el('salesFile');
+  const f = input && input.files && input.files[0];
+  if (!f) return toast('Pehle Sales Register file choose karo.', 'err');
+  if (!CTX.gstin) return toast('Upar header me Our GSTIN select karo.', 'err');
+  try {
+    if (el('salesFileMsg')) el('salesFileMsg').textContent = 'importing ' + f.name + ' to Books & building GSTR-1\u2026';
+    const dataUrl = await fileToDataUrl(f);
+    const out = await postJson('/api/sales-register/import', {
+      gstin: CTX.gstin,
+      period: CTX.period || '',
+      name: f.name,
+      data: dataUrl,
+    });
+    if (el('salesFileMsg')) el('salesFileMsg').textContent = 'Imported ' + cnt(out.inserted) + ' invoices (' + (out.periods || []).join(', ') + ')';
+    toast('Sales Register Books me save ho gaya (' + cnt(out.inserted) + ' bills) aur GSTR-1 Draft + Recon ban gaya!', 'ok');
+    await loadContext();
+    go('outward');
+  } catch (e) {
+    if (el('salesFileMsg')) el('salesFileMsg').textContent = '';
+    toast(errText(e), 'err');
+  }
+}
+
 async function salesUploadAndRun() {
   const input = el('salesFile');
   const f = input && input.files && input.files[0];
@@ -2432,6 +2526,15 @@ async function loadOutward() {
   loadCoverage();
 }
 
+function exportGstr1Recon(fmt) {
+  if (!CTX.gstin || !CTX.period) return toast('GSTIN aur period select karo.', 'err');
+  const st = CTX.outStatus ? '&status=' + enc(CTX.outStatus) : '';
+  return download(
+    '/api/gstr1/recon-export?gstin=' + enc(CTX.gstin) + '&period=' + enc(CTX.period) + '&format=' + enc(fmt || 'xlsx') + st,
+    'GSTR1_vs_Books_' + CTX.gstin + '_' + CTX.period + '.' + (fmt || 'xlsx')
+  );
+}
+
 function renderOutward(out) {
   const totals = out.totals || {};
   const tiles =
@@ -2449,12 +2552,18 @@ function renderOutward(out) {
       esc(statusLabel(s)) + ' (' + cnt(totals[s]) + ')</button>').join(''));
 
   const cols = [
-    ['status', 'Outcome'], ['table_type', 'Table'], ['invoice_number_raw', 'Invoice'],
+    ['status', 'Outcome'], ['gstr1_table', 'Table'], ['invoice_number_raw', 'Invoice No'],
     ['invoice_date', 'Date'], 'customer_name', 'customer_gstin_norm',
-    ['draft_taxable', 'Draft taxable'], ['filed_taxable', 'Filed taxable'],
-    ['draft_tax', 'Draft tax'], ['filed_tax', 'Filed tax'], ['difference_amount', 'Difference'],
+    ['draft_taxable', 'Books Taxable'], ['filed_taxable', 'Portal Taxable'], ['taxable_difference', 'Taxable Diff'],
+    ['draft_tax', 'Books Tax'], ['filed_tax', 'Portal Tax'], ['tax_difference', 'Tax Diff'],
+    ['suggested_fix', 'Action / Remarks'],
   ];
-  const rows = (out.outcomes || []).map((r) => Object.assign({}, r, { status: r.status }));
+  const rows = (out.outcomes || []).map((r) => Object.assign({}, r, {
+    status: r.status,
+    gstr1_table: r.gstr1_table || r.table_type || '',
+    taxable_difference: r.taxable_difference != null ? r.taxable_difference : ((Number(r.draft_taxable || 0) - Number(r.filed_taxable || 0))),
+    tax_difference: r.tax_difference != null ? r.tax_difference : ((Number(r.draft_tax || 0) - Number(r.filed_tax || 0))),
+  }));
   setHtml('outTable',
     '<thead><tr>' + cols.map((c) => {
       const key = Array.isArray(c) ? c[0] : c;
@@ -2902,6 +3011,19 @@ async function upload2b(andReconcile) {
   if (!f) return toast('Pehle GSTR-2B file choose karo.', 'err');
   note('twobMsg', 'hint', 'uploading ' + f.name + '\u2026');
   try {
+    if (andReconcile && CTX.gstin && CTX.period) {
+      const dataUrl = await fileToDataUrl(f);
+      const imp = await postJson('/api/twob-file/import', {
+        gstin: CTX.gstin,
+        period: CTX.period,
+        name: f.name,
+        data: dataUrl,
+      });
+      note('twobMsg', 'ok', f.name + ' import ho gaya (' + cnt(imp.imported2b) + ' 2B bills) aur Books ke saath Bill-to-Bill reconcile ho gaya!');
+      await loadContext();
+      await loadRecon();
+      return imp;
+    }
     const out = await postFile('/api/upload?name=' + enc(f.name), f);
     const kb = Math.round((out.size || 0) / 1024);
     if (!andReconcile) {
@@ -2915,6 +3037,18 @@ async function upload2b(andReconcile) {
   } catch (e) {
     showInline('twobMsg', 'err', errText(e));
     return undefined;
+  }
+}
+
+async function autoDecideItc() {
+  if (!CTX.gstin || !CTX.period) return toast('Upar header se GSTIN aur Return month choose karo.', 'err');
+  note('reconMsg', 'hint', 'Auto-applying GSTR-3B Input Credit (Table 4) decisions\u2026');
+  try {
+    const out = await postJson('/api/recon/purchase/auto-decide', { gstin: CTX.gstin, period: CTX.period });
+    toast('GSTR-3B Input Credit decisions apply ho gaye: ' + cnt(out.updated) + ' bills updated!', 'ok');
+    await loadRecon();
+  } catch (e) {
+    note('reconMsg', 'err', errText(e));
   }
 }
 
@@ -3011,7 +3145,8 @@ const RECON_COLS = [
   ['book_taxable_value', 'Signed taxable'], ['itc_amount', 'Signed ITC'],
   ['twob_taxable_value', '2B taxable'], ['twob_itc', '2B ITC'],
   ['taxable_difference', 'Taxable diff'], ['itc_difference', 'ITC diff'],
-  ['twoB', '2B month'], ['status', 'Status'], ['itc', 'ITC decision'], ['edit', ''],
+  ['twoB', '2B month'], ['status', 'Status'], ['itc', 'ITC decision'],
+  ['gstr3b_bucket', '3B Input Credit'], ['suggested_2b', 'Probable 2B Bill'], ['edit', ''],
 ];
 
 const RECON_NUM = new Set([
@@ -3055,6 +3190,16 @@ function renderRecon() {
     '<div class="tile ' + (n(s.taxableCredit) ? 'warn' : '') + '"><div class="k">Credit notes</div><div class="v" style="font-size:15px">' + money(n(s.taxableCredit)) + '</div></div>' +
     '<div class="tile good"><div class="k">Net taxable</div><div class="v" style="font-size:15px">' + money(n(s.taxableNet)) + '</div></div>');
 
+  const g3b = out.gstr3bItc || {};
+  setHtml('gstr3bItcTiles',
+    '<div class="tile good"><div class="k">4(A)(5) All Other ITC</div><div class="v" style="font-size:15px">' + money(n(g3b.table4A5_otherItc)) + '</div></div>' +
+    '<div class="tile"><div class="k">4(A)(3) RCM ITC</div><div class="v" style="font-size:15px">' + money(n(g3b.table4A3_rcmItc)) + '</div></div>' +
+    '<div class="tile good"><div class="k">4(A) Gross Available</div><div class="v" style="font-size:15px">' + money(n(g3b.table4A_totalAvailable)) + '</div></div>' +
+    '<div class="tile ' + (n(g3b.table4B_reversedBlocked) ? 'bad' : '') + '"><div class="k">4(B) Blocked / Sec 17(5)</div><div class="v" style="font-size:15px">' + money(n(g3b.table4B_reversedBlocked)) + '</div></div>' +
+    '<div class="tile accent"><div class="k">4(C) Net ITC in GSTR-3B</div><div class="v" style="font-size:15px">' + money(n(g3b.table4C_netItcAvailed)) + '</div></div>' +
+    '<div class="tile ' + (n(g3b.pending4ai_booksOnly) ? 'warn' : '') + '"><div class="k">Hold (Books Only / Missing 2B)</div><div class="v" style="font-size:15px">' + money(n(g3b.pending4ai_booksOnly)) + '</div></div>' +
+    '<div class="tile ' + (n(g3b.unbooked2bItc) ? 'warn' : '') + '"><div class="k">Unbooked 2B ITC</div><div class="v" style="font-size:15px">' + money(n(g3b.unbooked2bItc)) + '</div></div>');
+
   // ---- the invoice table ----
   const head = '<thead><tr>' + RECON_COLS.map((c) =>
     '<th class="' + (RECON_NUM.has(c[0]) ? 'num' : '') + '">' + esc(c[1]) + '</th>').join('') + '</tr></thead>';
@@ -3082,6 +3227,18 @@ function renderRecon() {
             (r.recon_edited ? ' <span class="pill info" title="Recon values were corrected">edited</span>' : '') + '</td>';
         }
         if (k === 'itc') return '<td>' + (r.itc_decision ? esc(r.itc_decision) : '<span class="hint">Pending Review</span>') + '</td>';
+        if (k === 'gstr3b_bucket') {
+          const b = r.gstr3b_bucket || '4(A) \u2014 Claimed';
+          const cls = /Blocked|Duplicate/i.test(b) ? 'bad' : (/Books only|Carried/i.test(b) ? 'warn' : 'good');
+          return '<td><span class="pill ' + cls + '">' + esc(b) + '</span></td>';
+        }
+        if (k === 'suggested_2b') {
+          if (r.suggested_2b_invoice_no) {
+            return '<td><span class="pill warn" title="Same Supplier GSTIN + Amount in GSTR-2B">' +
+              esc(r.suggested_2b_invoice_no) + (r.suggested_2b_date ? ' (' + esc(fmtDmy(r.suggested_2b_date)) + ')' : '') + '</span></td>';
+          }
+          return '<td>&mdash;</td>';
+        }
         if (k === 'twoB') {
           return '<td>' + (r.matched_2b_month ? esc(r.twoBMonthLabel || monthLabel(r.matched_2b_month)) : '&mdash;') + '</td>';
         }
@@ -3121,10 +3278,39 @@ function renderRecon() {
  * problem, and this screen reconciles the two systems, it does not rewrite one
  * of them.
  */
+function applyProbable2b(inv, dt) {
+  if (el('re_inv') && inv) el('re_inv').value = inv;
+  if (el('re_dt') && dt) el('re_dt').value = String(dt).slice(0, 10);
+  if (el('re_why') && !el('re_why').value) el('re_why').value = 'Matched to Probable 2B Invoice ' + inv;
+}
+
 function reconEditRow(r) {
   const inp = (id, value, type, extra) =>
     '<div><label for="' + id + '">' + esc(extra || '') + '</label>' +
     '<input id="' + id + '" type="' + (type || 'text') + '" value="' + esc(value == null ? '' : value) + '" /></div>';
+  const curItc = r.itc_decision || 'Pending Review';
+  const curT3b = r.return_classification || 'Pending Review';
+  const itcOpts = [
+    ['Pending Review', 'Pending Review'],
+    ['Claim', 'Claim \u2014 GSTR-3B Table 4(A) me lo'],
+    ['Reclaim Later', 'Reclaim Later \u2014 Agle mahine ke liye Hold'],
+    ['Query Vendor', 'Query Vendor \u2014 Supplier follow-up / Hold'],
+    ['Ineligible', 'Ineligible \u2014 Sec 17(5) Blocked / Table 4(B)'],
+    ['Reversed', 'Reversed \u2014 Reversed in Table 4(B)'],
+    ['Do Not Claim', 'Do Not Claim \u2014 Duplicate / Exclude from 3B'],
+  ];
+  const t3bOpts = [
+    ['Pending Review', 'Pending Review (Auto from ITC Decision)'],
+    ['4(A) \u2014 Claimed', '4(A) \u2014 Claimed (Eligible ITC)'],
+    ['4(A)(i) \u2014 Books only', '4(A)(i) \u2014 Books only (Missing in 2B)'],
+    ['4(B) \u2014 Blocked', '4(B) \u2014 Blocked / Reversed (Sec 17(5))'],
+    ['Not in 3B \u2014 Carried', 'Not in 3B \u2014 Carried to next period'],
+    ['Ineligible', 'Ineligible \u2014 Permanently Ineligible'],
+  ];
+  const probBtn = r.suggested_2b_invoice_no
+    ? '<button type="button" class="ghost sm" onclick="applyProbable2b(\'' + esc(r.suggested_2b_invoice_no) + '\',\'' + esc(r.suggested_2b_date || '') + '\')">' +
+      'Apply Probable 2B Bill (' + esc(r.suggested_2b_invoice_no) + ')</button>'
+    : '';
   return '<tr class="editrow"><td colspan="' + RECON_COLS.length + '">' +
     '<div class="editgrid">' +
       inp('re_inv', r.recon_invoice_no, 'text', 'Invoice no') +
@@ -3133,15 +3319,23 @@ function reconEditRow(r) {
       inp('re_our', r.our_gstin, 'text', 'Our GSTIN (moves the line)') +
     '</div>' +
     '<div class="editgrid" style="margin-top:12px">' +
-      '<div><label for="re_why">Reason (audit trail me jaata hai)</label>' +
-      '<input id="re_why" type="text" value="" placeholder="jaise: supplier ne invoice no. amend kiya" /></div>' +
+      '<div><label for="re_itc">GSTR-3B Input Credit (ITC) Decision</label><select id="re_itc">' +
+        itcOpts.map((o) => '<option value="' + esc(o[0]) + '"' + (curItc === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>').join('') +
+      '</select></div>' +
+      inp('re_claim', r.itc_decision_month || CTX.period || '', 'text', 'Claim Month (YYYY-MM)') +
+      '<div><label for="re_t3b">GSTR-3B Table 4 Bucket</label><select id="re_t3b">' +
+        t3bOpts.map((o) => '<option value="' + esc(o[0]) + '"' + (curT3b === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>').join('') +
+      '</select></div>' +
+      '<div><label for="re_why">Reason / Audit Remark</label>' +
+      '<input id="re_why" type="text" value="" placeholder="jaise: supplier ne invoice no. amend kiya / matched" /></div>' +
     '</div>' +
     '<div class="edit-note">Register me is row ki asli value: <b>' + esc(r.book_supplier_gstin) + '</b> \u00b7 <b>' +
       esc(r.book_invoice_no) + '</b> \u00b7 <b>' + esc(fmtDmy(r.book_invoice_date)) + '</b>. ' +
-      'Invoice number aur date sirf MATCH ke liye change hote hain \u2014 books ki original value jaisi hai waisi hi rehti hai ' +
-      'aur yahan likhi dikhti hai. Amount badalna ho to register sudhar kar dobara upload karo.</div>' +
+      'Invoice number aur date sirf MATCH ke liye change hote hain \u2014 books ki original value jaisi hai waisi hi rehti hai. ' +
+      (r.suggested_action ? ' <b>Hint:</b> ' + esc(r.suggested_action) : '') + '</div>' +
     '<div class="edit-actions">' +
       '<button onclick="reconSave(' + r.id + ')">Save &amp; re-reconcile</button>' +
+      probBtn +
       '<button class="ghost" onclick="reconCancel()">Cancel</button>' +
       '<button class="ghost" onclick="reconHistory(' + r.id + ')">Correction history</button>' +
     '</div></td></tr>';
@@ -3188,9 +3382,14 @@ async function reconSave(id) {
   if (dt && dt !== String(row.recon_invoice_date || '').slice(0, 10)) patch.recon_invoice_date = dt;
   if (sup && sup !== String(row.recon_supplier_gstin || '').toUpperCase()) patch.recon_supplier_gstin = sup;
   const moves = !!our && our !== String(row.our_gstin || '').toUpperCase();
+  const itcDec = reconVal('re_itc');
+  const claimMo = reconVal('re_claim');
+  const t3b = reconVal('re_t3b');
+  const itcChanged = (itcDec && itcDec !== String(row.itc_decision || 'Pending Review')) || (claimMo !== String(row.itc_decision_month || ''));
+  const t3bChanged = t3b && t3b !== String(row.return_classification || 'Pending Review');
 
-  if (!Object.keys(patch).length && !moves) return toast('Kuch badla nahi.', 'warn');
-  if (!why) return toast('Reason likhna zaroori hai \u2014 wahi audit trail me jaata hai.', 'err');
+  if (!Object.keys(patch).length && !moves && !itcChanged && !t3bChanged) return toast('Kuch badla nahi.', 'warn');
+  if ((Object.keys(patch).length || moves) && !why) return toast('Invoice/GSTIN badalne par Reason likhna zaroori hai \u2014 wahi audit trail me jaata hai.', 'err');
 
   note('reconMsg', 'hint', 'saving\u2026');
   try {
@@ -3202,6 +3401,14 @@ async function reconSave(id) {
     if (moves) {
       const out = await postJson('/api/lines/' + id + '/our-gstin', { gstin: our, reason: why });
       changed = changed.concat(out.changed || []);
+    }
+    if (itcChanged && itcDec) {
+      await postJson('/api/lines/' + id + '/itc', { decision: itcDec, decisionMonth: claimMo, reason: why || 'Updated from Bill-to-Bill UI' });
+      changed.push('itc_decision=' + itcDec);
+    }
+    if (t3bChanged) {
+      await postJson('/api/lines/' + id + '/classify', { value: t3b, reason: why || 'Classified from Bill-to-Bill UI' });
+      changed.push('table3b=' + t3b);
     }
     RECON.editing = null;
     note('reconMsg', 'ok', 'Save ho gaya: ' + (changed.join(', ') || 'kuch nahi') + '. Reconciliation dobara chal gayi.');
@@ -3445,6 +3652,92 @@ async function boot() {
   try { me = await api('/api/auth/me'); } catch (e) { me = null; }
   if (me && me.user) { await enter(me.user); return; }
   showGate('');
+}
+
+function downloadGstr9Json() {
+  const qs = 'gstin=' + enc(CTX.gstin || '') + '&fy=' + enc(CTX.fy || '2025-26');
+  download('/api/gstr9/json?' + qs, (CTX.gstin || 'ALL') + '_' + (CTX.fy || '2025-26') + '_GSTR9.json');
+}
+
+function downloadImsCsv() {
+  const qs = 'gstin=' + enc(CTX.gstin || '') + '&fy=' + enc(CTX.fy || '2025-26') + '&period=' + enc(CTX.period || '');
+  download('/api/ims/csv?' + qs, 'IMS_Actions_' + (CTX.gstin || 'ALL') + '_' + (CTX.period || CTX.fy || '2025-26') + '.csv');
+}
+
+async function loadGstr9() {
+  setHtml('gstr9Msg', 'Compiling GSTR-9, GSTR-9C & IMS from 12 months data\u2026');
+  try {
+    const qs = 'gstin=' + enc(CTX.gstin || '') + '&fy=' + enc(CTX.fy || '2025-26') + '&period=' + enc(CTX.period || '');
+    const r = await api('/api/gstr9?' + qs);
+    const g9 = r.gstr9 || {};
+    const t4 = (g9.table4 && g9.table4.totalTaxable4N) || {};
+    const t5 = g9.table5 || {};
+    const t7 = (g9.table7 && g9.table7.netItcAvailable7J) || {};
+    const t8 = (g9.table8 && g9.table8.difference8D) || {};
+    setHtml('gstr9Tiles', [
+      ['FY Turnover (5N)', money(t5.totalTurnover5N || 0)],
+      ['Taxable Turnover (4N)', money(t4.taxable || 0)],
+      ['Output Tax (4N)', money(t4.tax || 0)],
+      ['Net ITC Availed (7J)', money(t7.total || 0)],
+      ['2B vs 3B Diff (8D)', money(t8.total || 0)],
+    ].map((x) => '<div class="tile"><div class="k">' + esc(x[0]) + '</div><div class="v">' + x[1] + '</div></div>').join(''));
+
+    setHtml('gstr9MonthlyTable', tableHtml([
+      ['period', 'Period'],
+      ['gstr1Taxable', 'GSTR-1 Taxable'],
+      ['gstr1Tax', 'GSTR-1 Tax'],
+      ['gstr3bOutwardTaxable', '3B Outward Taxable'],
+      ['gstr3bOutputTax', '3B Output Tax'],
+      ['booksItc', 'Books ITC'],
+      ['twobItc', '2B ITC'],
+      ['gstr3bItcNet', '3B Net ITC (4C)'],
+      ['rcmTax', 'RCM Tax'],
+      ['cashPaid', 'Cash Paid'],
+    ], g9.monthlySummary || [], 'Is FY me koi monthly data nahi mila.'));
+
+    setHtml('gstr9Table', tableHtml([
+      ['part', 'Part'],
+      ['table', 'Table'],
+      ['description', 'Description'],
+      ['taxable', 'Taxable Value'],
+      ['igst', 'IGST'],
+      ['cgst', 'CGST'],
+      ['sgst', 'SGST'],
+      ['cess', 'Cess'],
+      ['totalTax', 'Total Tax / ITC'],
+    ], r.gstr9Rows || [], 'Koi GSTR-9 row nahi.'));
+
+    setHtml('gstr9cTable', tableHtml([
+      ['table', 'Table'],
+      ['description', 'Particulars'],
+      ['amount', 'Amount (Rs)'],
+    ], r.gstr9cRows || [], 'Koi GSTR-9C row nahi.'));
+
+    const ims = r.imsSummary || {};
+    setHtml('imsTiles', [
+      ['IMS Accept', cnt(ims.accept_count || 0) + ' (' + money(ims.accept_itc || 0) + ')'],
+      ['IMS Reject', cnt(ims.reject_count || 0) + ' (' + money(ims.reject_itc || 0) + ')'],
+      ['IMS Pending', cnt(ims.pending_count || 0) + ' (' + money(ims.pending_itc || 0) + ')'],
+    ].map((x) => '<div class="tile"><div class="k">' + esc(x[0]) + '</div><div class="v">' + x[1] + '</div></div>').join(''));
+
+    setHtml('imsTable', tableHtml([
+      ['twob_month', '2B Month'],
+      ['supplier_gstin', 'Supplier GSTIN'],
+      ['supplier_name', 'Supplier'],
+      ['document_type', 'Doc Type'],
+      ['invoice_no', 'Invoice No'],
+      ['invoice_date', 'Invoice Date'],
+      ['taxable_value', 'Taxable'],
+      ['total_itc', 'Total ITC'],
+      ['recon_status', 'Recon Status'],
+      ['ims_action', 'IMS Action'],
+      ['ims_remark', 'Remark'],
+    ], r.imsRows || [], 'Koi IMS row nahi.'));
+
+    setHtml('gstr9Msg', 'FY ' + esc(r.fy || '') + ' compiled (' + esc(r.gstin || 'All GSTINs') + ').');
+  } catch (e) {
+    setHtml('gstr9Msg', errText(e));
+  }
 }
 
 boot();

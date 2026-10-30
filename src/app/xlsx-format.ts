@@ -314,11 +314,19 @@ export function addListValidations(
     const block =
       `<dataValidations count="1"><dataValidation ${attrs} sqref="${v.sqref}">` +
       `<formula1>"${escXml(v.values.join(','))}"</formula1></dataValidation></dataValidations>`;
-    // Schema order: dataValidations sits after autoFilter / mergeCells and
-    // before hyperlinks / printOptions / pageMargins. Inserting at the last of
-    // those boundaries keeps Excel from rejecting the file.
+    // Schema order: dataValidations sits after autoFilter / mergeCells /
+    // conditionalFormatting and before every one of the elements below. Get
+    // this wrong and Excel does not merely reorder it — it refuses to open the
+    // workbook (or "repairs" it, losing the rows). SheetJS itself emits
+    // `<ignoredErrors>` right after `<sheetData>`, so inserting before
+    // `</worksheet>` was putting the validation *after* it and breaking the
+    // template. Every element that must follow dataValidations is listed.
     const at = [
-      '<hyperlinks', '<printOptions', '<pageMargins', '<pageSetup', '<headerFooter', '</worksheet>',
+      '<hyperlinks', '<printOptions', '<pageMargins', '<pageSetup', '<headerFooter',
+      '<rowBreaks', '<colBreaks', '<customProperties', '<cellWatches',
+      '<ignoredErrors', '<smartTags', '<drawing', '<legacyDrawing', '<picture',
+      '<oleObjects', '<controls', '<webPublishItems', '<tableParts', '<extLst',
+      '</worksheet>',
     ]
       .map((t) => xml.indexOf(t))
       .filter((i) => i >= 0)

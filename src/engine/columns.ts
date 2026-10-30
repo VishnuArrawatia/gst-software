@@ -58,6 +58,7 @@ export const FIELD_ALIASES: Record<string, string[]> = {
   invoice_value: [
     'invoice value(₹)', 'invoice value', 'invoice amount', 'total invoice value',
     'invoice total', 'gross amount', 'total amount', 'bill value',
+    'doc total', 'doctotal', 'net amount', 'bill amount', 'total value',
   ],
   place_of_supply: ['place of supply', 'place of supply (name)', 'pos', 'supply state', 'to location', 'tolocation'],
   reverse_charge: [
@@ -69,6 +70,7 @@ export const FIELD_ALIASES: Record<string, string[]> = {
   taxable_value: [
     'taxable value (₹)', 'taxable value', 'taxable amount', 'taxable val',
     'assessable value', 'basic amount', 'taxable amt',
+    'net taxable', 'taxable', 'net value',
   ],
   igst: ['integrated tax(₹)', 'integrated tax', 'igst', 'igst amount', 'igst amt', 'igst input'],
   cgst: ['central tax(₹)', 'central tax', 'cgst', 'cgst amount', 'cgst amt', 'cgst input'],

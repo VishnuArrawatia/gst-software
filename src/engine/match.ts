@@ -23,6 +23,7 @@
 
 import {
   isCreditDoc,
+  isSec16_4TimeBarred,
   normDocType,
   normGstin,
   normInvoice,
@@ -135,6 +136,15 @@ function bookDocOf(b: PurchaseBill): DocType {
  * pretending otherwise is exactly the kind of quiet wrongness this system exists
  * to prevent.
  */
+function twobDocOf(r: Gstr2bRecord): DocType {
+  const stated = normDocType(r.invoice_type);
+  if (stated !== 'Tax Invoice') return stated;
+  const amounts = [r.taxable_value, r.igst, r.cgst, r.sgst, r.cess]
+    .map(r2)
+    .filter((n) => n !== 0);
+  return amounts.length > 0 && amounts.every((n) => n < 0) ? 'Credit Note' : 'Tax Invoice';
+}
+
 function twobMonthOf(r: Gstr2bRecord): string {
   return (r.portal_fp || r.period || '').trim();
 }
@@ -176,7 +186,8 @@ export function reconcilePurchases(
   books: PurchaseBill[],
   twob: Gstr2bRecord[],
   opts: ReconOptions = {},
-): ReconResult {  const tolerance = opts.tolerance ?? DEFAULT_TOLERANCE;
+): ReconResult {
+  const tolerance = opts.tolerance ?? DEFAULT_TOLERANCE;
 
   // Give every 2B line a stable id up front. Both the matching pass and the
   // unbooked pass then read the SAME id for the same row.
@@ -210,7 +221,7 @@ export function reconcilePurchases(
     // carry the same number. The portal keeps notes in CDNR and the books keep
     // them in the same register, so the type has to be part of the identity.
     const bucket = (twobByKey.get(k) || []).filter(
-      (x) => normDocType(x.invoice_type) === bookDoc,
+      (x) => twobDocOf(x) === bookDoc,
     );
 
     const base: ReconRow = {
@@ -233,6 +244,12 @@ export function reconcilePurchases(
       duplicate_count: booksKeyCount.get(k),
       source_file: b.source_file,
       source_row: b.source_row,
+      itc_decision: b.itc_decision,
+      itc_decision_month: b.itc_decision_month,
+      return_classification: b.return_classification,
+      reverse_charge: b.reverse_charge,
+      hsn: b.hsn,
+      sec16_4_barred: isSec16_4TimeBarred(b.invoice_date, b.itc_decision_month || b.period) || undefined,
     };
 
     // A repeated key on the books side is a real finding — flag every copy so
@@ -270,6 +287,11 @@ export function reconcilePurchases(
     const matchId = twobId(primary);
     const blockedLine = group.find(itcBlocked);
     const twobTaxable = r2(group.reduce((a, x) => a + r2(x.taxable_value), 0));
+    const twobIgst = r2(group.reduce((a, x) => a + r2(x.igst), 0));
+    const twobCgst = r2(group.reduce((a, x) => a + r2(x.cgst), 0));
+    const twobSgst = r2(group.reduce((a, x) => a + r2(x.sgst), 0));
+    const twobCess = r2(group.reduce((a, x) => a + r2(x.cess), 0));
+    const twobRcm = b.reverse_charge ?? group.some((x) => x.reverse_charge);
     const twobItc = r2(group.reduce((a, x) => a + taxOf(x), 0));
     const diffItc = r2(twobItc - itc);
     const diffTaxable = r2(twobTaxable - r2(b.taxable_value));
@@ -292,6 +314,11 @@ export function reconcilePurchases(
         matched_2b_id: matchId,
         matched_2b_month: matched2bMonth || undefined,
         two_b_taxable: r2(twobTaxable),
+        two_b_igst: twobIgst,
+        two_b_cgst: twobCgst,
+        two_b_sgst: twobSgst,
+        two_b_cess: twobCess,
+        reverse_charge: twobRcm,
         two_b_itc: twobItc,
         itc_difference: diffItc,
         taxable_difference: diffTaxable,
@@ -314,6 +341,11 @@ export function reconcilePurchases(
         matched_2b_id: matchId,
         matched_2b_month: matched2bMonth || undefined,
         two_b_taxable: r2(twobTaxable),
+        two_b_igst: twobIgst,
+        two_b_cgst: twobCgst,
+        two_b_sgst: twobSgst,
+        two_b_cess: twobCess,
+        reverse_charge: twobRcm,
         two_b_itc: twobItc,
         itc_difference: r2(diffItc),
         taxable_difference: r2(diffTaxable),
@@ -327,6 +359,11 @@ export function reconcilePurchases(
         matched_2b_id: matchId,
         matched_2b_month: matched2bMonth || undefined,
         two_b_taxable: r2(twobTaxable),
+        two_b_igst: twobIgst,
+        two_b_cgst: twobCgst,
+        two_b_sgst: twobSgst,
+        two_b_cess: twobCess,
+        reverse_charge: twobRcm,
         two_b_itc: twobItc,
         itc_difference: diffItc,
         taxable_difference: diffTaxable,
@@ -368,6 +405,7 @@ export function reconcilePurchases(
       cess: r2(r.cess),
       itc,
       itc_availability: r.itc_availability,
+      reverse_charge: r.reverse_charge,
       reason: r.reason,
       matched_2b_id: matchId,
       matched_2b_month: twobMonthOf(r) || undefined,
@@ -379,6 +417,28 @@ export function reconcilePurchases(
       source_file: r.source_file,
       source_row: r.source_row,
     });
+  }
+
+  // ---- Probable / Fuzzy Match Suggestions (Missing in 2B <-> Unbooked 2B) --
+  const unbookedBySupplier = new Map<string, ReconRow[]>();
+  for (const u of unbooked2b) {
+    const sk = `${u.our_gstin}|${u.supplier_gstin}|${u.document_type || 'Tax Invoice'}`;
+    if (!unbookedBySupplier.has(sk)) unbookedBySupplier.set(sk, []);
+    unbookedBySupplier.get(sk)!.push(u);
+  }
+  for (const r of rows) {
+    if (r.status !== 'Missing in 2B') continue;
+    const sk = `${r.our_gstin}|${r.supplier_gstin}|${r.document_type || 'Tax Invoice'}`;
+    const candidates = unbookedBySupplier.get(sk);
+    if (!candidates || candidates.length === 0) continue;
+    const cand = candidates.find(
+      (c) => Math.abs(r2(c.taxable_value) - r2(r.taxable_value)) <= 2 && Math.abs(r2(c.itc) - r2(r.itc)) <= 2,
+    );
+    if (cand) {
+      r.suggested_2b_invoice_no = cand.invoice_no;
+      r.suggested_2b_date = cand.invoice_date;
+      r.match_hint = `Probable 2B match: "${cand.invoice_no}" dated ${cand.invoice_date} (Taxable ${cand.taxable_value}, ITC ${cand.itc})`;
+    }
   }
 
   // ---- summary -----------------------------------------------------------

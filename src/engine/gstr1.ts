@@ -34,7 +34,16 @@ import {
   type InvoiceType,
 } from './core';
 
-export type Table = 'B2B' | 'B2CL' | 'B2CS' | 'CDNR' | 'CDNUR' | 'EXP';
+export type Table = 'B2B' | 'B2CL' | 'B2CS' | 'CDNR' | 'CDNUR' | 'EXP' | 'NIL';
+
+export type NilSupplyType = 'INTRB2B' | 'INTRAB2B' | 'INTRB2C' | 'INTRAB2C';
+
+export interface NilRow {
+  sply_ty: NilSupplyType;
+  nil_amt: number;
+  expt_amt: number;
+  ngsup_amt: number;
+}
 
 /**
  * B2CL is defined by a threshold on the INVOICE VALUE of an inter-state supply
@@ -171,6 +180,10 @@ export interface Gstr1Model {
   cdnr: ReturnInvoice[];
   /** Table 9B — credit / debit notes to unregistered recipients. */
   cdnur: ReturnInvoice[];
+  /** Table 6A — exports (EXPWP / EXPWOP). */
+  exp: ReturnInvoice[];
+  /** Table 8 — nil-rated, exempted, and non-GST outward supplies. */
+  nil: NilRow[];
   /** Table 12 as one summary — B2B and B2C merged, as the portal files it. */
   hsn: HsnRow[];
   /** Table 12 restricted to registered recipients (4A / 9A). */
@@ -315,6 +328,9 @@ export function buildGstr1(gstin: string, sales: GstInvoiceForReturn[]): Gstr1Mo
   const b2cl: ReturnInvoice[] = [];
   const cdnr: ReturnInvoice[] = [];
   const cdnur: ReturnInvoice[] = [];
+  const exp: ReturnInvoice[] = [];
+  const nilOrder: NilSupplyType[] = ['INTRB2B', 'INTRAB2B', 'INTRB2C', 'INTRAB2C'];
+  const nilBuckets = new Map<NilSupplyType, NilRow>();
   const b2csBuckets = new Map<string, B2csBucket>();
   const hsnBuckets = new Map<string, ScopedHsnRow>();
   const validation: ValidationIssue[] = [];
@@ -393,14 +409,18 @@ export function buildGstr1(gstin: string, sales: GstInvoiceForReturn[]): Gstr1Mo
       // the portal because CDNR is grouped by a GSTIN the note does not have.
       const registered = cust.length === 15;
       const exportFamily =
-        s.invoice_type === 'SEZWP' || s.invoice_type === 'SEWOP' || s.invoice_type === 'DE';
+        s.invoice_type === 'SEZWP' ||
+        s.invoice_type === 'SEWOP' ||
+        s.invoice_type === 'DE' ||
+        s.invoice_type === 'EXPWP' ||
+        s.invoice_type === 'EXPWOP';
       // Table 9B carries `typ` instead of a GSTIN: the class of the ORIGINAL
       // supply. B2CL when it would have been invoice-wise (inter-state, value
       // over this period's threshold), otherwise the consolidated B2CS.
       const noteType: ReturnInvoice['noteType'] = registered
         ? undefined
         : exportFamily
-          ? s.invoice_type === 'SEWOP'
+          ? s.invoice_type === 'SEWOP' || s.invoice_type === 'EXPWOP'
             ? 'EXPWOP'
             : 'EXPWP'
           : pos.pos && pos.basis === 'POS' && pos.isInterState && Math.abs(value) > b2clThresholdFor(period)
@@ -415,17 +435,17 @@ export function buildGstr1(gstin: string, sales: GstInvoiceForReturn[]): Gstr1Mo
         validation.push(
           registered
             ? {
-                severity: 'ERROR',
-                invoiceNo: s.invoice_no,
-                message:
-                  'CDNR note me original invoice number missing hai. Portal isko reject kar dega — SAP se linked invoice number bharein.',
-              }
+              severity: 'ERROR',
+              invoiceNo: s.invoice_no,
+              message:
+                'CDNR note me original invoice number missing hai. Portal isko reject kar dega — SAP se linked invoice number bharein.',
+            }
             : {
-                severity: 'WARNING',
-                invoiceNo: s.invoice_no,
-                message:
-                  'CDNUR note me original invoice ka reference nahi hai. Table 9B ise accept karta hai, lekin original invoice number/date dene se officer ko trail milta hai.',
-              },
+              severity: 'WARNING',
+              invoiceNo: s.invoice_no,
+              message:
+                'CDNUR note me original invoice ka reference nahi hai. Table 9B ise accept karta hai, lekin original invoice number/date dene se officer ko trail milta hai.',
+            },
         );
       }
       if (exportFamily && !registered) {
@@ -461,6 +481,51 @@ export function buildGstr1(gstin: string, sales: GstInvoiceForReturn[]): Gstr1Mo
       if (registered) cdnr.push(row);
       else cdnur.push(row);
       continue;
+    }
+
+    // ---- exports (Table 6A) ----
+    if (s.invoice_type === 'EXPWP' || s.invoice_type === 'EXPWOP') {
+      exp.push({
+        table: 'EXP',
+        counterpartyGstin: '',
+        counterpartyName: s.customer_name,
+        invoiceNo: s.invoice_no,
+        invoiceDate: s.invoice_date,
+        invoiceValue: value,
+        placeOfSupply: pos.pos,
+        reverseCharge: s.reverse_charge,
+        invoiceType: s.invoice_type,
+        items: lineItems,
+        ...seriesOf(s),
+      });
+      continue;
+    }
+
+    // ---- Table 8: Nil-rated, Exempt, and Non-GST outward supplies ----
+    const isZeroRatedType =
+      s.invoice_type === 'SEZWP' || s.invoice_type === 'SEWOP' || s.invoice_type === 'DE';
+    const explicitNilKind =
+      s.invoice_type === 'NIL' || s.invoice_type === 'EXEMPT' || s.invoice_type === 'NONGST';
+    if (explicitNilKind || (t !== 0 && tax === 0 && !isZeroRatedType)) {
+      const reg = cust.length === 15;
+      const inter = reg ? stateOf(cust) !== stateOf(gstin) : pos.isInterState;
+      const sply_ty: NilSupplyType = reg
+        ? inter
+          ? 'INTRB2B'
+          : 'INTRAB2B'
+        : inter
+          ? 'INTRB2C'
+          : 'INTRAB2C';
+      const cur = nilBuckets.get(sply_ty) ?? { sply_ty, nil_amt: 0, expt_amt: 0, ngsup_amt: 0 };
+      if (s.invoice_type === 'EXEMPT') {
+        cur.expt_amt = r2(cur.expt_amt + t);
+      } else if (s.invoice_type === 'NONGST') {
+        cur.ngsup_amt = r2(cur.ngsup_amt + t);
+      } else {
+        cur.nil_amt = r2(cur.nil_amt + t);
+      }
+      nilBuckets.set(sply_ty, cur);
+      if (explicitNilKind) continue;
     }
 
     // ---- registered customer -> B2B ----
@@ -545,10 +610,8 @@ export function buildGstr1(gstin: string, sales: GstInvoiceForReturn[]): Gstr1Mo
 
   // ---- duplicate invoice detection inside the return ----
   const seen = new Map<string, number>();
-  for (const inv of [...b2b, ...b2cl, ...cdnr, ...cdnur]) {
-    // Unregistered notes have no GSTIN, so key them by their own table instead
-    // of collapsing them all onto the empty string.
-    const k = `${inv.table === 'CDNUR' ? 'CDNUR' : inv.counterpartyGstin}|${inv.invoiceNo}`;
+  for (const inv of [...b2b, ...b2cl, ...cdnr, ...cdnur, ...exp]) {
+    const k = `${inv.table === 'CDNUR' ? 'CDNUR' : inv.table === 'EXP' ? 'EXP' : inv.counterpartyGstin}|${inv.invoiceNo}`;
     seen.set(k, (seen.get(k) || 0) + 1);
   }
   for (const [k, n] of seen) {
@@ -559,7 +622,7 @@ export function buildGstr1(gstin: string, sales: GstInvoiceForReturn[]): Gstr1Mo
         message: `Ye invoice GSTR-1 me ${n} baar aa raha hai (${k.split('|')[0]}). Portal duplicate reject karega.`,
       });
     }
-  }  return {
+  } return {
     gstin,
     period,
     periodLabel: labelOf(period),
@@ -571,6 +634,8 @@ export function buildGstr1(gstin: string, sales: GstInvoiceForReturn[]): Gstr1Mo
     ),
     cdnr,
     cdnur,
+    exp,
+    nil: nilOrder.filter((k) => nilBuckets.has(k)).map((k) => nilBuckets.get(k)!),
     // The filed table is the two halves added back together, so the portal JSON
     // and the workbook keep the exact shape they had before the split existed.
     hsn: mergeHsnByHsnUqcRate([...hsnBuckets.values()]),
@@ -578,7 +643,7 @@ export function buildGstr1(gstin: string, sales: GstInvoiceForReturn[]): Gstr1Mo
     hsnB2c: sortHsn([...hsnBuckets.values()].filter((h) => h.scope === 'B2C')),
     validation,
     totals: {
-      invoices: b2b.length + b2cl.length + cdnr.length + cdnur.length,
+      invoices: b2b.length + b2cl.length + cdnr.length + cdnur.length + exp.length,
       taxable,
       igst,
       cgst,
@@ -768,7 +833,23 @@ export function gstr1PortalJson(m: Gstr1Model, hash = null): unknown {
     b2cs: b2csPortal,
     cdnr: cdnrPortal,
     cdnur: cdnurPortal,
-    exp: [],
+    exp: grouped(m.exp, (i) => (i.invoiceType === 'EXPWP' ? 'WPAY' : 'WOPAY')).map(([exp_typ, inv]) => ({
+      exp_typ,
+      inv: inv.map((i) => ({
+        inum: i.invoiceNo,
+        idt: portalDate(i.invoiceDate),
+        val: i.invoiceValue,
+        itms: portalItems(i.items),
+      })),
+    })),
+    nil: {
+      inv: m.nil.map((r) => ({
+        sply_ty: r.sply_ty,
+        expt_amt: r.expt_amt,
+        nil_amt: r.nil_amt,
+        ngsup_amt: r.ngsup_amt,
+      })),
+    },
     // The five amendment tables. They MUST be empty for a fresh return: the old
     // code copied the whole regular data set into b2bqa / b2cla / b2csa / cdnra,
     // which would have declared every single invoice a SECOND time as an
@@ -784,7 +865,7 @@ export function gstr1PortalJson(m: Gstr1Model, hash = null): unknown {
     doc_num: docIssued.length,
     amended_doc_issued: { doc_det: [] },
     amended_doc_num: 0,
-    sect: 'B2B,B2CL,B2CS,CDNR,CDNUR,HSN',
+    sect: 'B2B,B2CL,B2CS,CDNR,CDNUR,EXP,NIL,HSN',
   };
 }
 
@@ -809,7 +890,7 @@ function docIssuedOf(m: Gstr1Model): Array<Record<string, unknown>> {
     { nature: string; from?: number; to?: number; cancelled: number; seen: number }
   >();
 
-  for (const inv of [...m.b2b, ...m.b2cl, ...m.cdnr, ...m.cdnur]) {
+  for (const inv of [...m.b2b, ...m.b2cl, ...m.cdnr, ...m.cdnur, ...m.exp]) {
     const from = inv.docSeriesFrom;
     const to = inv.docSeriesTo;
     const cancelled = inv.docSeriesCancelled ?? 0;
@@ -897,6 +978,7 @@ export function gstr1SheetRows(m: Gstr1Model): Gstr1SheetRow[] {
   m.b2cl.forEach((i) => push('B2CL', i));
   m.cdnr.forEach((i) => push('CDNR', i));
   m.cdnur.forEach((i) => push('CDNUR', i));
+  m.exp.forEach((i) => push('EXP', i));
   for (const it of m.b2cs) {
     rows.push({
       table: 'B2CS',
@@ -912,6 +994,25 @@ export function gstr1SheetRows(m: Gstr1Model): Gstr1SheetRow[] {
       cgst: it.cgst,
       sgst: it.sgst,
       cess: it.cess,
+    });
+  }
+  for (const n of m.nil) {
+    const totalNil = r2(n.nil_amt + n.expt_amt + n.ngsup_amt);
+    rows.push({
+      table: 'NIL',
+      gstin: '',
+      party: `Table 8 (${n.sply_ty})`,
+      invoiceNo: '',
+      invoiceDate: '',
+      invoiceValue: totalNil,
+      pos: n.sply_ty,
+      rate: 0,
+      taxable: totalNil,
+      igst: 0,
+      cgst: 0,
+      sgst: 0,
+      cess: 0,
+      desc: `Nil: ${n.nil_amt}, Exempt: ${n.expt_amt}, Non-GST: ${n.ngsup_amt}`,
     });
   }
   return rows;

@@ -145,7 +145,7 @@ export const SALES_TEMPLATE_COLUMNS: TemplateColumn[] = [
   },
   {
     header: 'GST Rate', required: true, sample: '18',
-    note: 'Is line par lagne wala rate — 0 / 0.25 / 3 / 5 / 12 / 18 / 28. Portal me `itm_det.rt` yahi ban jaata hai. ' +
+    note: 'Is line par lagne wala rate — 0 / 0.25 / 3 / 5 / 12 / 18 / 28 / 40. Portal me `itm_det.rt` yahi ban jaata hai. ' +
       'Ye rate file se hi liya jaata hai (tax se derive nahi hota), aur tax isse match karna chahiye warna run error deta hai.',
   },
   {
@@ -279,17 +279,20 @@ export function salesTemplateBuffer(opts: SalesTemplateOptions = {}): Buffer {
   const fill = (over: Record<string, string>): string[] =>
     names.map((h) => over[h] ?? SALES_TEMPLATE_COLUMNS.find((c) => c.header === h)!.sample);
 
-  // Four examples, because the cases that go to four different tables are the
+  // Five examples, because the cases that go to four different tables are the
   // ones a reader gets wrong from a single example:
   //   rows 1-2 — one invoice, TWO rate lines (registered, inter-state) -> B2B
   //   row 3    — unregistered, intra-state, small                      -> B2CS
   //   row 4    — unregistered, inter-state, over Rs 1 lakh             -> B2CL
-  const exampleB2BLine1 = fill({});
+  //   row 5    — registered Credit Note linked to original invoice     -> CDNR
+  const exampleB2BLine1 = fill({
+    'Invoice Value': '146000.00',
+  });
   // The multi-item example is the one that shows the rule: the SAME invoice
-  // value on both lines, each with its own HSN, rate and tax.
+  // value on both lines, each with its own HSN, rate and tax (118000 + 28000 = 146000).
   const exampleB2BLine2 = fill({
     'Line No': '2', 'Item Description': 'Contactor 32A', HSN: '8537', Quantity: '40',
-    'GST Rate': '12', 'Taxable Value': '25000.00', IGST: '3000.00', 'Invoice Value': '29500.00',
+    'GST Rate': '12', 'Taxable Value': '25000.00', IGST: '3000.00', 'Invoice Value': '146000.00',
     'Doc Series From': '', 'Doc Series To': '', 'Doc Series Cancelled': '',
   });
   // The intra-state example keeps the place of supply in the SAME state as the
@@ -309,9 +312,16 @@ export function salesTemplateBuffer(opts: SalesTemplateOptions = {}): Buffer {
     CGST: '0.00', SGST: '0.00', 'Invoice Value': '141600.00', HSN: '8536',
     'Doc Series From': '', 'Doc Series To': '', 'Doc Series Cancelled': '',
   });
+  const exampleCDNR = fill({
+    'Invoice No': 'CN-889015', 'Invoice Date': '2026-04-25', 'Invoice Type': 'CN',
+    'Original Invoice No': 'INV-889012', 'Original Invoice Date': '2026-04-15',
+    'Quantity': '0', 'Taxable Value': '-10000.00', IGST: '-1800.00',
+    CGST: '0.00', SGST: '0.00', 'Invoice Value': '-11800.00',
+    'Doc Nature': 'Credit Note', 'Doc Series From': '', 'Doc Series To': '', 'Doc Series Cancelled': '',
+  });
   const blankRow = headers.map(() => '');
 
-  const ws = XLSX.utils.aoa_to_sheet([headers, exampleB2BLine1, exampleB2BLine2, exampleB2CS, exampleB2CL, blankRow]);
+  const ws = XLSX.utils.aoa_to_sheet([headers, exampleB2BLine1, exampleB2BLine2, exampleB2CS, exampleB2CL, exampleCDNR, blankRow]);
   ws['!cols'] = headers.map((h) => ({ wch: Math.max(16, h.length + 2) }));
   ws['!freeze'] = 1;
   XLSX.utils.book_append_sheet(wb, ws, 'Sales Register');

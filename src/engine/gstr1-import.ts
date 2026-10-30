@@ -262,13 +262,298 @@ interface RawRow {
 }
 
 /**
+ * True when a parsed JSON value is a GST Portal GSTR-1 return / offline JSON.
+ */
+export function isGstr1Json(data: unknown): boolean {
+  if (!data || typeof data !== 'object') return false;
+  const o = data as Record<string, unknown>;
+  const root = (o.data && typeof o.data === 'object' ? (o.data as Record<string, unknown>) : o);
+  return (
+    Array.isArray(root.b2b) ||
+    Array.isArray(root.b2cl) ||
+    Array.isArray(root.b2cs) ||
+    Array.isArray(root.cdnr) ||
+    Array.isArray(root.cdnur) ||
+    (typeof root.fp === 'string' && typeof root.gstin === 'string' && !('docdata' in root))
+  );
+}
+
+/**
+ * Parse a GST Portal GSTR-1 JSON object into invoice-level filed rows (`FiledParseResult`).
+ */
+export function parseFiledJson(data: unknown, opts: FiledParseOptions): FiledParseResult {
+  const o = (data && typeof data === 'object' ? data : {}) as Record<string, any>;
+  const root = (o.data && typeof o.data === 'object' ? o.data : o) as Record<string, any>;
+  const ourGstin = normGstin(root.gstin || opts.our_gstin || '');
+  let fpPeriod = opts.period || '';
+  if (typeof root.fp === 'string' && /^\d{6}$/.test(root.fp.trim())) {
+    const fpStr = root.fp.trim();
+    if (/^(0[1-9]|1[0-2])20\d{2}$/.test(fpStr)) {
+      fpPeriod = `${fpStr.slice(2, 6)}-${fpStr.slice(0, 2)}`;
+    } else if (/^20\d{2}(0[1-9]|1[0-2])$/.test(fpStr)) {
+      fpPeriod = `${fpStr.slice(0, 4)}-${fpStr.slice(4, 6)}`;
+    }
+  }
+
+  const raw: RawRow[] = [];
+  const sheets: string[] = [];
+  const perSheet: Record<string, number> = {};
+  const tableOfSheet: Record<string, Gstr1TableType> = {};
+  const skipped: FiledParseResult['skipped'] = [];
+  let rowSeq = 0;
+
+  const sumItems = (itms: any[]) => {
+    let txval = 0, iamt = 0, camt = 0, samt = 0, csamt = 0;
+    let rate: number | null = null;
+    for (const it of Array.isArray(itms) ? itms : []) {
+      const det = it?.itm_det && typeof it.itm_det === 'object' ? it.itm_det : it;
+      txval = r2(txval + parseMoney(det?.txval));
+      iamt = r2(iamt + parseMoney(det?.iamt));
+      camt = r2(camt + parseMoney(det?.camt));
+      samt = r2(samt + parseMoney(det?.samt));
+      csamt = r2(csamt + parseMoney(det?.csamt));
+      if (rate === null && det?.rt !== undefined) rate = parseMoney(det.rt);
+    }
+    return { txval, iamt, camt, samt, csamt, rate };
+  };
+
+  if (Array.isArray(root.b2b)) {
+    sheets.push('b2b');
+    tableOfSheet['b2b'] = 'B2B';
+    let cnt = 0;
+    for (const party of root.b2b) {
+      const ctin = normGstin(party?.ctin || '');
+      const cname = String(party?.trdnm || party?.cname || '');
+      for (const inv of Array.isArray(party?.inv) ? party.inv : []) {
+        rowSeq++;
+        const inum = String(inv?.inum || '').trim();
+        const idt = normDate(String(inv?.idt || ''));
+        if (!inum) {
+          skipped.push({ sheet: 'b2b', row: rowSeq, reason: 'no invoice number' });
+          continue;
+        }
+        const m = sumItems(inv?.itms);
+        raw.push({
+          table: 'B2B',
+          invoice_number: inum,
+          invoice_date: idt,
+          note_ref_number: '',
+          note_ref_date: '',
+          recipient_gstin: ctin,
+          recipient_name: cname,
+          place_of_supply: String(inv?.pos || ''),
+          invoice_type: String(inv?.inv_typ || 'R'),
+          hsn: '',
+          rate: m.rate,
+          invoice_value: parseMoney(inv?.val),
+          taxable_value: m.txval,
+          igst: m.iamt,
+          cgst: m.camt,
+          sgst: m.samt,
+          cess: m.csamt,
+          reverse_charge: parseYesNo(inv?.rchrg),
+          source_row: rowSeq,
+        });
+        cnt++;
+      }
+    }
+    perSheet['b2b'] = cnt;
+  }
+
+  if (Array.isArray(root.b2cl)) {
+    sheets.push('b2cl');
+    tableOfSheet['b2cl'] = 'B2CL';
+    let cnt = 0;
+    for (const posGrp of root.b2cl) {
+      const pos = String(posGrp?.pos || '');
+      for (const inv of Array.isArray(posGrp?.inv) ? posGrp.inv : []) {
+        rowSeq++;
+        const inum = String(inv?.inum || '').trim();
+        const idt = normDate(String(inv?.idt || ''));
+        if (!inum) continue;
+        const m = sumItems(inv?.itms);
+        raw.push({
+          table: 'B2CL',
+          invoice_number: inum,
+          invoice_date: idt,
+          note_ref_number: '',
+          note_ref_date: '',
+          recipient_gstin: '',
+          recipient_name: '',
+          place_of_supply: pos || String(inv?.pos || ''),
+          invoice_type: 'R',
+          hsn: '',
+          rate: m.rate,
+          invoice_value: parseMoney(inv?.val),
+          taxable_value: m.txval,
+          igst: m.iamt,
+          cgst: m.camt,
+          sgst: m.samt,
+          cess: m.csamt,
+          reverse_charge: false,
+          source_row: rowSeq,
+        });
+        cnt++;
+      }
+    }
+    perSheet['b2cl'] = cnt;
+  }
+
+  if (Array.isArray(root.b2cs)) {
+    sheets.push('b2cs');
+    tableOfSheet['b2cs'] = 'B2CS';
+    let cnt = 0;
+    for (const b of root.b2cs) {
+      rowSeq++;
+      raw.push({
+        table: 'B2CS',
+        invoice_number: '',
+        invoice_date: '',
+        note_ref_number: '',
+        note_ref_date: '',
+        recipient_gstin: '',
+        recipient_name: '',
+        place_of_supply: String(b?.pos || ''),
+        invoice_type: 'R',
+        hsn: '',
+        rate: parseMoney(b?.rt),
+        invoice_value: 0,
+        taxable_value: parseMoney(b?.txval),
+        igst: parseMoney(b?.iamt),
+        cgst: parseMoney(b?.camt),
+        sgst: parseMoney(b?.samt),
+        cess: parseMoney(b?.csamt),
+        reverse_charge: false,
+        source_row: rowSeq,
+      });
+      cnt++;
+    }
+    perSheet['b2cs'] = cnt;
+  }
+
+  if (Array.isArray(root.cdnr)) {
+    sheets.push('cdnr');
+    tableOfSheet['cdnr'] = 'CDNR';
+    let cnt = 0;
+    for (const party of root.cdnr) {
+      const ctin = normGstin(party?.ctin || '');
+      const cname = String(party?.trdnm || party?.cname || '');
+      for (const nt of Array.isArray(party?.nt) ? party.nt : []) {
+        rowSeq++;
+        const ntNum = String(nt?.nt_num || nt?.inum || '').trim();
+        const ntDt = normDate(String(nt?.nt_dt || nt?.idt || ''));
+        if (!ntNum) continue;
+        const m = sumItems(nt?.itms);
+        const ntty = String(nt?.ntty || 'C').toUpperCase();
+        raw.push({
+          table: 'CDNR',
+          invoice_number: ntNum,
+          invoice_date: ntDt,
+          note_ref_number: String(nt?.inum || ''),
+          note_ref_date: normDate(String(nt?.idt || '')),
+          recipient_gstin: ctin,
+          recipient_name: cname,
+          place_of_supply: String(nt?.pos || ''),
+          invoice_type: ntty === 'D' ? 'DN' : 'CN',
+          hsn: '',
+          rate: m.rate,
+          invoice_value: parseMoney(nt?.val),
+          taxable_value: m.txval,
+          igst: m.iamt,
+          cgst: m.camt,
+          sgst: m.samt,
+          cess: m.csamt,
+          reverse_charge: parseYesNo(nt?.rchrg),
+          source_row: rowSeq,
+        });
+        cnt++;
+      }
+    }
+    perSheet['cdnr'] = cnt;
+  }
+
+  if (Array.isArray(root.cdnur)) {
+    sheets.push('cdnur');
+    tableOfSheet['cdnur'] = 'CDNUR';
+    let cnt = 0;
+    for (const nt of root.cdnur) {
+      rowSeq++;
+      const ntNum = String(nt?.nt_num || nt?.inum || '').trim();
+      const ntDt = normDate(String(nt?.nt_dt || nt?.idt || ''));
+      if (!ntNum) continue;
+      const m = sumItems(nt?.itms);
+      const ntty = String(nt?.ntty || 'C').toUpperCase();
+      raw.push({
+        table: 'CDNUR',
+        invoice_number: ntNum,
+        invoice_date: ntDt,
+        note_ref_number: String(nt?.inum || ''),
+        note_ref_date: normDate(String(nt?.idt || '')),
+        recipient_gstin: '',
+        recipient_name: '',
+        place_of_supply: String(nt?.pos || ''),
+        invoice_type: ntty === 'D' ? 'DN' : 'CN',
+        hsn: '',
+        rate: m.rate,
+        invoice_value: parseMoney(nt?.val),
+        taxable_value: m.txval,
+        igst: m.iamt,
+        cgst: m.camt,
+        sgst: m.samt,
+        cess: m.csamt,
+        reverse_charge: false,
+        source_row: rowSeq,
+      });
+      cnt++;
+    }
+    perSheet['cdnur'] = cnt;
+  }
+
+  const folded = foldRows(raw);
+  const rows: FiledRow[] = folded.map((f) => ({
+    our_gstin: ourGstin,
+    period: fpPeriod || (f.invoice_date && periodFromAny(f.invoice_date)) || opts.period,
+    table_type: f.table_type,
+    invoice_number: f.invoice_number,
+    invoice_date: f.invoice_date,
+    invoice_type: f.invoice_type,
+    recipient_gstin: f.recipient_gstin,
+    recipient_name: f.recipient_name,
+    place_of_supply: f.place_of_supply,
+    reverse_charge: f.reverse_charge,
+    hsn: f.hsn,
+    taxable_value: f.taxable_value,
+    igst: f.igst,
+    cgst: f.cgst,
+    sgst: f.sgst,
+    cess: f.cess,
+    invoice_value: f.invoice_value,
+    rate: f.rate ?? undefined,
+    note_ref_number: f.note_ref_number || undefined,
+    note_ref_date: f.note_ref_date || undefined,
+    source_row: f.source_row,
+  }));
+
+  return { rows, sheets, perSheet, skipped, tableOfSheet };
+}
+
+/**
  * Parse a GSTR-1 portal export into invoice-level filed rows.
  *
  * Reads every sheet rather than trusting the first, because a return filed with
  * both B2B and CDNR activity arrives as several tabs and the interesting one is
- * frequently not the first.
+ * frequently not the first. Also accepts a GST Portal GSTR-1 JSON buffer.
  */
 export function parseFiledWorkbook(buf: Buffer, opts: FiledParseOptions): FiledParseResult {
+  const headStr = buf.subarray(0, 64).toString('utf8').trimStart();
+  if (headStr.startsWith('{')) {
+    try {
+      const json = JSON.parse(buf.toString('utf8'));
+      if (isGstr1Json(json)) return parseFiledJson(json, opts);
+    } catch {
+      // fall through to workbook reader
+    }
+  }
   const sheets = readAllSheets(buf);
   const required = ['taxable_value', 'igst', 'cgst', 'sgst'];
   const perSheet: Record<string, number> = {};

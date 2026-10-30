@@ -279,6 +279,8 @@ export function parsePurchaseRegister(
         sgst,
         cess,
         invoice_total: r2(taxable + taxOf({ igst, cgst, sgst, cess })),
+        reverse_charge: ynTri(pick(raw, map, 'reverse_charge')),
+        hsn: String(pick(raw, map, 'hsn') ?? '').trim() || undefined,
         remark: String(pick(raw, map, 'remark') ?? '').trim() || undefined,
         source_file: sourceFile,
         source_row: rowNo,
@@ -442,7 +444,7 @@ function sumItems(items: unknown): ItemTotals {
     t.sgst = r2(t.sgst + toNum(jpick(d, ['samt', 'sgst', 's_gst'])));
     t.cess = r2(t.cess + toNum(jpick(d, ['csamt', 'cess'])));
     const rt = jpick(d, ['rt', 'rate']);
-    if (rt !== undefined && !t.rates.includes(String(rt))) t.rates.push(String(rt));
+    if (rt !== undefined && Number.isFinite(Number(rt)) && !t.rates.includes(String(rt))) t.rates.push(String(rt));
   }
   return t;
 }
@@ -580,7 +582,7 @@ export function parseGstr2bJson(
       invoice_value:
         amt(toNum(jpick(o, ['val', 'inv_val', 'invVal', 'invoice_value', 'inv_amt']))) ||
         r2(amt(t.taxable_value) + taxOf({ igst: amt(t.igst), cgst: amt(t.cgst), sgst: amt(t.sgst), cess: amt(t.cess) })),
-      place_of_supply: normPos(ctx.pos ?? jpick(o, ['pos', 'place_of_supply', 'poscd'])),
+      place_of_supply: normPos(ctx.pos || jpick(o, ['pos', 'place_of_supply', 'poscd'])),
       reverse_charge: toBool(jpick(o, ['rchrg', 'rev_chrg', 'revChrg', 'reverse_charge'])),
       taxable_value: amt(t.taxable_value),
       igst: amt(t.igst),
@@ -732,14 +734,21 @@ export function parseSalesRegister(rows: unknown[][], sourceFile = 'sales-regist
       if (!invoiceNo) return null;
 
       const date = normDate(pick(raw, map, 'invoice_date'));
-      const taxable = toNum(pick(raw, map, 'taxable_value'));
-      const igst = toNum(pick(raw, map, 'igst'));
-      const cgst = toNum(pick(raw, map, 'cgst'));
-      const sgst = toNum(pick(raw, map, 'sgst'));
-      const cess = toNum(pick(raw, map, 'cess'));
-      if (taxable === 0 && taxOf({ igst, cgst, sgst, cess }) === 0) return null;
+      const rawTaxable = toNum(pick(raw, map, 'taxable_value'));
+      const rawIgst = toNum(pick(raw, map, 'igst'));
+      const rawCgst = toNum(pick(raw, map, 'cgst'));
+      const rawSgst = toNum(pick(raw, map, 'sgst'));
+      const rawCess = toNum(pick(raw, map, 'cess'));
+      if (rawTaxable === 0 && taxOf({ igst: rawIgst, cgst: rawCgst, sgst: rawSgst, cess: rawCess }) === 0) return null;
 
       const type = normInvoiceType(pick(raw, map, 'invoice_type'));
+      const isCn = type === 'CDNR';
+      const signFn = (v: number) => (v === 0 ? 0 : isCn ? -Math.abs(v) : v);
+      const taxable = signFn(rawTaxable);
+      const igst = signFn(rawIgst);
+      const cgst = signFn(rawCgst);
+      const sgst = signFn(rawSgst);
+      const cess = signFn(rawCess);
       const period = periodOf(date);
       const lineNoRaw = pick(raw, map, 'line_no');
       const lineNo = isBlankish(lineNoRaw) ? undefined : Math.trunc(toNum(lineNoRaw));
@@ -769,8 +778,9 @@ export function parseSalesRegister(rows: unknown[][], sourceFile = 'sales-regist
         source_row: rowNo,
       };
 
+      const rawInvVal = toNum(pick(raw, map, 'invoice_value'));
       const invoiceValue =
-        toNum(pick(raw, map, 'invoice_value')) || r2(taxable + taxOf({ igst, cgst, sgst, cess }));
+        (rawInvVal ? signFn(rawInvVal) : 0) || r2(taxable + taxOf({ igst, cgst, sgst, cess }));
 
       const line: SalesInvoice & { items: SalesItem[] } = {
         our_gstin: normGstin(pick(raw, map, 'our_gstin')),

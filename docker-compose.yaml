@@ -1,0 +1,56 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${PGUSER:-postgres}
+      POSTGRES_PASSWORD: ${SERVICE_PASSWORD_POSTGRES:-gst_erp_secret_2026}
+      POSTGRES_DB: ${PGDATABASE:-gst_erp}
+    volumes:
+      - gst-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  gst-erp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SERVICE_FQDN_GSTERP_4310: ""
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: ${PORT:-4310}
+      PGHOST: ${PGHOST:-postgres}
+      PGPORT: ${PGPORT:-5432}
+      PGUSER: ${PGUSER:-postgres}
+      PGPASSWORD: ${SERVICE_PASSWORD_POSTGRES:-gst_erp_secret_2026}
+      PGDATABASE: ${PGDATABASE:-gst_erp}
+      GST_OUTPUT_DIR: /app/output
+      GST_INPUT_DIR: /app/output/uploads
+      MASTER_PASSWORD: ${MASTER_PASSWORD:-sakar@123}
+      USER1_PASSWORD: ${USER1_PASSWORD:-user1@123}
+      USER2_PASSWORD: ${USER2_PASSWORD:-user2@123}
+      USER3_PASSWORD: ${USER3_PASSWORD:-user3@123}
+    ports:
+      - "${PORT:-4310}:4310"
+    volumes:
+      - gst-output-data:/app/output
+      - gst-logos-data:/app/src/server/public/logos/companies
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:4310/api/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 25s
+
+volumes:
+  gst-postgres-data:
+  gst-output-data:
+  gst-logos-data:

@@ -6,15 +6,10 @@ test-input/
 dist/
 *.log
 
-# Local-only. These hold real business data (invoice dumps, SAP extracts),
-# plaintext credentials, and scratch copies for one-off repairs. None of it
-# belongs in the history — the baseline commit carries source, migrations,
-# templates and docs only.
-backup/
-m10/
-f/
-Local host.txt
-.freebuff/
-
 # One-off copies; git history is the backup
 *.bak
+backup/
+f/
+m10/
+Local host.txt
+GST_Control_ERP_*.html
