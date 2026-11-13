@@ -763,9 +763,8 @@ tr.clickable { cursor: default; }
         <div class="bn-text">
           <h2>GSTR-1 filing control &mdash; SAKAR &amp; SVN</h2>
           <p>
-            Har figure is page par us month ke asli data se aata hai. Jis month ka data nahi hai
-            wo &ldquo;Not started&rdquo; dikhta hai &mdash; khaali month chhupaya nahi jata, kyunki
-            khaali month bhi kaam hai.
+            Every figure on this page comes from that month's actual data. Months with no data
+            show as &ldquo;Not started&rdquo; &mdash; empty months are never hidden so gaps remain visible.
           </p>
           <div class="row" style="margin-top:12px">
             <button onclick="go('sales')">Upload Books Sales Register</button>
@@ -780,45 +779,45 @@ tr.clickable { cursor: default; }
       <div class="card">
         <h2>Today's GSTR-1 filing — step by step</h2>
         <div class="hint">
-          Books/SAP Sales Register se GSTR-1 banata hai, aur GST Portal ki pre-filled GSTR-1 se milata hai.
-          Dono ka source alag hota hai — isliye dono alag upload hote hain aur alag totals dikhate hain.
-          Ek file doosri ko overwrite nahi karti.
+          Generates GSTR-1 from Books/SAP Sales Register and reconciles it against the GST Portal's pre-filled GSTR-1.
+          Both have separate sources — so they are uploaded separately and display separate totals.
+          One file never overwrites the other.
         </div>
         <div class="steps" style="margin-top:14px">
           <div class="step">
             <div class="n">STEP 1</div>
             <div class="t">Sales Register template</div>
-            <div class="hint">Nayi file ka format — Instructions sheet me har column likha hai.</div>
+            <div class="hint">Format for new files — every column is documented in the Instructions sheet.</div>
             <div style="margin-top:10px"><button class="ghost" onclick="downloadSalesTemplate('xlsx')">Template .xlsx</button></div>
           </div>
           <div class="step">
             <div class="n">STEP 2</div>
             <div class="t">Books Sales Register</div>
-            <div class="hint">SAP/Books ki Sales Register upload karke <b>preview</b> dekho, phir run chalao.</div>
+            <div class="hint">Upload the SAP/Books Sales Register to <b>preview</b> first, then run reconciliation.</div>
             <div style="margin-top:10px"><button onclick="go('sales')">Open Books</button></div>
           </div>
           <div class="step">
             <div class="n">STEP 3</div>
             <div class="t">Portal pre-filled GSTR-1</div>
-            <div class="hint">GST Portal se download ki hui file yahan upload + import karo.</div>
+            <div class="hint">Upload and import the file downloaded from the GST Portal here.</div>
             <div style="margin-top:10px"><button onclick="go('portal')">Open Portal</button></div>
           </div>
           <div class="step">
             <div class="n">STEP 4</div>
             <div class="t">Rebuild GSTR-1 draft</div>
-            <div class="hint">Books se is period ka draft return banao (safe: replace karta hai, add nahi).</div>
+            <div class="hint">Build this period's draft return from Books (safe: replaces draft, never duplicates).</div>
             <div style="margin-top:10px"><button onclick="go('outward')">Open reconciliation</button></div>
           </div>
           <div class="step">
             <div class="n">STEP 5</div>
             <div class="t">Reconcile draft vs filed</div>
-            <div class="hint">Kaun invoice declared nahi hua, kahan amount alag hai — invoice-wise.</div>
+            <div class="hint">See undeclared invoices and amount differences — invoice-wise.</div>
             <div style="margin-top:10px"><button onclick="go('outward')">Compare</button></div>
           </div>
           <div class="step">
             <div class="n">STEP 6</div>
             <div class="t">HSN Summary (table 12)</div>
-            <div class="hint">Books vs Portal HSN comparison, quantity aur UQC ke saath — export ready.</div>
+            <div class="hint">Books vs Portal HSN comparison with quantity and UQC — export ready.</div>
             <div style="margin-top:10px"><button onclick="go('hsn')">Open HSN</button></div>
           </div>
         </div>
@@ -827,9 +826,8 @@ tr.clickable { cursor: default; }
       <div class="card">
         <h2>Month control centre &mdash; FY <span id="fyTitle"></span></h2>
         <div class="hint">
-          Selected financial year ke 12 months, April se March. Jis month ki file nahi aayi wo
-          khaali dikhta hai, chhupaya nahi jata &mdash; khaali month bhi kaam hai. Month par click
-          karke us month ka GSTR-1 recon kholo.
+          All 12 months of the selected financial year, April to March. Months without a file
+          appear empty rather than hidden. Click any month to open its GSTR-1 reconciliation.
         </div>
         <div class="row" style="margin-top:12px;align-items:center">
           <img src="/assets/calendar-2027.jpg" alt="" loading="lazy"
@@ -849,18 +847,18 @@ tr.clickable { cursor: default; }
       <div class="card">
         <h2>Monthly run (Books + GSTR-2B + Sales Register)</h2>
         <div class="hint">
-          Ye poora monthly run hai. Sales Register yahin se ingest hota hai — usi se GSTR-1 draft banta hai.
-          Upload kiya folder use karo, ya apna folder path likho.
+          Full monthly reconciliation run. Sales Register is ingested here to build the GSTR-1 draft.
+          Use the uploaded folder or enter your custom folder path.
         </div>
         <div class="row" style="margin-top:12px">
           <div style="flex:1;min-width:260px"><label for="runDir">Input folder</label><input type="text" id="runDir" style="width:100%" /></div>
-          <div><label for="runPeriod">Sirf ek period</label><input type="text" id="runPeriod" placeholder="2026-04" /></div>
+          <div><label for="runPeriod">Single period only</label><input type="text" id="runPeriod" placeholder="2026-04" /></div>
           <div><label for="runGstin">Sales GSTIN</label><input type="text" id="runGstin" placeholder="26AALCS9985J1ZC" /></div>
           <button id="btnRun" onclick="runNow()">Run reconciliation</button>
           <a id="dlLink" href="#" onclick="download('/api/download/workbook','GST workbook.xlsx'); return false;" style="display:none">Download workbook</a>
         </div>
         <div class="row" style="margin-top:10px">
-          <button class="ghost" onclick="useUploads()">Uploaded folder use karo</button>
+          <button class="ghost" onclick="useUploads()">Use uploaded folder</button>
           <span class="hint" id="uploadList" style="flex:1;min-width:220px"></span>
         </div>
         <pre class="log" id="runLog" style="display:none;margin-top:12px"></pre>
@@ -876,10 +874,10 @@ tr.clickable { cursor: default; }
     <!-- ============================ SALES REGISTER ========================= -->
     <section class="view" id="viewSales" hidden>
       <div class="card">
-        <h2>Books / SAP Sales Register — GSTR-1 ka input</h2>
+        <h2>Books / SAP Sales Register — GSTR-1 input</h2>
         <div class="hint">
-          Yahi file GSTR-1 banati hai. Pehle <b>preview</b> dekho: kitne invoice, kitni item line,
-          kaun sa period, kaun se GSTIN — aur parser ne kya skip kiya. Preview kuch bhi save nahi karta.
+          This file builds GSTR-1. Check the <b>preview</b> first: invoice counts, item lines,
+          periods, GSTINs, and anything skipped by the parser. Preview does not save any data.
         </div>
         <div class="row" style="margin-top:12px">
           <button class="ghost" onclick="downloadSalesTemplate('xlsx')">Download Sales Register template (.xlsx)</button>
@@ -887,8 +885,8 @@ tr.clickable { cursor: default; }
           <button class="ghost" onclick="download('/api/template/purchase-register.xlsx','Purchase Register Template.xlsx')">Purchase template (.xlsx)</button>
         </div>
         <div class="drop" id="salesDrop" style="margin-top:14px">
-          Books/SAP <b>Sales Register</b> (.xlsx/.xlsm/.xlsb/.csv) yahan drop karo
-          <div class="hint">ya click karo file choose karne ke liye</div>
+          Drop Books/SAP <b>Sales Register</b> (.xlsx/.xlsm/.xlsb/.csv) here
+          <div class="hint">or click to choose a file</div>
           <input type="file" id="salesFile" hidden accept=".xlsx,.xlsm,.xlsb,.xls,.csv" />
         </div>
         <div class="row" style="margin-top:12px">
@@ -907,21 +905,20 @@ tr.clickable { cursor: default; }
     <!-- ============================== PORTAL GSTR-1 ======================== -->
     <section class="view" id="viewPortal" hidden>
       <div class="card">
-        <h2>Portal GSTR-1 source (pre-filled download, books se alag)</h2>
+        <h2>Portal GSTR-1 source (pre-filled download, separate from Books)</h2>
         <div class="hint">
-          GST Portal se download hui <b>pre-filled GSTR-1</b> yahan upload karein. Books ki Sales Register
-          aur Portal ki filed GSTR-1 ka source alag hota hai — isliye alag card, alag preview aur alag
-          totals. Import karne se pehle preview dekh lo; import upsert karta hai, isliye dobara import
-          safe hai.
+          Upload the <b>pre-filled GSTR-1</b> downloaded from the GST Portal here. Books Sales Register
+          and Portal filed GSTR-1 come from separate sources — hence separate previews and totals.
+          Preview before importing; import uses upsert, so re-importing is safe.
         </div>
         <div class="drop" id="portalG1Drop" style="margin-top:14px">
-          GST Portal pre-filled GSTR-1 (<b>.json</b> / .xlsx / .xlsm / .xlsb / .xls / .csv) yahan drop karo
-          <div class="hint">ya click karo file choose karne ke liye (Portal JSON aur Excel dono chalenge)</div>
+          Drop GST Portal pre-filled GSTR-1 (<b>.json</b> / .xlsx / .xlsm / .xlsb / .xls / .csv) here
+          <div class="hint">or click to choose a file (supports both Portal JSON and Excel)</div>
           <input type="file" id="portalG1File" hidden accept=".json,.xlsx,.xlsm,.xlsb,.xls,.csv" />
         </div>
         <div class="row" style="margin-top:12px">
           <div style="flex:1;min-width:190px">
-            <label for="portalG1Gstin">Is file ka GSTIN (Our GSTIN)</label>
+            <label for="portalG1Gstin">GSTIN for this file (Our GSTIN)</label>
             <input type="text" id="portalG1Gstin" placeholder="26AALCS9985J1ZC" />
           </div>
           <div style="min-width:140px">
@@ -977,20 +974,20 @@ tr.clickable { cursor: default; }
       <div class="card">
         <h2>HSN summary — GSTR-1 table 12</h2>
         <div class="hint">
-          Books se bana HSN summary, portal ke HSN ke saath. Item-wise register se hi UQC aur quantity
-          aati hai — invoice-level register par bhi chalta hai (quantity 0), fail nahi hota.
+          HSN summary built from Books alongside Portal HSN. UQC and quantity come from item-wise
+          registers — invoice-level registers also work cleanly (quantity 0) without failing.
         </div>
         <div class="row" style="margin-top:12px">
           <div><label for="hsnScope">Supply</label>
             <select id="hsnScope" onchange="loadHsn()">
               <option value="all">B2B + B2C</option>
-              <option value="b2b">Sirf B2B</option>
-              <option value="b2c">Sirf B2C</option>
+              <option value="b2b">B2B only</option>
+              <option value="b2c">B2C only</option>
             </select>
           </div>
           <div><label for="hsnView">Table</label>
             <select id="hsnView" onchange="loadHsn()">
-              <option value="auto">Auto (comparison jab portal ho)</option>
+              <option value="auto">Auto (compare when Portal is loaded)</option>
               <option value="books">Books</option>
               <option value="portal">Portal (filed)</option>
               <option value="comparison">Books vs Portal</option>
@@ -1022,8 +1019,8 @@ tr.clickable { cursor: default; }
       <div class="card">
         <h2>P&amp;L upload — company level</h2>
         <div class="hint">
-          P&amp;L company ka document hai aur GST GSTIN-wise hota hai, isliye ye screen company chunti hai.
-          Wo company header me select karo jiska P&amp;L upload karna hai.
+          P&amp;L is a company-level document while GST is GSTIN-wise, so this screen selects by company.
+          Select the company in the top header whose P&amp;L you want to upload.
         </div>
         <div class="row" style="margin-top:12px">
           <div><label for="plPeriod">P&amp;L month</label><input type="text" id="plPeriod" placeholder="2026-04" /></div>
@@ -1053,8 +1050,8 @@ tr.clickable { cursor: default; }
         <h2>Head-wise reconciliation</h2>
         <div class="scroll"><table id="plTable"></table></div>
         <div class="hint">
-          Difference ke bina reason save nahi hota — database khud rokta hai. Isliye har pending row par
-          "Explain" se reason chuno.
+          A reason cannot be saved without a difference — the database enforces this. Select a reason
+          via "Explain" on each pending row.
         </div>
       </div>
     </section>
@@ -1064,23 +1061,22 @@ tr.clickable { cursor: default; }
       <div class="card">
         <h2>Purchase register — ITC side</h2>
         <div class="hint">
-          Purchase register ka preview upload se pehle. Book entry date aur usse nikla
-          <b>book entry month</b> dono dikhte hain: April me invoice aur May me booking — dono facts
-          alag alag bachne chahiye, warna books-vs-return ka gap chhup jata hai.
+          Preview the purchase register before importing. Both invoice date and derived
+          <b>book entry month</b> are shown so cross-month bookings (e.g. April invoice booked in May) remain clearly visible.
         </div>
         <div class="row" style="margin-top:12px">
           <button class="ghost" onclick="download('/api/template/purchase-register.xlsx','Purchase Register Template.xlsx')">Purchase template (.xlsx)</button>
           <button class="ghost" onclick="download('/api/template/purchase-register.csv','Purchase Register Template.csv')">Purchase template (.csv)</button>
           <button class="ghost" onclick="downloadTwobRecon(false)">2B vs Books reco sheet (.xlsx)</button>
-          <button class="ghost" onclick="downloadTwobRecon(true)">Reco sheet khaali template (.xlsx)</button>
+          <button class="ghost" onclick="downloadTwobRecon(true)">Blank reco template (.xlsx)</button>
         </div>
         <div class="hint" style="margin-top:8px">
-          Reco sheet me do sheet hain: <b>invoice-wise</b> (ek row = ek invoice, books vs 2B) aur
-          <b>line-wise</b> (Line ID + ITC Decision/Remarks/Vendor Response — yahi sheet wapas upload hoti hai).
+          The reco workbook has two sheets: <b>invoice-wise</b> (one row per invoice, Books vs 2B) and
+          <b>line-wise</b> (Line ID + ITC Decision/Remarks/Vendor Response — this sheet can be re-uploaded).
         </div>
         <div class="drop" id="purchaseDrop" style="margin-top:14px">
-          Purchase register (.xlsx/.xlsm/.xlsb/.csv) yahan drop karo
-          <div class="hint">ya click karo file choose karne ke liye</div>
+          Drop Purchase register (.xlsx/.xlsm/.xlsb/.csv) here
+          <div class="hint">or click to choose a file</div>
           <input type="file" id="purchaseFile" hidden accept=".xlsx,.xlsm,.xlsb,.xls,.csv" />
         </div>
         <div class="row" style="margin-top:12px">
@@ -1094,13 +1090,11 @@ tr.clickable { cursor: default; }
         <div id="purchasePreview"></div>
       </div>
       <div class="card">
-        <h2>GSTR-2B file — JSON, CSV ya Excel</h2>
+        <h2>GSTR-2B file — JSON, CSV or Excel</h2>
         <div class="hint">
-          GST Portal se download kiya hua 2B yahan upload karo — <b>.json</b> (portal ka original),
-          <b>.csv</b> ya <b>.xlsx</b>. File upload scratch folder me jaati hai, aur
-          "Upload + reconcile" use padh kar 2B lines database me daal deta hai aur usi waqt
-          books se reconcile kar deta hai. Ek hi file dobara upload karna safe hai — lines
-          update hoti hain, duplicate nahi banti.
+          Upload the GSTR-2B downloaded from the GST Portal here — <b>.json</b> (original portal format),
+          <b>.csv</b> or <b>.xlsx</b>. "Upload + reconcile" imports 2B lines into the database and immediately
+          reconciles against Books. Re-uploading the same file is safe — lines update without duplicates.
         </div>
         <div class="row" style="margin-top:12px">
           <div><label for="twobFile">GSTR-2B file (.json/.csv/.xlsx)</label><input type="file" id="twobFile" accept=".json,.csv,.xlsx,.xlsm,.xlsb,.xls" /></div>
@@ -1121,8 +1115,8 @@ tr.clickable { cursor: default; }
       <div class="card">
         <h2>GSTR-3B Table 4 — Input Credit (ITC) Live Scorecard (Bill-to-Bill Roll-up)</h2>
         <div class="hint">
-          Purchase Register vs GSTR-2B ke har bill ke <b>ITC Decision</b> se GSTR-3B Table 4 ka live calculation.
-          <b>Auto-Apply 3B ITC Decisions</b> dabane par Matched bills <code>4(A)(5) Claim Now</code>, Missing in 2B bills <code>Carry Forward (Hold)</code>, aur Sec 17(5) bills <code>4(B)(1) Blocked</code> me set ho jaate hain.
+          Live GSTR-3B Table 4 calculation derived from each bill's <b>ITC Decision</b> in Purchase Register vs GSTR-2B.
+          Clicking <b>Auto-Apply 3B ITC Decisions</b> sets Matched bills to <code>4(A)(5) Claim Now</code>, Missing in 2B bills to <code>Carry Forward (Hold)</code>, and Sec 17(5) bills to <code>4(B)(1) Blocked</code>.
         </div>
         <div class="row" style="margin-top:10px">
           <button onclick="autoDecideItc()">Auto-Apply 3B ITC Decisions (Bill-to-Bill)</button>
@@ -1145,7 +1139,7 @@ tr.clickable { cursor: default; }
             <option value="Duplicate">Duplicate</option>
             <option value="Blocked">ITC blocked</option>
           </select>
-          <input type="search" id="reconSearch" placeholder="Invoice no, supplier GSTIN ya vendor"
+          <input type="search" id="reconSearch" placeholder="Invoice no, supplier GSTIN or vendor"
                  style="flex:1;min-width:200px" onkeydown="if (event.key === 'Enter') loadRecon()" />
           <span class="hint" id="reconMsg" style="flex:1;min-width:160px"></span>
         </div>
@@ -1154,10 +1148,10 @@ tr.clickable { cursor: default; }
       </div>
 
       <div class="card">
-        <h2>GSTR-2B me hai, books me nahi</h2>
+        <h2>In GSTR-2B, missing in Books</h2>
         <div class="hint">
-          Supplier ne file kar diya, hamari books me entry nahi. Invoice book karna padega —
-          credit note ho to reverse bhi. Yahi ITC ka asli gap hota hai.
+          Filed by the supplier, not yet recorded in our Books. Needs invoice booking —
+          or reversal if it is a credit note. This represents the true ITC gap.
         </div>
         <div class="scroll" style="margin-top:12px"><table id="reconTwoBTable"></table></div>
       </div>
@@ -1171,10 +1165,10 @@ tr.clickable { cursor: default; }
     <!-- ================================ PASTE ============================== -->
     <section class="view" id="viewPaste" hidden>
       <div class="card">
-        <h2>Paste purchase register (Excel se copy)</h2>
+        <h2>Paste purchase register (copy from Excel)</h2>
         <div class="hint">
-          Excel me rows select karke copy karo aur yahan paste karo — header row ke saath.
-          Preview bilkul wahi parser chalata hai jo file upload chalata hai.
+          Select rows in Excel, copy, and paste here — including the header row.
+          Preview runs the exact same parser used by file upload.
         </div>
         <textarea id="pasteBox" spellcheck="false" placeholder="Our GSTIN&#9;Supplier GSTIN&#9;Invoice No&#9;Invoice Date&#9;Book Entry Date&#9;Taxable Value&#9;IGST&#9;CGST&#9;SGST&#9;CESS"></textarea>
         <div class="row" style="margin-top:10px">
@@ -1475,57 +1469,57 @@ const NAV = [
 const VIEW_META = {
   home: {
     title: 'Compliance dashboard',
-    sub: 'Ek nazar me: kaun sa month chalu hai, kya file hua, kya baaki hai. Har figure us month ke data se aata hai \u2014 koi number yahan likha hua nahi hai.',
+    sub: 'At a glance: active months, filed returns, and pending items. Every figure comes directly from monthly data — no hardcoded numbers.',
     img: '/assets/gst-touch.jpg',
   },
   sales: {
     title: 'Books / Sales Register',
-    sub: 'GSTR-1 ka input yahi file hai. Pehle preview \u2014 kitne invoice, kitni item line, kaun sa period, kaun sa GSTIN \u2014 aur parser ne kya skip kiya. Preview kuch save nahi karta.',
+    sub: 'Input file for GSTR-1. Preview first — invoice counts, item lines, periods, GSTINs, and skipped rows. Preview does not save anything.',
     img: '/assets/gst-blocks-cart.jpg',
   },
   portal: {
     title: 'Portal GSTR-1 (pre-filled download)',
-    sub: 'GST Portal se utri hui pre-filled GSTR-1 yahan import hoti hai. Books ki file se alag source, alag preview, alag totals \u2014 ek doosre ko overwrite nahi karti.',
+    sub: 'Import pre-filled GSTR-1 downloaded from the GST Portal. Separate source, preview, and totals from Books — never overwrites each other.',
     img: '/assets/gst-laptop.jpg',
   },
   outward: {
     title: 'GSTR-1 reconciliation',
-    sub: 'Books se bana draft aur Portal ki filed return, invoice-wise. Kaun sa invoice declare nahi hua, kahan amount ya table alag hai \u2014 sab yahin dikhta hai.',
+    sub: 'Draft built from Books vs Portal filed return, invoice-wise. Track undeclared invoices, amount differences, and table mismatches here.',
     img: '/assets/gst-touch.jpg',
   },
   hsn: {
     title: 'HSN summary \u2014 table 12',
-    sub: 'Books ka HSN summary aur Portal ka HSN, side by side. UQC aur quantity sirf item-wise register se aate hain \u2014 invoice-level register par bhi chalta hai, banaya hua nahi jata.',
+    sub: 'Books HSN summary and Portal HSN side by side. UQC and quantity come from item-wise registers; invoice-level registers also work cleanly.',
     img: '/assets/gst-blocks.jpg',
   },
   pl: {
     title: 'P&L vs GSTR-1',
-    sub: 'P&L company ka document hai aur GST GSTIN-wise, isliye ye screen company select karti hai. Head-wise farak ke bina reason save nahi hota.',
+    sub: 'P&L is company-level while GST is GSTIN-wise, so this screen selects by company. Reasons require a head-wise difference to save.',
     img: '/assets/gst-rupee.jpg',
   },
   purchase: {
     title: 'Purchase register \u2014 ITC side',
-    sub: 'Invoice date aur book entry date dono dikhte hain, kyunki April ka invoice May me book ho sakta hai \u2014 dono facts alag rehne chahiye, warna books-vs-return ka gap chhup jata hai.',
+    sub: 'Both invoice date and book entry date are shown, since an April invoice can be booked in May — keeping Books-vs-return timing gaps visible.',
     img: '/assets/gst-blocks.jpg',
   },
   paste: {
     title: 'Paste register',
-    sub: 'Excel se rows copy karke yahan paste karo, header row ke saath. Preview bilkul wahi parser chalata hai jo file upload chalata hai.',
+    sub: 'Copy rows from Excel and paste here with the header row. Preview runs the exact same parser as file upload.',
     img: '/assets/gst-blocks-cart.jpg',
   },
   gstr9: {
     title: 'GSTR-9 Annual & GSTR-9C Audit Control',
-    sub: 'GSTR-1 se le kar GSTR-2B/IMS, GSTR-3B aur Annual GSTR-9 / GSTR-9C tak ka poora 12-month reconciliation ek hi jagah.',
+    sub: 'Complete 12-month reconciliation from GSTR-1, GSTR-2B/IMS, and GSTR-3B to Annual GSTR-9 / GSTR-9C in one place.',
     img: '/assets/gst-rupee.jpg',
   },
   reports: {
     title: 'Reports & downloads',
-    sub: 'Reconciliation workbook, HSN aur month-wise reports \u2014 Excel aur CSV dono me. Download par wahi GSTIN/period filter lagta hai jo upar header me selected hai.',
+    sub: 'Reconciliation workbook, HSN, and month-wise reports in Excel and CSV. Downloads apply the GSTIN and period selected in the header.',
     img: '/assets/gst-rupee.jpg',
   },
   masters: {
     title: 'Masters \u2014 companies, units & GSTIN',
-    sub: 'Company, unit aur GSTIN ki registrations. Naam display ke liye badalte hain; company ID, GSTIN aur PAN waise hi rehte hain, aur do companies kabhi merge nahi hoti.',
+    sub: 'Company, unit, and GSTIN registrations. Display names can be updated while company ID, GSTIN, and PAN remain immutable.',
     img: '/assets/gst-touch.jpg',
   },
 };
@@ -1646,7 +1640,7 @@ function handleAuthLoss() {
   hide(el('shell'));
   show(el('gate'));
   const m = el('gateMsg');
-  if (m) { m.hidden = false; m.textContent = 'Session khatam ho gaya — dobara sign in karein.'; }
+  if (m) { m.hidden = false; m.textContent = 'Session expired — please sign in again.'; }
 }
 
 async function api(path, opts) {
@@ -1678,7 +1672,7 @@ function postFile(path, file) {
 
 function errText(e) {
   const base = (e && e.message) ? e.message : String(e);
-  if (e && e.needPerm) return base + ' (chahiye: ' + e.needPerm + ')';
+  if (e && e.needPerm) return base + ' (required: ' + e.needPerm + ')';
   return base;
 }
 
@@ -1784,7 +1778,7 @@ const NUM_FIELDS = new Set([
 
 function tableHtml(cols, rows, emptyText) {
   if (!rows || !rows.length) {
-    return '<tbody><tr><td class="hint">' + esc(emptyText || 'Koi row nahi.') + '</td></tr></tbody>';
+    return '<tbody><tr><td class="hint">' + esc(emptyText || 'No rows.') + '</td></tr></tbody>';
   }
   const head = '<thead><tr>' + cols.map((c) => {
     const key = Array.isArray(c) ? c[0] : c;
@@ -2113,8 +2107,8 @@ async function loadHome() {
   renderMonthChips(rows);
   renderKpis(rows);
   if (!rows.length && !fyMonths.length) {
-    if (strip) strip.innerHTML = '<tbody><tr><td class="hint">Is year ke liye koi month data nahi mila.</td></tr></tbody>';
-    note('homeHint', 'warn', 'Filhaal koi GST data nahi hai — pehle books/2B upload karke run chalao.');
+    if (strip) strip.innerHTML = '<tbody><tr><td class="hint">No monthly data found for this year.</td></tr></tbody>';
+    note('homeHint', 'warn', 'No GST data yet — upload Books or GSTR-2B and run reconciliation first.');
     renderResult(null);
     return;
   }
@@ -2213,11 +2207,11 @@ function renderKpis(rows) {
     // has been uploaded yet". The strip spans the row so it does not look like an
     // oversized card with a hole in the middle.
     box.innerHTML = '<div class="tile warn" style="grid-column:1/-1">' +
-      '<div class="k">Financial year ' + esc(CTX.fy) + ' &mdash; koi data nahi</div>' +
-      '<div class="v sm">Is year ke kisi month me data nahi hai.</div>' +
-      '<div class="sub">Pehle Books/SAP Sales Register ya GSTR-2B upload karke monthly run chalao \u2014 '
+      '<div class="k">Financial year ' + esc(CTX.fy) + ' &mdash; no data</div>' +
+      '<div class="v sm">No data found in any month for this year.</div>' +
+      '<div class="sub">Upload Books/SAP Sales Register or GSTR-2B and run monthly reconciliation first \u2014 '
       + 'uske baad yahan taxable value, matched ITC, missing aur mismatch ke figures aa jayenge. '
-      + 'Jhootha 0 dikhane se behtar hai khaali dikhana.</div></div>';
+      + 'Showing empty instead of misleading zeros.</div></div>';
     return;
   }
   const cov = (CTX.coverage || []).filter((c) => fyMonths.indexOf(c.period) >= 0 && (!CTX.gstin || c.gstin === CTX.gstin));
@@ -2251,7 +2245,7 @@ function renderUploads() {
     CTX.uploadDir = (u && u.dir) ? u.dir : CTX.uploadDir;
     node.innerHTML = files.length
       ? 'Uploaded: ' + files.map((f) => esc(f.name) + ' (' + Math.round(f.size / 1024) + ' KB)').join(' &nbsp;\u00b7&nbsp; ')
-      : 'Abhi koi upload nahi.';
+      : 'No uploads yet.';
     const rd = el('runDir');
     if (rd && CTX.uploadDir) rd.value = CTX.uploadDir;
   }).catch(() => { node.textContent = ''; });
@@ -2274,7 +2268,7 @@ async function runNow() {
   const btn = el('btnRun');
   const log = el('runLog');
   const dir = (el('runDir') && el('runDir').value.trim()) || CTX.uploadDir;
-  if (!dir) return toast('Input folder chahiye.', 'err');
+  if (!dir) return toast('Input folder is required.', 'err');
   if (btn) { btn.disabled = true; btn.textContent = 'running\u2026'; }
   if (log) { log.style.display = 'block'; log.textContent = 'starting\u2026'; }
   try {
@@ -2337,7 +2331,7 @@ function loadSales() {
 async function salesPreview() {
   const input = el('salesFile');
   const f = input && input.files && input.files[0];
-  if (!f) return toast('Pehle Sales Register file choose karo.', 'err');
+  if (!f) return toast('Please choose a Sales Register file first.', 'err');
   const box = el('salesPreview');
   const card = el('salesPreviewCard');
   if (card) card.hidden = false;
@@ -2373,7 +2367,7 @@ function salesPreviewHtml(out) {
       out.issues.map((i) => '<tr><td><span class="pill ' + (i.severity === 'ERROR' ? 'bad' : 'warn') + '">' + esc(i.severity) + '</span></td>' +
         '<td>' + esc(i.invoiceNo) + '</td><td>' + esc(i.message) + '</td></tr>').join('') +
       '</tbody></table></div>'
-    : '<h3>Problems found</h3><div class="msg ok">Koi problem nahi mili.</div>';
+    : '<h3>Problems found</h3><div class="msg ok">No problems found.</div>';
 
   const skipped = (out.skipped || []).length
     ? '<h3>Skipped rows (' + out.skipped.length + ')</h3><div class="scroll" style="max-height:180px"><table>' +
@@ -2388,14 +2382,14 @@ function salesPreviewHtml(out) {
   const rowsCols = ['our_gstin', 'customer_name', 'customer_gstin', 'invoice_no', 'invoice_date', ['period', 'Return month'], 'invoice_type', 'place_of_supply', ['taxable_value', 'Taxable'], 'igst', 'cgst', 'sgst', ['invoice_value', 'Invoice Value'], 'item_lines'];
 
   return flags + ctx + '<div style="margin-top:12px" class="scroll"><table>' +
-    tableHtml(rowsCols, out.rows || [], 'Koi invoice nahi.') + '</table></div>' + issues + skipped;
+    tableHtml(rowsCols, out.rows || [], 'No invoices.') + '</table></div>' + issues + skipped;
 }
 
 function fileToDataUrl(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result || ''));
-    reader.onerror = () => reject(new Error('File read nahi ho saki.'));
+    reader.onerror = () => reject(new Error('Could not read the file.'));
     reader.readAsDataURL(file);
   });
 }
@@ -2403,8 +2397,8 @@ function fileToDataUrl(file) {
 async function salesImport() {
   const input = el('salesFile');
   const f = input && input.files && input.files[0];
-  if (!f) return toast('Pehle Sales Register file choose karo.', 'err');
-  if (!CTX.gstin) return toast('Upar header me Our GSTIN select karo.', 'err');
+  if (!f) return toast('Please choose a Sales Register file first.', 'err');
+  if (!CTX.gstin) return toast('Please select Our GSTIN in the top header.', 'err');
   try {
     if (el('salesFileMsg')) el('salesFileMsg').textContent = 'importing ' + f.name + ' to Books & building GSTR-1\u2026';
     const dataUrl = await fileToDataUrl(f);
@@ -2427,7 +2421,7 @@ async function salesImport() {
 async function salesUploadAndRun() {
   const input = el('salesFile');
   const f = input && input.files && input.files[0];
-  if (!f) return toast('Pehle Sales Register file choose karo.', 'err');
+  if (!f) return toast('Please choose a Sales Register file first.', 'err');
   try {
     if (el('salesFileMsg')) el('salesFileMsg').textContent = 'uploading ' + f.name + '\u2026';
     const up = await postFile('/api/sales-register/upload?name=' + enc(f.name), f);
@@ -2462,9 +2456,9 @@ function portalPeriod() {
 
 async function portalG1Preview() {
   const f = el('portalG1File') && el('portalG1File').files && el('portalG1File').files[0];
-  if (!f) return toast('Pehle portal ki GSTR-1 file choose karo.', 'err');
+  if (!f) return toast('Please choose the Portal GSTR-1 file first.', 'err');
   const gstin = portalGstin();
-  if (!gstin) return toast('GSTIN daalo \u2014 portal file khud apna GSTIN nahi batati.', 'err');
+  if (!gstin) return toast('Enter GSTIN \u2014 the portal file does not contain your GSTIN.', 'err');
   showId('portalG1Card');
   setHtml('portalG1Out', '<div class="hint">parsing\u2026</div>');
   note('portalG1Msg', 'hint', '');
@@ -2512,7 +2506,7 @@ function portalPreviewHtml(out) {
   const sheetRows = (out.sheets || []).map((s) => ({ sheet: s, rows: perSheet[s] || 0, table: tableOfSheet[s] || '\u2014' }));
   const sheetTable = sheetRows.length
     ? '<h3>Sheets read</h3><div class="scroll" style="max-height:160px"><table>' +
-      tableHtml([['sheet', 'Sheet'], ['rows', 'Rows'], ['table', 'Read as']], sheetRows, 'Koi sheet nahi.') + '</table></div>'
+      tableHtml([['sheet', 'Sheet'], ['rows', 'Rows'], ['table', 'Read as']], sheetRows, 'No sheets.') + '</table></div>'
     : '';
 
   const tableRows = tables.length
@@ -2522,17 +2516,17 @@ function portalPreviewHtml(out) {
 
   const skip = (out.skipped || []).length
     ? '<h3>Skipped (' + out.skipped.length + ')</h3><div class="scroll" style="max-height:180px"><table>' +
-      tableHtml([['sheet', 'Sheet'], ['row', 'Row'], ['reason', 'Reason']], out.skipped, 'Kuch skip nahi hua.') + '</table></div>'
+      tableHtml([['sheet', 'Sheet'], ['row', 'Row'], ['reason', 'Reason']], out.skipped, 'Nothing skipped.') + '</table></div>'
     : '';
 
   const cols = ['table_type', 'invoice_number', 'invoice_date', ['period', 'Return month'], 'recipient_gstin', 'recipient_name', 'place_of_supply', 'hsn', 'rate', ['taxable_value', 'Taxable'], 'igst', 'cgst', 'sgst', 'cess', ['invoice_value', 'Invoice Value']];
   return tiles + ctx + sheetTable + tableRows +
-    '<h3>Rows</h3><div class="scroll"><table>' + tableHtml(cols, rows, 'Koi row nahi mili.') + '</table></div>' + skip;
+    '<h3>Rows</h3><div class="scroll"><table>' + tableHtml(cols, rows, 'No rows found.') + '</table></div>' + skip;
 }
 
 async function portalG1Import() {
   const f = el('portalG1File') && el('portalG1File').files && el('portalG1File').files[0];
-  if (!f) return toast('Pehle portal file choose karo.', 'err');
+  if (!f) return toast('Please choose a portal file first.', 'err');
   const gstin = portalGstin();
   if (!gstin) return toast('GSTIN daalo.', 'err');
   note('portalG1Msg', 'hint', 'importing\u2026');
@@ -2562,7 +2556,7 @@ function g1HsnUrl(format, view) {
 }
 
 async function g1Draft() {
-  if (!CTX.gstin || !CTX.period) return toast('GSTIN aur period select karo.', 'err');
+  if (!CTX.gstin || !CTX.period) return toast('Please select GSTIN and period.', 'err');
   note('outMsg', 'hint', 'draft ban raha hai\u2026');
   try {
     const out = await postJson('/api/gstr1/draft', { gstin: CTX.gstin, period: CTX.period });
@@ -2575,11 +2569,11 @@ async function g1Draft() {
 }
 
 async function g1Recon() {
-  if (!CTX.gstin || !CTX.period) return toast('GSTIN aur period select karo.', 'err');
+  if (!CTX.gstin || !CTX.period) return toast('Please select GSTIN and period.', 'err');
   note('outMsg', 'hint', 'comparing draft against filed\u2026');
   try {
     const out = await postJson('/api/gstr1/recon', { gstin: CTX.gstin, period: CTX.period });
-    if (!out.has_filed_data) note('outMsg', 'warn', 'Portal ki filed GSTR-1 abhi import nahi hui \u2014 comparison adhoora hai.');
+    if (!out.has_filed_data) note('outMsg', 'warn', 'Portal filed GSTR-1 has not been imported yet \u2014 comparison adhoora hai.');
     else note('outMsg', 'ok', 'Reconciliation ho gaya. Matched ' + cnt(out.totals && out.totals.matched) + '.');
     await loadOutward();
   } catch (e) {
@@ -2588,7 +2582,7 @@ async function g1Recon() {
 }
 
 async function loadOutward() {
-  setHtml('outCtx', esc(CTX.gstin || '(koi GSTIN nahi)') + ' \u00b7 ' + esc(monthLabel(CTX.period)) + ' \u00b7 FY ' + esc(CTX.fy || ''));
+  setHtml('outCtx', esc(CTX.gstin || '(no GSTIN)') + ' \u00b7 ' + esc(monthLabel(CTX.period)) + ' \u00b7 FY ' + esc(CTX.fy || ''));
   try {
     const out = await api(outUri(CTX.outStatus ? '&status=' + enc(CTX.outStatus) : ''));
     renderOutward(out);
@@ -2599,7 +2593,7 @@ async function loadOutward() {
 }
 
 function exportGstr1Recon(fmt) {
-  if (!CTX.gstin || !CTX.period) return toast('GSTIN aur period select karo.', 'err');
+  if (!CTX.gstin || !CTX.period) return toast('Please select GSTIN and period.', 'err');
   const st = CTX.outStatus ? '&status=' + enc(CTX.outStatus) : '';
   return download(
     '/api/gstr1/recon-export?gstin=' + enc(CTX.gstin) + '&period=' + enc(CTX.period) + '&format=' + enc(fmt || 'xlsx') + st,
@@ -2651,7 +2645,7 @@ function renderOutward(out) {
           if (isDateKey(key)) return '<td>' + (v ? esc(fmtDmy(v)) : '&mdash;') + '</td>';
           return '<td>' + (v === null || v === undefined || v === '' ? '&mdash;' : esc(v)) + '</td>';
         }).join('') + '</tr>').join('')
-      : '<tr><td colspan="' + cols.length + '" class="hint">Koi outcome nahi. Pehle "Rebuild draft from books" chalao, phir "Run reconciliation".</td></tr>') +
+      : '<tr><td colspan="' + cols.length + '" class="hint">No outcome yet. Pehle "Rebuild draft from books" chalao, phir "Run reconciliation".</td></tr>') +
     '</tbody>');
 
   setHtml('outHint', cnt(out.total) + ' invoice outcome' + (out.last_run ? ' \u00b7 last run ' + esc(asText(out.last_run.ran_at)) : ''));
@@ -2669,7 +2663,7 @@ function renderOutward(out) {
           const v = r[key];
           return '<td>' + (v === null || v === undefined || v === '' ? '&mdash;' : (key === 'status' ? '<span class="pill ' + pillClass(slug(v)) + '">' + esc(statusLabel(slug(v))) + '</span>' : esc(v))) + '</td>';
         }).join('') + '</tr>').join('')
-      : '<tr><td colspan="' + sCols.length + '" class="hint">Comparison nahi hua \u2014 "Run reconciliation" dabao.</td></tr>') +
+      : '<tr><td colspan="' + sCols.length + '" class="hint">Not compared yet \u2014 "Run reconciliation" dabao.</td></tr>') +
     '</tbody>');
 }
 
@@ -2689,7 +2683,7 @@ async function loadCoverage() {
         ? mine.map((r) => '<tr class="clickable" onclick="setPeriod(\'' + esc(r.period) + '\');loadOutward()">' +
             '<td>' + esc(r.gstin) + '</td><td>' + esc(monthLabel(r.period)) + '</td>' +
             '<td class="num">' + cnt(r.drafts) + '</td><td class="num">' + cnt(r.filed) + '</td></tr>').join('')
-        : '<tr><td colspan="4" class="hint">Abhi koi outward data nahi hai.</td></tr>') +
+        : '<tr><td colspan="4" class="hint">No outward data yet.</td></tr>') +
       '</tbody>');
   } catch (e) {
     setHtml('outCoverage', '<tbody><tr><td class="hint">' + esc(errText(e)) + '</td></tr></tbody>');
@@ -2717,13 +2711,13 @@ function renderHsn(out) {
   // replaced the "portal HSN data is missing" warning with good news.
   const base = 'Books item lines: ' + cnt(out.item_lines) + ' \u00b7 item-wise invoices: ' + cnt(out.item_level_invoices);
   const bCols = ['scope', 'hsn', 'desc', 'uqc', ['qty', 'Quantity'], ['rateOut', 'Rate %'], ['taxable', 'Taxable'], 'igst', 'cgst', 'sgst', 'cess'];
-  setHtml('hsnBooks', tableHtml(bCols, out.rows || [], 'Is period ke liye books me koi HSN line nahi.'));
+  setHtml('hsnBooks', tableHtml(bCols, out.rows || [], 'No HSN lines in Books for this period.'));
 
   const card = el('hsnPortalCard');
   if (out.portal && out.portal.available) {
     if (card) card.hidden = false;
     const pCols = ['scope', 'hsn', ['rate', 'Rate %'], ['taxable', 'Taxable'], 'igst', 'cgst', 'sgst', 'cess', ['documents', 'Filed docs']];
-    setHtml('hsnPortal', tableHtml(pCols, (out.portal.rows || []), 'Portal HSN rows nahi.'));
+    setHtml('hsnPortal', tableHtml(pCols, (out.portal.rows || []), 'No Portal HSN rows.'));
   } else {
     if (card) card.hidden = true;
   }
@@ -2767,7 +2761,7 @@ function renderHsn(out) {
     note('hsnMsg', 'ok', base);
   } else {
     if (cCard) cCard.hidden = true;
-    note('hsnMsg', 'warn', base + ' \u2014 Portal ka HSN data import nahi hua, isliye ye comparison adhoora hai. ' +
+    note('hsnMsg', 'warn', base + ' \u2014 Portal HSN data has not been imported yet, so this comparison is incomplete. ' +
       ((out.portal && out.portal.reason) ? out.portal.reason : ''));
   }
 }
@@ -2792,7 +2786,7 @@ async function loadPl() {
 
 async function plLoadHeads() {
   if (!plCompany()) {
-    setHtml('plTiles', '<div class="msg warn">P&amp;L company-level hai \u2014 header me company select karo.</div>');
+    setHtml('plTiles', '<div class="msg warn">P&amp;L is company-level \u2014 select a company in the header.</div>');
     setHtml('plMonths', '<tbody><tr><td class="hint">Company select karne par months dikhenge.</td></tr></tbody>');
     return;
   }
@@ -2811,7 +2805,7 @@ async function plLoadHeads() {
             '<td class="num">' + numCell(m.explained) + '</td>' +
             '<td class="num">' + numCell(m.reconciled) + '</td>' +
             '<td class="num">' + money(m.total_difference) + '</td></tr>').join('')
-        : '<tr><td colspan="7" class="hint">Koi P&amp;L month upload nahi hua.</td></tr>') +
+        : '<tr><td colspan="7" class="hint">No P&amp;L month uploaded yet.</td></tr>') +
       '</tbody>');
   } catch (e) {
     note('plMsg', 'err', errText(e));
@@ -2866,7 +2860,7 @@ async function plLoad() {
 async function plPreview() {
   const f = el('plFile') && el('plFile').files && el('plFile').files[0];
   if (!f) return toast('Pehle P&L file choose karo.', 'err');
-  if (!plCompany()) return toast('Header me company select karo.', 'err');
+  if (!plCompany()) return toast('Please select a company in the header.', 'err');
   showId('plPreviewCard');
   setHtml('plPreviewBody', '<div class="hint">parsing\u2026</div>');
   try {
@@ -2882,7 +2876,7 @@ async function plPreview() {
       '<div class="tile ' + ((out.unknownHeads || []).length ? 'warn' : 'good') + '"><div class="k">Unknown heads</div><div class="v">' + cnt((out.unknownHeads || []).length) + '</div></div>' +
       '<div class="tile ' + ((out.skipped || []).length ? 'warn' : 'good') + '"><div class="k">Skipped</div><div class="v">' + cnt((out.skipped || []).length) + '</div></div>' +
       '</div>' +
-      ((out.unknownHeads || []).length ? '<div class="msg warn">Ye head master me nahi hain: ' + esc(out.unknownHeads.join(', ')) + '</div>' : '') +
+      ((out.unknownHeads || []).length ? '<div class="msg warn">These heads are missing in the master: ' + esc(out.unknownHeads.join(', ')) + '</div>' : '') +
       '<div class="scroll"><table>' + tableHtml([['headName', 'P&L Head'], ['period', 'Period'], ['amount', 'Amount'], ['remarks', 'Remarks']], rows, 'Koi line nahi.') + '</table></div>');
     note('plMsg', 'ok', f.name + ' padh li gayi \u2014 ab "Confirm import".');
   } catch (e) {
@@ -2907,7 +2901,7 @@ async function plImport() {
 }
 
 async function plRecon() {
-  if (!plCompany()) return toast('Header me company select karo.', 'err');
+  if (!plCompany()) return toast('Please select a company in the header.', 'err');
   const period = (el('plPeriod') && el('plPeriod').value.trim()) || CTX.period;
   if (!period) return toast('P&L month daalo.', 'err');
   note('plMsg', 'hint', 'reconciling ' + monthLabel(period) + '\u2026');
@@ -2927,7 +2921,7 @@ async function plExplain(id) {
   const remarks = prompt('Remarks (optional):') || '';
   try {
     const out = await postJson('/api/pl/explain', { id: id, reason: reason, remarks: remarks });
-    if (out.ok === false) return showInline('plMsg', 'err', out.reason || 'Reason save nahi hua.');
+    if (out.ok === false) return showInline('plMsg', 'err', out.reason || 'Could not save reason.');
     note('plMsg', 'ok', 'Reason save ho gaya.');
     await plLoad();
   } catch (e) {
@@ -2951,7 +2945,7 @@ function loadPurchase() {
 
 async function purchasePreview() {
   const f = el('purchaseFile') && el('purchaseFile').files && el('purchaseFile').files[0];
-  if (!f) return toast('Pehle purchase register file choose karo.', 'err');
+  if (!f) return toast('Please choose a purchase register file first.', 'err');
   showId('purchasePreviewCard');
   setHtml('purchasePreview', '<div class="hint">parsing\u2026</div>');
   try {
@@ -2982,7 +2976,7 @@ async function purchasePreview() {
 
     const problems = [];
     if ((out.invalidDocumentTypes || []).length) {
-      problems.push('<div class="msg err"><b>Galat Document Type</b> \u2014 ye rows import nahi hongi, file me theek karein: ' +
+      problems.push('<div class="msg err"><b>Invalid Document Type</b> \u2014 these rows will not be imported; please fix in the file: ' +
         esc(out.invalidDocumentTypes.slice(0, 8).map((s) => 'row ' + s.row + ': ' + s.reason).join(' | ')) + '</div>');
     }
     if ((out.duplicates || []).length) {
@@ -3016,17 +3010,17 @@ async function purchasePreview() {
           ((out.periodCount || 0) > 1
             ? esc(out.periodCount) + ' GST month milenge — har month alag reconcile hoga.'
             : 'Ek hi GST month.') +
-          '</b> Ek file me ek se zyada month chalte hain; har row apne Period se apne mahine me jaati hai.</div>' +
+          '</b> Multiple months in one file are supported; each row is routed by its Period.</div>' +
           '<div class="scroll"><table>' +
           tableHtml([['period', 'Month'], ['gstin', 'GSTIN'], ['lines', 'Lines'],
-            ['taxable', 'Net taxable'], ['tax', 'Net tax']], out.periods, 'Koi month nahi.') +
+            ['taxable', 'Net taxable'], ['tax', 'Net tax']], out.periods, 'No months.') +
           '</table></div></div>'
         : '') +
-      ((out.unmappedHeaders || []).length ? '<div class="msg warn">Ye columns samajh nahi aaye: ' + esc(out.unmappedHeaders.join(', ')) + '</div>' : '') +
+      ((out.unmappedHeaders || []).length ? '<div class="msg warn">Unrecognized columns: ' + esc(out.unmappedHeaders.join(', ')) + '</div>' : '') +
       '<div class="hint" style="margin:8px 0">Type aur amounts: <b>Source taxable</b> wahi hai jo file me likha tha, ' +
       '<b>Signed taxable</b> usi par Document Type ka sign lagane ke baad. Credit Note ka signed amount negative hoga, ' +
       'isliye Net taxable = invoices + debit notes \u2212 credit notes.</div>' +
-      '<div class="scroll"><table>' + tableHtml(cols, out.rows || [], 'Koi row nahi.') + '</table></div>');
+      '<div class="scroll"><table>' + tableHtml(cols, out.rows || [], 'No rows.') + '</table></div>');
     note('purchaseMsg', 'ok', f.name + ' padh li gayi \u2014 ab "Confirm import".');
   } catch (e) {
     showInline('purchaseMsg', 'err', errText(e));
@@ -3036,7 +3030,7 @@ async function purchasePreview() {
 
 async function purchaseImport() {
   const f = el('purchaseFile') && el('purchaseFile').files && el('purchaseFile').files[0];
-  if (!f) return toast('Pehle purchase register file choose karo.', 'err');
+  if (!f) return toast('Please choose a purchase register file first.', 'err');
   note('purchaseMsg', 'hint', 'importing\u2026');
   try {
     const out = await postFile('/api/purchase-file/import?name=' + enc(f.name), f);
@@ -3053,7 +3047,7 @@ async function purchaseImport() {
       (keys.length > 1 ? cnt(keys.length) + ' month ' : 'month ') + months +
       (gstins.length ? ', GSTIN ' + gstins.map(esc).join(' / ') : '') + '.');
     if (Array.isArray(out.blocked) && out.blocked.length) {
-      note('purchaseMsg', 'warn', 'Import ho gaya, lekin ye month reconcile nahi ho paaye: ' +
+      note('purchaseMsg', 'warn', 'Imported, but these months could not be reconciled: ' +
         out.blocked.map((b) => esc(b.period) + ' ' + esc(b.gstin)).join(', ') + ' \u2014 ' + esc(out.blocked[0].reason));
     }
     // The import reconciles the month it imported, so the table below is now
@@ -3080,7 +3074,7 @@ async function purchaseImport() {
  */
 async function upload2b(andReconcile) {
   const f = el('twobFile') && el('twobFile').files && el('twobFile').files[0];
-  if (!f) return toast('Pehle GSTR-2B file choose karo.', 'err');
+  if (!f) return toast('Please choose a GSTR-2B file first.', 'err');
   note('twobMsg', 'hint', 'uploading ' + f.name + '\u2026');
   try {
     if (andReconcile && CTX.gstin && CTX.period) {
@@ -3113,7 +3107,7 @@ async function upload2b(andReconcile) {
 }
 
 async function autoDecideItc() {
-  if (!CTX.gstin || !CTX.period) return toast('Upar header se GSTIN aur Return month choose karo.', 'err');
+  if (!CTX.gstin || !CTX.period) return toast('Please choose GSTIN and Return month from the header.', 'err');
   note('reconMsg', 'hint', 'Auto-applying GSTR-3B Input Credit (Table 4) decisions\u2026');
   try {
     const out = await postJson('/api/recon/purchase/auto-decide', { gstin: CTX.gstin, period: CTX.period });
@@ -3156,7 +3150,7 @@ async function runUploadedFolder() {
   }
   if (!job) return null;
   if (job.status === 'running') {
-    note('twobMsg', 'warn', 'Run abhi bhi chal raha hai \u2014 thodi der baad "Refresh" dabao.');
+    note('twobMsg', 'warn', 'Run is still in progress \u2014 click "Refresh" shortly.');
     return job;
   }
   if (job.status === 'failed') {
@@ -3194,7 +3188,7 @@ function reconUri() {
 
 async function loadRecon() {
   RECON.editing = null;
-  setHtml('reconCtx', esc(CTX.gstin || '(koi GSTIN nahi)') + ' \u00b7 ' + esc(monthLabel(CTX.period)) + ' \u00b7 reading\u2026');
+  setHtml('reconCtx', esc(CTX.gstin || '(no GSTIN)') + ' \u00b7 ' + esc(monthLabel(CTX.period)) + ' \u00b7 reading\u2026');
   try {
     const out = await api(reconUri());
     RECON.data = out;
@@ -3241,7 +3235,7 @@ function renderRecon() {
   const locked = reconIsLocked();
 
   setHtml('reconCtx',
-    esc(CTX.gstin || '(koi GSTIN nahi)') + ' \u00b7 ' + esc(monthLabel(CTX.period)) +
+    esc(CTX.gstin || '(no GSTIN)') + ' \u00b7 ' + esc(monthLabel(CTX.period)) +
     ' \u00b7 FY ' + esc(CTX.fy || '') +
     (locked
       ? ' \u00b7 <span class="pill bad">Month locked</span> \u2014 corrections blocked, unlock as admin first.'
@@ -3279,8 +3273,8 @@ function renderRecon() {
   let body;
   if (!RECON.rows.length) {
     const why = (RECON.data && RECON.data.total)
-      ? 'Is filter par koi row nahi.'
-      : 'Is GSTIN aur month ka koi purchase line nahi. Pehle register upload karo, phir 2B, phir "Upload + reconcile".';
+      ? 'No rows match this filter.'
+      : 'No purchase lines for this GSTIN and month. Pehle register upload karo, phir 2B, phir "Upload + reconcile".';
     body = '<tbody><tr><td colspan="' + RECON_COLS.length + '" class="hint">' + esc(why) + '</td></tr></tbody>';
   } else {
     body = '<tbody>' + RECON.rows.map((r) => {
@@ -3338,7 +3332,7 @@ function renderRecon() {
     'document_type', 'taxable_value', 'itc', 'itc_availability', 'reason'];
   const twoBRows = (out.twoBOnly || []).map((r) => Object.assign({}, r, { itc: n(r.itc) }));
   setHtml('reconTwoBTable', tableHtml(twoBCols, twoBRows,
-    'GSTR-2B ka har invoice books me mil gaya \u2014 is month me kuch pending nahi.'));
+    'Every GSTR-2B invoice is matched in Books \u2014 nothing pending this month.'));
 }
 
 /**
@@ -3365,7 +3359,7 @@ function reconEditRow(r) {
   const itcOpts = [
     ['Pending Review', 'Pending Review'],
     ['Claim', 'Claim \u2014 GSTR-3B Table 4(A) me lo'],
-    ['Reclaim Later', 'Reclaim Later \u2014 Agle mahine ke liye Hold'],
+    ['Reclaim Later', 'Reclaim Later \u2014 Hold for Next Month'],
     ['Query Vendor', 'Query Vendor \u2014 Supplier follow-up / Hold'],
     ['Ineligible', 'Ineligible \u2014 Sec 17(5) Blocked / Table 4(B)'],
     ['Reversed', 'Reversed \u2014 Reversed in Table 4(B)'],
@@ -3460,7 +3454,7 @@ async function reconSave(id) {
   const itcChanged = (itcDec && itcDec !== String(row.itc_decision || 'Pending Review')) || (claimMo !== String(row.itc_decision_month || ''));
   const t3bChanged = t3b && t3b !== String(row.return_classification || 'Pending Review');
 
-  if (!Object.keys(patch).length && !moves && !itcChanged && !t3bChanged) return toast('Kuch badla nahi.', 'warn');
+  if (!Object.keys(patch).length && !moves && !itcChanged && !t3bChanged) return toast('No changes made.', 'warn');
   if ((Object.keys(patch).length || moves) && !why) return toast('Invoice/GSTIN badalne par Reason likhna zaroori hai \u2014 wahi audit trail me jaata hai.', 'err');
 
   note('reconMsg', 'hint', 'saving\u2026');
@@ -3483,7 +3477,7 @@ async function reconSave(id) {
       changed.push('table3b=' + t3b);
     }
     RECON.editing = null;
-    note('reconMsg', 'ok', 'Save ho gaya: ' + (changed.join(', ') || 'kuch nahi') + '. Reconciliation dobara chal gayi.');
+    note('reconMsg', 'ok', 'Saved: ' + (changed.join(', ') || 'nothing') + '. Reconciliation dobara chal gayi.');
     await loadRecon();
     await loadContext();
     if (CTX.view === 'home') loadHome();
@@ -3503,7 +3497,7 @@ async function reconHistory(id) {
   try {
     const out = await api('/api/lines/' + id);
     const cols = ['field_name', 'old_value', 'new_value', 'changed_by', 'changed_at', 'reason', 'rerefreshed'];
-    setHtml('reconHistoryTable', tableHtml(cols, out.history || [], 'Is line par abhi koi correction nahi hui.'));
+    setHtml('reconHistoryTable', tableHtml(cols, out.history || [], 'No corrections recorded for this line yet.'));
   } catch (e) {
     setHtml('reconHistoryTable', '<tbody><tr><td class="hint">' + esc(errText(e)) + '</td></tr></tbody>');
   }
@@ -3511,11 +3505,11 @@ async function reconHistory(id) {
 
 /** Re-run the matcher over the stored lines for the month on screen. */
 async function rerunMonth() {
-  if (!CTX.gstin || !CTX.period) return toast('Upar se GSTIN aur month choose karo.', 'err');
+  if (!CTX.gstin || !CTX.period) return toast('Choose GSTIN and month from the header.', 'err');
   note('reconMsg', 'hint', 're-reconciling ' + monthLabel(CTX.period) + '\u2026');
   try {
     const out = await postJson('/api/rereconcile', { gstin: CTX.gstin, period: CTX.period });
-    if (!out.ok) note('reconMsg', 'warn', out.reason || 'Reconcile nahi hua.');
+    if (!out.ok) note('reconMsg', 'warn', out.reason || 'Reconciliation failed.');
     else note('reconMsg', 'ok', 'Reconcile ho gaya \u2014 ' + cnt(out.matched) + ' matched, ' + cnt(out.changed) + ' line badli.');
     await loadRecon();
   } catch (e) {
@@ -3536,7 +3530,7 @@ function pasteRows() {
 
 async function pastePreview() {
   const rows = pasteRows();
-  if (!rows) return toast('Pehle Excel se rows paste karo.', 'err');
+  if (!rows) return toast('Please paste rows from Excel first.', 'err');
   showId('pastePreviewCard');
   setHtml('pastePreview', '<div class="hint">parsing\u2026</div>');
   try {
@@ -3556,8 +3550,8 @@ async function pastePreview() {
       '<div class="tile ' + (out.mapped ? 'good' : 'warn') + '"><div class="k">Columns mapped</div><div class="v" style="font-size:14px">' + (out.mapped ? 'yes' : 'partly') + '</div></div>' +
       '<div class="tile ' + ((out.skipped || []).length ? 'warn' : 'good') + '"><div class="k">Skipped</div><div class="v">' + cnt((out.skipped || []).length) + '</div></div>' +
       '</div>' +
-      ((out.unmappedHeaders || []).length ? '<div class="msg warn">Ye columns samajh nahi aaye: ' + esc(out.unmappedHeaders.join(', ')) + '</div>' : '') +
-      '<div class="scroll"><table>' + tableHtml(cols, out.rows || [], 'Koi row nahi.') + '</table></div>');
+      ((out.unmappedHeaders || []).length ? '<div class="msg warn">Unrecognized columns: ' + esc(out.unmappedHeaders.join(', ')) + '</div>' : '') +
+      '<div class="scroll"><table>' + tableHtml(cols, out.rows || [], 'No rows.') + '</table></div>');
     note('pasteMsg', 'ok', cnt(out.count) + ' row(s) samajh me aayi \u2014 ab "Confirm import".');
   } catch (e) {
     showInline('pasteMsg', 'err', errText(e));
@@ -3567,7 +3561,7 @@ async function pastePreview() {
 
 async function pasteImport() {
   const rows = pasteRows();
-  if (!rows) return toast('Pehle Excel se rows paste karo.', 'err');
+  if (!rows) return toast('Please paste rows from Excel first.', 'err');
   note('pasteMsg', 'hint', 'importing\u2026');
   try {
     const out = await postJson('/api/paste/import', { rows: rows });
@@ -3592,7 +3586,7 @@ async function loadReports() {
             '<td class="num">' + numCell(r.columns) + '</td><td class="hint">' + esc(r.note || '') + '</td>' +
             '<td><a href="#" onclick="download(\'/api/report/' + enc(r.name) + '?format=xlsx' + filterQuery() + '\', \'' + esc(r.title).replace(/[^A-Za-z0-9 _-]/g, '') + '.xlsx\'); return false;">.xlsx</a> ' +
             '<a href="#" onclick="download(\'/api/report/' + enc(r.name) + '?format=csv' + filterQuery() + '\', \'' + esc(r.title).replace(/[^A-Za-z0-9 _-]/g, '') + '.csv\'); return false;">.csv</a></td></tr>').join('')
-        : '<tr><td colspan="5" class="hint">Koi report nahi mili.</td></tr>') +
+        : '<tr><td colspan="5" class="hint">No reports found.</td></tr>') +
       '</tbody>');
     note('reportsMsg', 'ok', cnt(rows.length) + ' report(s).');
   } catch (e) {
@@ -3616,7 +3610,7 @@ async function loadMasters() {
       '<thead><tr><th>Company</th><th>PAN</th><th>Unit</th><th>GSTIN</th><th>State</th><th>Trade name</th></tr></thead><tbody>' +          (rows.length
         ? rows.map((r) => '<tr><td>' + esc(dispCompany(r.company)) + '</td><td>' + esc(r.pan) + '</td><td>' + esc(dispUnit(r.unit)) + '</td>' +
             '<td><code>' + esc(r.gstin || '') + '</code></td><td>' + esc(r.state) + '</td><td>' + esc(dispCompany(r.trade_name)) + '</td></tr>').join('')
-        : '<tr><td colspan="6" class="hint">Koi master nahi mili. ' + esc(out && out.reason ? out.reason : '') + '</td></tr>') +
+        : '<tr><td colspan="6" class="hint">No masters found. ' + esc(out && out.reason ? out.reason : '') + '</td></tr>') +
       '</tbody>');
 
     const u = CTX.user || {};
@@ -3765,7 +3759,7 @@ async function loadGstr9() {
       ['gstr3bItcNet', '3B Net ITC (4C)'],
       ['rcmTax', 'RCM Tax'],
       ['cashPaid', 'Cash Paid'],
-    ], g9.monthlySummary || [], 'Is FY me koi monthly data nahi mila.'));
+    ], g9.monthlySummary || [], 'No monthly data found for this FY.'));
 
     setHtml('gstr9Table', tableHtml([
       ['part', 'Part'],
@@ -3777,13 +3771,13 @@ async function loadGstr9() {
       ['sgst', 'SGST'],
       ['cess', 'Cess'],
       ['totalTax', 'Total Tax / ITC'],
-    ], r.gstr9Rows || [], 'Koi GSTR-9 row nahi.'));
+    ], r.gstr9Rows || [], 'No GSTR-9 rows.'));
 
     setHtml('gstr9cTable', tableHtml([
       ['table', 'Table'],
       ['description', 'Particulars'],
       ['amount', 'Amount (Rs)'],
-    ], r.gstr9cRows || [], 'Koi GSTR-9C row nahi.'));
+    ], r.gstr9cRows || [], 'No GSTR-9C rows.'));
 
     const ims = r.imsSummary || {};
     setHtml('imsTiles', [
@@ -3804,7 +3798,7 @@ async function loadGstr9() {
       ['recon_status', 'Recon Status'],
       ['ims_action', 'IMS Action'],
       ['ims_remark', 'Remark'],
-    ], r.imsRows || [], 'Koi IMS row nahi.'));
+    ], r.imsRows || [], 'No IMS rows.'));
 
     setHtml('gstr9Msg', 'FY ' + esc(r.fy || '') + ' compiled (' + esc(r.gstin || 'All GSTINs') + ').');
   } catch (e) {
