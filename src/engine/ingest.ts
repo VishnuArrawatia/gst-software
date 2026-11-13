@@ -418,7 +418,18 @@ function fpToPeriod(fp: string): string {
   return periodFromAny(fp) || '';
 }
 
-const ITC_KEYS = ['itc_elg', 'itc_avlbl', 'itc_availability', 'itcAvailability', 'itc_availble', 'eligible'];
+const ITC_KEYS = [
+  'itc_elg',
+  'itc_avlbl',
+  'itc_availability',
+  'itcAvailability',
+  'itc_availble',
+  'eligible',
+  'itcavl',
+  'itcsumm',
+  'itc_sum',
+  'itc',
+];
 const REASON_KEYS = ['reason', 'rsn', 'reason_code', 'reasonCode', 'itm_rsn', 'reason_desc'];
 const NO_INV_KEYS = ['inum', 'inv_num', 'invNum', 'invoice_no', 'invoiceNo', 'invno', 'inv_no', 'nt_num', 'ntnum'];
 
@@ -449,6 +460,17 @@ function sumItems(items: unknown): ItemTotals {
   return t;
 }
 
+function unwrapGstr2bRoot(json: unknown): {
+  raw: Record<string, unknown>;
+  data: Record<string, unknown>;
+  doc: Record<string, unknown>;
+} {
+  const raw = asObj(json);
+  const data = (raw.data && typeof raw.data === 'object' && !Array.isArray(raw.data)) ? asObj(raw.data) : raw;
+  const doc = (data.docdata && typeof data.docdata === 'object' && !Array.isArray(data.docdata)) ? asObj(data.docdata) : data;
+  return { raw, data, doc };
+}
+
 /**
  * Does this object look like a portal GSTR-2B download?
  *
@@ -457,53 +479,54 @@ function sumItems(items: unknown): ItemTotals {
  * recipient plus ITC availability somewhere.
  */
 export function isGstr2bJson(json: unknown): boolean {
-  const o = asObj(json);
-  if (Object.keys(o).length === 0) return false;
-  const tables = ['b2b', 'b2cl', 'cdnr', 'isd', 'b2cs', 'section'].filter((k) => k in o);
-  if (tables.length === 0) return false;
-  if (!('gstin' in o) && !('fp' in o)) return false;
+  const { raw, data, doc } = unwrapGstr2bRoot(json);
+  if (Object.keys(raw).length === 0) return false;
 
-  // Walk a few levels looking for an ITC-availability flag.
-  let sawItc = false;
-  const walk = (v: unknown, depth: number): void => {
-    if (sawItc || depth > 6) return;
-    if (Array.isArray(v)) {
-      for (const x of v) walk(x, depth + 1);
-      return;
-    }
-    const o2 = asObj(v);
-    for (const k of Object.keys(o2)) {
-      if (ITC_KEYS.includes(k)) {
-        sawItc = true;
-        return;
-      }
-      walk(o2[k], depth + 1);
-    }
-  };
-  walk(o, 0);
-  return sawItc;
+  const tables = ['b2b', 'b2ba', 'b2cl', 'cdnr', 'cdnra', 'isd', 'b2cs', 'impg', 'impga', 'section', 'sec'].filter(
+    (k) => (k in doc) || (k in data) || (k in raw)
+  );
+  if (tables.length === 0) return false;
+
+  const hasGstinOrFp =
+    ('gstin' in data) || ('fp' in data) || ('rtnprd' in data) ||
+    ('gstin' in raw) || ('fp' in raw) || ('rtnprd' in raw);
+  if (!hasGstinOrFp) return false;
+
+  return true;
 }
 
 export function parseGstr2bJson(
   json: unknown,
   sourceFile = 'gstr2b.json',
 ): IngestResult<Gstr2bRecord> {
-  const root = asObj(json);
+  const { raw, data, doc } = unwrapGstr2bRoot(json);
+  const root = data;
   const warnings: string[] = [];
   const skipped: IngestResult<Gstr2bRecord>['skipped'] = [];
   const rows: Gstr2bRecord[] = [];
   let unmatchedNoGstin = 0;
 
-  const ourGstin = normGstin(jpick(root, ['gstin', 'gstin_of_recipient', 'recipient_gstin', 'our_gstin']));
-  const fp = fpToPeriod(pickStr(root, ['fp', 'ret_period', 'period']));
+  const ourGstin = normGstin(
+    jpick(data, ['gstin', 'gstin_of_recipient', 'recipient_gstin', 'our_gstin']) ||
+    jpick(raw, ['gstin', 'gstin_of_recipient', 'recipient_gstin', 'our_gstin'])
+  );
+  const fp = fpToPeriod(
+    pickStr(data, ['fp', 'rtnprd', 'ret_period', 'period']) ||
+    pickStr(raw, ['fp', 'rtnprd', 'ret_period', 'period'])
+  );
+
+  const defaultFilingDate = normDate(
+    jpick(data, ['gendt', 'gen_dt', 'gstn_dt']) ||
+    jpick(raw, ['gendt', 'gen_dt', 'gstn_dt'])
+  );
 
   // ---- section-level ITC flags -------------------------------------------
   // The portal repeats ITC availability in a per-section summary. Where an
   // invoice itself carries no flag, that summary is the fallback — it is the
   // same data the portal shows in the "ITC not available" tables.
   const secByGstin = new Map<string, { avail: string; reason: string; sec: string }>();
-  for (const raw of asArr(root.section ?? root.sec)) {
-    const s = asObj(raw);
+  for (const rawSec of asArr(doc.section ?? doc.sec ?? data.section ?? data.sec ?? raw.section ?? raw.sec)) {
+    const s = asObj(rawSec);
     const sec = pickStr(s, ['sec', 'section', 'sec_cd']);
     const avail = pickStr(s, [...ITC_KEYS]);
     const reason = pickStr(s, REASON_KEYS);
@@ -518,7 +541,7 @@ export function parseGstr2bJson(
   let seq = 0;
   const emit = (
     o: Record<string, unknown>,
-    ctx: { ctin: string; pos?: string; sec?: string; group?: string; noteType?: string },
+    ctx: { ctin: string; pos?: string; sec?: string; group?: string; noteType?: string; supplierName?: string; filingDate?: string },
   ): void => {
     const supplier = normGstin(
       jpick(o, ['ctin', 'ctn', 'ctinstr', 'gstin', 'supplier_gstin', 'gstin_of_supplier']) || ctx.ctin,
@@ -536,15 +559,29 @@ export function parseGstr2bJson(
       return;
     }
 
-    const date = normDate(jpick(o, ['idt', 'inv_dt', 'invDt', 'invoice_date', 'nt_dt', 'ntdt', 'idt_nt']));
+    const date = normDate(jpick(o, ['dt', 'idt', 'inv_dt', 'invDt', 'invoice_date', 'nt_dt', 'ntdt', 'idt_nt']));
     const items = jpick(o, ['itms', 'items', 'itms_det']);
-    const t = sumItems(items);
+    const hasItems = Array.isArray(items) && items.length > 0;
+    const t = hasItems ? sumItems(items) : {
+      taxable_value: toNum(jpick(o, ['txval', 'taxable_value', 'taxableValue', 'taxval'])),
+      igst: toNum(jpick(o, ['igst', 'iamt', 'intg_tax'])),
+      cgst: toNum(jpick(o, ['cgst', 'camt', 'c_gst'])),
+      sgst: toNum(jpick(o, ['sgst', 'samt', 's_gst'])),
+      cess: toNum(jpick(o, ['cess', 'csamt'])),
+      rates: jpick(o, ['rt', 'rate']) !== undefined ? [String(jpick(o, ['rt', 'rate']))] : []
+    };
 
     const secFallback = secByGstin.get(supplier) ?? secDefault;
     const sec = ctx.sec || secFallback?.sec || '';
-    let itc = pickStr(o, ITC_KEYS);
-    if (!itc && secFallback?.avail) itc = secFallback.avail;
-    if (!itc) {
+    let itcRaw = pickStr(o, ['itcavl', ...ITC_KEYS]);
+    if (!itcRaw && secFallback?.avail) itcRaw = secFallback.avail;
+    let itc = 'Yes';
+    if (itcRaw) {
+      const s = itcRaw.trim().toUpperCase();
+      if (s === 'Y' || s === 'YES' || s === 'TRUE') itc = 'Yes';
+      else if (s === 'N' || s === 'NO' || s === 'FALSE') itc = 'No';
+      else itc = itcRaw;
+    } else {
       itc = 'Yes';
       if (!warnings.length) {
         warnings.push(
@@ -571,11 +608,14 @@ export function parseGstr2bJson(
     // releases export `txval` negative, others positive. The type is the fact.
     const amt = (n: number) => docAmount(invType, n);
 
+    const supName = pickStr(o, ['trdnm', 'tradenm', 'sup_name', 'supplier_name', 'party_name', 'supplierNm']) || ctx.supplierName;
+    const fDate = normDate(jpick(o, ['supfildt', 'filing_date'])) || ctx.filingDate || defaultFilingDate;
+
     rows.push({
       id: `${sourceFile}#${seq++}`,
       our_gstin: ourGstin,
       supplier_gstin: supplier,
-      supplier_name: pickStr(o, ['sup_name', 'supplier_name', 'party_name', 'tradenm', 'supplierNm']),
+      supplier_name: supName,
       invoice_no: invNo,
       invoice_type: invType,
       invoice_date: date,
@@ -583,7 +623,7 @@ export function parseGstr2bJson(
         amt(toNum(jpick(o, ['val', 'inv_val', 'invVal', 'invoice_value', 'inv_amt']))) ||
         r2(amt(t.taxable_value) + taxOf({ igst: amt(t.igst), cgst: amt(t.cgst), sgst: amt(t.sgst), cess: amt(t.cess) })),
       place_of_supply: normPos(ctx.pos || jpick(o, ['pos', 'place_of_supply', 'poscd'])),
-      reverse_charge: toBool(jpick(o, ['rchrg', 'rev_chrg', 'revChrg', 'reverse_charge'])),
+      reverse_charge: toBool(jpick(o, ['rev', 'rchrg', 'rev_chrg', 'revChrg', 'reverse_charge'])),
       taxable_value: amt(t.taxable_value),
       igst: amt(t.igst),
       cgst: amt(t.cgst),
@@ -591,7 +631,7 @@ export function parseGstr2bJson(
       cess: amt(t.cess),
       period: periodOf(date) || fp,
       portal_fp: fp || undefined,
-      filing_date: normDate(jpick(root, ['gstn_dt', 'gen_dt'])) || undefined,
+      filing_date: fDate || undefined,
       itc_availability: itc,
       reason: reasonParts.join(': ') || undefined,
       applicable_pct: pct || undefined,
@@ -600,43 +640,90 @@ export function parseGstr2bJson(
     });
   };
 
-  // ---- B2B / B2CL / ISD: groups of invoices ------------------------------
+  // ---- B2B / B2BA / B2CL / ISD: groups of invoices -----------------------
   let b2csCount = 0;
   const invoiceTables: Array<{ key: string; group: string }> = [
     { key: 'b2b', group: 'B2B' },
+    { key: 'b2ba', group: 'B2BA' },
     { key: 'b2cl', group: 'B2CL' },
     { key: 'isd', group: 'ISD' },
   ];
   for (const { key, group } of invoiceTables) {
-    for (const gRaw of asArr(root[key])) {
+    const tableList = asArr(doc[key] ?? data[key] ?? raw[key]);
+    for (const gRaw of tableList) {
       const g = asObj(gRaw);
       const pos = pickStr(g, ['pos', 'place_of_supply']);
       const sec = pickStr(g, ['sec', 'section']);
       // In B2B the supplier GSTIN sits on the GROUP, not on the invoice.
       const ctin = pickStr(g, ['ctin', 'ctn', 'ctinstr', 'gstin', 'supplier_gstin']);
+      const supplierName = pickStr(g, ['trdnm', 'tradenm', 'sup_name', 'supplier_name', 'party_name', 'supplierNm']);
+      const filingDate = normDate(pickStr(g, ['supfildt', 'filing_date']));
       const list = asArr(jpick(g, ['inv', 'invs', 'inv_list']));
       if (list.length === 0) {
         // ISD and some releases list the invoice flat, with no `inv` wrapper.
-        emit(g, { ctin, pos, sec, group });
+        emit(g, { ctin, pos, sec, group, supplierName, filingDate });
         continue;
       }
-      for (const iRaw of list) emit(asObj(iRaw), { ctin, pos, sec, group });
+      for (const iRaw of list) emit(asObj(iRaw), { ctin, pos, sec, group, supplierName, filingDate });
     }
   }
 
-  // ---- CDNR: credit / debit notes ----------------------------------------
-  for (const gRaw of asArr(root.cdnr ?? root.cdnra)) {
+  // ---- CDNR / CDNRA: credit / debit notes ---------------------------------
+  const cdnrList = asArr(doc.cdnr ?? doc.cdnra ?? data.cdnr ?? data.cdnra ?? raw.cdnr ?? raw.cdnra);
+  for (const gRaw of cdnrList) {
     const g = asObj(gRaw);
-    emit(g, {
-      ctin: pickStr(g, ['ctin', 'ctn', 'ctinstr', 'gstin', 'supplier_gstin']),
-      pos: pickStr(g, ['pos', 'place_of_supply']),
-      sec: pickStr(g, ['sec', 'section']),
-      group: 'CDNR',
+    const ctin = pickStr(g, ['ctin', 'ctn', 'ctinstr', 'gstin', 'supplier_gstin']);
+    const pos = pickStr(g, ['pos', 'place_of_supply']);
+    const sec = pickStr(g, ['sec', 'section']);
+    const supplierName = pickStr(g, ['trdnm', 'tradenm', 'sup_name', 'supplier_name', 'party_name', 'supplierNm']);
+    const filingDate = normDate(pickStr(g, ['supfildt', 'filing_date']));
+    const list = asArr(jpick(g, ['nt', 'notes', 'inv', 'invs', 'inv_list']));
+    if (list.length === 0) {
+      emit(g, { ctin, pos, sec, group: 'CDNR', supplierName, filingDate });
+      continue;
+    }
+    for (const nRaw of list) emit(asObj(nRaw), { ctin, pos, sec, group: 'CDNR', supplierName, filingDate });
+  }
+
+  // ---- IMPG: import of goods (Bill of Entry) ----------------------------
+  const impgList = asArr(doc.impg ?? doc.impga ?? data.impg ?? data.impga ?? raw.impg ?? raw.impga);
+  for (const gRaw of impgList) {
+    const g = asObj(gRaw);
+    const boeNum = pickStr(g, ['boenum', 'boe_num', 'boeNo', 'boeno']);
+    if (!boeNum) continue;
+    const boeDt = normDate(jpick(g, ['boedt', 'boe_dt', 'refdt']));
+    const port = pickStr(g, ['portcode', 'port_code', 'port']) || 'CUSTOMS';
+    const txval = toNum(jpick(g, ['txval', 'taxable_value']));
+    const igst = toNum(jpick(g, ['igst', 'iamt']));
+    const cess = toNum(jpick(g, ['cess', 'csamt']));
+    rows.push({
+      id: `${sourceFile}#${seq++}`,
+      our_gstin: ourGstin,
+      supplier_gstin: `CUSTOMS-${port}`,
+      supplier_name: `Import Customs (${port})`,
+      invoice_no: `BOE-${boeNum}`,
+      invoice_type: 'IMPG',
+      invoice_date: boeDt,
+      invoice_value: r2(txval + igst + cess),
+      place_of_supply: ourGstin ? ourGstin.slice(0, 2) : '',
+      reverse_charge: false,
+      taxable_value: txval,
+      igst: igst,
+      cgst: 0,
+      sgst: 0,
+      cess: cess,
+      period: periodOf(boeDt) || fp,
+      portal_fp: fp || undefined,
+      filing_date: boeDt || defaultFilingDate,
+      itc_availability: 'Yes',
+      source_file: sourceFile,
+      source_row: seq,
     });
   }
 
   // ---- B2CS: summary only, cannot be matched invoice-wise ---------------
-  for (const gRaw of asArr(root.b2cs)) {
+  const b2csList = asArr(doc.b2cs ?? data.b2cs ?? raw.b2cs);
+  for (const gRaw of b2csList) {
     const g = asObj(gRaw);
     const t = sumItems(jpick(g, ['itms', 'items']));
     if (t.taxable_value || taxOf(t)) b2csCount++;
@@ -650,7 +737,7 @@ export function parseGstr2bJson(
       reason: `${unmatchedNoGstin} invoice(s) without a supplier GSTIN skipped — typically B2CL from unregistered suppliers, which cannot be matched line-wise`,
     });
   }
-  if (root.section) {
+  if (doc.section || data.section || raw.section) {
     skipped.push({ row: 0, reason: 'section-level ITC summary tables skipped — used only as fallback flags' });
   }
 
