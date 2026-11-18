@@ -139,10 +139,16 @@ export async function login(
 
   const found = await withClient(async (c) => {
     const r = await c.query(
-      `SELECT id, password_hash, status FROM users WHERE UPPER(username) = UPPER($1)`,
+      `SELECT id, password_hash, status FROM users
+        WHERE UPPER(REPLACE(username, '-', '')) = UPPER(REPLACE($1, '-', ''))
+        ORDER BY (status = 'active') DESC, (password_hash LIKE 'scrypt$%') DESC, id ASC`,
       [uname],
     );
-    return r.rows[0] as { id: number; password_hash: string; status: string } | undefined;
+    return (
+      (r.rows.find((row: any) => row.status !== 'locked' && verifyPassword(password, row.password_hash)) as
+        | { id: number; password_hash: string; status: string }
+        | undefined) || (r.rows[0] as { id: number; password_hash: string; status: string } | undefined)
+    );
   });
   if (!found) return { ok: false, reason: 'Username or password is wrong.' };
   if (found.status === 'locked') return { ok: false, reason: 'This account is locked.' };
