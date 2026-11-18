@@ -54,7 +54,7 @@ import {
 import { isGstr2bJson, parseGstr2b, parseGstr2bJson, parsePurchaseRegister, parseSalesRegister, sniffKind } from '../engine/ingest';
 import { buildGstr3b } from '../engine/gstr3b';
 import { persistRun, sha256 } from '../app/store';
-import { normGstin as normGstinOf, r2, isoDate, normInvoiceType } from '../engine/core';
+import { normGstin as normGstinOf, r2, isoDate, normInvoiceType, docAmount, docSign, docTypeOrNull, monthRange } from '../engine/core';
 import { reconcilePurchases } from '../engine/match';
 import { buildImsActions } from '../engine/ims';
 import { buildGstr9, buildGstr9c, fyMonths, gstr9PortalJson, gstr9WorkingRows, gstr9cWorkingRows } from '../engine/gstr9';
@@ -723,18 +723,135 @@ app.get('/api/recon/purchase', requirePerm('recon', 'view'), wrap(async (req, re
   if (!ready.ok) return res.status(503).json({ error: ready.reason });
 
   const f = filtersOf(req);
+
+  // ---- Multi-Month & Multi-GSTIN Resolution -------------------------------
+  const rawPeriods = str(req.query.periods)
+    .split(',')
+    .map((p) => p.trim())
+    .filter((p) => /^\d{4}-\d{2}$/.test(p));
+  const fromP = str(req.query.fromPeriod || req.query.from);
+  const toP = str(req.query.toPeriod || req.query.to);
+  let targetPeriods: string[] | undefined;
+  if (rawPeriods.length > 0) {
+    targetPeriods = [...new Set(rawPeriods)].sort();
+  } else if (/^\d{4}-\d{2}$/.test(fromP) && /^\d{4}-\d{2}$/.test(toP)) {
+    targetPeriods = monthRange(fromP <= toP ? fromP : toP, fromP <= toP ? toP : fromP);
+  }
+
+  const allowed = await allowedGstins(req.user);
+  const rawGstins = str(req.query.gstins)
+    .split(',')
+    .map((g) => normGstinOf(g))
+    .filter(Boolean);
+  let targetGstins: string[] | undefined;
+  if (str(req.query.gstins).toUpperCase() === 'ALL') {
+    targetGstins = allowed ?? undefined; // null allowed => all GSTINs in DB
+  } else if (rawGstins.length > 0) {
+    targetGstins = allowed ? rawGstins.filter((g) => allowed.includes(g)) : rawGstins;
+  }
+  const singleGstin = targetGstins ? undefined : (str(req.query.gstins).toUpperCase() === 'ALL' ? undefined : f.gstin);
+  const singlePeriod = targetPeriods ? undefined : f.period;
+
   const { total, rows } = await listLines({
-    gstin: f.gstin,
-    period: f.period,
+    gstin: singleGstin,
+    gstins: targetGstins,
+    period: singlePeriod,
+    periods: targetPeriods,
     search: f.q,
     status: f.status,
-    limit: Math.min(Number(req.query.limit || 300), 1000),
+    limit: Math.min(Number(req.query.limit || 500), 5000),
   });
-  const summary = await phase0Dashboard({ gstin: f.gstin, period: f.period });
-  const twoB = await runReportNamed('twob-not-in-books', f);
-  const twoBRows = (twoB?.rows ?? []).slice(0, 1000);
+  const summary = await phase0Dashboard({
+    gstin: singleGstin,
+    gstins: targetGstins,
+    period: singlePeriod,
+    periods: targetPeriods,
+  });
 
-  // Probable 2B Bill suggestion for 'Missing in 2B' rows against unbooked 2B rows + GSTR-3B Table 4 bucket
+  // Unbooked 2B lines for the selected period(s) and GSTIN(s)
+  let twoBRows: any[] = [];
+  let twoBTotalCount = 0;
+  if (targetPeriods || targetGstins || str(req.query.gstins).toUpperCase() === 'ALL') {
+    const uParams: unknown[] = [];
+    const uWhere: string[] = [
+      `NOT EXISTS (SELECT 1 FROM purchase_lines p WHERE p.our_gstin = g.our_gstin AND p.matched_2b_key = g.line_key)`,
+    ];
+    if (targetGstins && targetGstins.length) {
+      uParams.push(targetGstins);
+      uWhere.push(`g.our_gstin = ANY($${uParams.length}::text[])`);
+    } else if (singleGstin) {
+      uParams.push(normGstinOf(singleGstin));
+      uWhere.push(`g.our_gstin = $${uParams.length}`);
+    }
+    if (targetPeriods && targetPeriods.length) {
+      uParams.push(targetPeriods);
+      uWhere.push(`g.twob_month = ANY($${uParams.length}::text[])`);
+    } else if (singlePeriod) {
+      uParams.push(singlePeriod);
+      uWhere.push(`g.twob_month = $${uParams.length}`);
+    }
+    const uRes = await withClient((c) =>
+      c.query(
+        `SELECT g.id, g.line_key, g.our_gstin, g.twob_month, g.portal_fp, g.supplier_gstin,
+                g.supplier_name, g.invoice_no, g.invoice_date, g.document_type,
+                g.taxable_value, g.igst, g.cgst, g.sgst, g.cess,
+                (g.igst + g.cgst + g.sgst + g.cess) AS itc,
+                g.itc_availability, g.reason
+           FROM gstr2b_lines g
+          WHERE ${uWhere.join(' AND ')}
+          ORDER BY g.twob_month DESC, g.supplier_name, g.invoice_no
+          LIMIT 2000`,
+        uParams,
+      ),
+    );
+    twoBRows = uRes.rows.map((r: any) => ({
+      ...r,
+      invoice_date: isoDate(r.invoice_date),
+      taxable_value: Number(r.taxable_value ?? 0),
+      itc: r2(Number(r.itc ?? 0)),
+    }));
+    twoBTotalCount = twoBRows.length;
+  } else {
+    const twoB = await runReportNamed('twob-not-in-books', f);
+    twoBRows = (twoB?.rows ?? []).slice(0, 1000);
+    twoBTotalCount = twoB?.rows?.length ?? 0;
+  }
+
+  // Load cross-month / cross-FY unbooked 2B pool for Probable 2B matching (strictly within same our_gstin!)
+  let crossMonth2bPool: any[] = twoBRows;
+  try {
+    const cParams: unknown[] = [];
+    const cWhere: string[] = [
+      `NOT EXISTS (SELECT 1 FROM purchase_lines p WHERE p.our_gstin = g.our_gstin AND p.matched_2b_key = g.line_key)`,
+    ];
+    if (targetGstins && targetGstins.length) {
+      cParams.push(targetGstins);
+      cWhere.push(`g.our_gstin = ANY($${cParams.length}::text[])`);
+    } else if (singleGstin) {
+      cParams.push(normGstinOf(singleGstin));
+      cWhere.push(`g.our_gstin = $${cParams.length}`);
+    }
+    const cRes = await withClient((c) =>
+      c.query(
+        `SELECT g.line_key, g.our_gstin, g.twob_month, g.supplier_gstin, g.invoice_no,
+                g.invoice_date, g.document_type, g.taxable_value,
+                (g.igst + g.cgst + g.sgst + g.cess) AS itc
+           FROM gstr2b_lines g
+          WHERE ${cWhere.join(' AND ')}
+          ORDER BY g.twob_month DESC, g.id
+          LIMIT 5000`,
+        cParams,
+      ),
+    );
+    crossMonth2bPool = cRes.rows.map((r: any) => ({
+      ...r,
+      invoice_date: isoDate(r.invoice_date),
+      taxable_value: Number(r.taxable_value ?? 0),
+      itc: r2(Number(r.itc ?? 0)),
+    }));
+  } catch { /* fallback to twoBRows */ }
+
+  // Probable 2B Bill suggestion for 'Missing in 2B' rows (strictly same our_gstin + supplier_gstin) + GSTR-3B Table 4 bucket
   const usedTwoBIdx = new Set<number>();
   for (const r of rows) {
     const cls = String(r.return_classification || '').trim();
@@ -753,17 +870,21 @@ app.get('/api/recon/purchase', requirePerm('recon', 'view'), wrap(async (req, re
     }
 
     if (r.match_status !== 'Missing in 2B') continue;
+    const ourG = normGstinOf(r.our_gstin);
     const sup = normGstinOf(r.recon_supplier_gstin || r.book_supplier_gstin);
     const bTax = Number(r.book_taxable_value ?? 0);
     const bItc = Number(r.itc_amount ?? r.book_itc ?? 0);
-    for (let i = 0; i < twoBRows.length; i++) {
+    for (let i = 0; i < crossMonth2bPool.length; i++) {
       if (usedTwoBIdx.has(i)) continue;
-      const u = twoBRows[i];
+      const u = crossMonth2bPool[i];
+      // NEVER cross GST registrations during Probable 2B matching
+      if (ourG && u.our_gstin && normGstinOf(u.our_gstin) !== ourG) continue;
       if (normGstinOf(u.supplier_gstin) !== sup) continue;
       if (Math.abs(bTax - Number(u.taxable_value ?? 0)) <= 2 && Math.abs(bItc - Number(u.itc ?? 0)) <= 2) {
         usedTwoBIdx.add(i);
         r.suggested_2b_invoice_no = u.invoice_no;
         r.suggested_2b_date = u.invoice_date ? String(u.invoice_date).slice(0, 10) : '';
+        r.suggested_2b_month = u.twob_month || '';
         break;
       }
     }
@@ -771,7 +892,7 @@ app.get('/api/recon/purchase', requirePerm('recon', 'view'), wrap(async (req, re
 
   // Live GSTR-3B Input Credit (Table 4) roll-up from bill-to-bill rows
   const allMonthRows = (f.q || f.status)
-    ? (await listLines({ gstin: f.gstin, period: f.period, limit: 5000 })).rows
+    ? (await listLines({ gstin: singleGstin, gstins: targetGstins, period: singlePeriod, periods: targetPeriods, limit: 5000 })).rows
     : rows;
   const reconLike = allMonthRows.map((r: any) => ({
     our_gstin: r.our_gstin,
@@ -800,8 +921,8 @@ app.get('/api/recon/purchase', requirePerm('recon', 'view'), wrap(async (req, re
     return_classification: r.return_classification || undefined,
   }));
   const g3b = buildGstr3b({
-    gstin: f.gstin || '',
-    period: f.period || '',
+    gstin: singleGstin || 'CONSOLIDATED',
+    period: singlePeriod || (targetPeriods ? targetPeriods.join(',') : ''),
     reconRows: reconLike,
     sales: [],
   });
@@ -819,13 +940,49 @@ app.get('/api/recon/purchase', requirePerm('recon', 'view'), wrap(async (req, re
     itcByTax: g3b.itcByTax,
   };
 
+  // Separate GSTIN-wise breakdown (Section 2 of Master Prompt: Separate GSTIN-wise results + Consolidated view)
+  const gstinMap = new Map<string, {
+    gstin: string;
+    lines: number;
+    matched: number;
+    missing: number;
+    mismatch: number;
+    duplicate: number;
+    blocked: number;
+    taxableNet: number;
+    booksItc: number;
+    matched2bItc: number;
+  }>();
+  for (const r of allMonthRows) {
+    const g = r.our_gstin || 'UNKNOWN';
+    const cur = gstinMap.get(g) || {
+      gstin: g, lines: 0, matched: 0, missing: 0, mismatch: 0, duplicate: 0, blocked: 0,
+      taxableNet: 0, booksItc: 0, matched2bItc: 0,
+    };
+    cur.lines++;
+    if (r.match_status === 'Matched') cur.matched++;
+    else if (r.match_status === 'Missing in 2B') cur.missing++;
+    else if (r.match_status === 'Amount Mismatch') cur.mismatch++;
+    else if (r.match_status === 'Duplicate') cur.duplicate++;
+    else if (r.match_status === 'ITC Blocked') cur.blocked++;
+    cur.taxableNet = r2(cur.taxableNet + Number(r.book_taxable_value ?? 0));
+    cur.booksItc = r2(cur.booksItc + Number(r.itc_amount ?? r.book_itc ?? 0));
+    if (r.match_status === 'Matched' || r.match_status === 'Amount Mismatch') {
+      cur.matched2bItc = r2(cur.matched2bItc + Number(r.twob_itc ?? r.itc_amount ?? 0));
+    }
+    gstinMap.set(g, cur);
+  }
+
   res.json({
     total,
     rows,
     summary,
     twoBOnly: twoBRows,
-    twoBTotal: twoB?.rows?.length ?? 0,
+    twoBTotal: twoBTotalCount,
     gstr3bItc,
+    gstinBreakdown: [...gstinMap.values()],
+    activePeriods: targetPeriods || (singlePeriod ? [singlePeriod] : []),
+    activeGstins: targetGstins || (singleGstin ? [singleGstin] : []),
   });
 }));
 
@@ -904,6 +1061,112 @@ app.post('/api/recon/purchase/auto-decide', requirePerm('itc', 'decide'), wrap(a
     details: { gstin, period, updated },
   });
   res.json({ ok: true, updated });
+}));
+
+/**
+ * Books-Only Probable 2B Auto-Linker (Sections 6 & 7 of Master Prompt):
+ * Copies matched Probable 2B Invoice No & Date into the Books reconciliation override columns
+ * (`recon_invoice_no`, `recon_invoice_date`) via `applyEdits`, leaving both `book_*` and `gstr2b_lines`
+ * 100% immutable, logs full correction history & audit trail, and re-reconciles immediately.
+ */
+app.post('/api/recon/purchase/auto-link-probable', requirePerm('recon', 'edit'), wrap(async (req, res) => {
+  const ready = await dbReady();
+  if (!ready.ok) return res.status(503).json({ error: ready.reason });
+  const gstin = normGstinOf(str(req.body?.gstin));
+  const period = str(req.body?.period);
+  const rawPeriods: string[] = Array.isArray(req.body?.periods)
+    ? req.body.periods.map((p: any) => String(p).trim()).filter(Boolean)
+    : period ? [period] : [];
+  if (!gstin && !rawPeriods.length) {
+    return res.status(400).json({ error: 'GSTIN ya period select karein.' });
+  }
+  const actor = actorOf(req);
+  const { rows } = await listLines({
+    gstin: gstin || undefined,
+    periods: rawPeriods.length ? rawPeriods : undefined,
+    status: 'Missing in 2B',
+    limit: 5000,
+  });
+  if (!rows.length) {
+    return res.json({ ok: true, linked: 0, message: 'Koi Missing in 2B bill nahi mila.' });
+  }
+
+  // Load all unbooked 2B lines for the active GSTIN(s)
+  const activeGstins = [...new Set(rows.map((r: any) => normGstinOf(r.our_gstin)).filter(Boolean))];
+  const uRes = await withClient((c) =>
+    c.query(
+      `SELECT g.line_key, g.our_gstin, g.twob_month, g.supplier_gstin, g.invoice_no,
+              g.invoice_date, g.document_type, g.taxable_value,
+              (g.igst + g.cgst + g.sgst + g.cess) AS itc
+         FROM gstr2b_lines g
+        WHERE g.our_gstin = ANY($1::text[])
+          AND NOT EXISTS (SELECT 1 FROM purchase_lines p WHERE p.our_gstin = g.our_gstin AND p.matched_2b_key = g.line_key)
+        ORDER BY g.twob_month DESC, g.id`,
+      [activeGstins],
+    ),
+  );
+  const pool = uRes.rows.map((r: any) => ({
+    ...r,
+    invoice_date: isoDate(r.invoice_date),
+    taxable_value: Number(r.taxable_value ?? 0),
+    itc: r2(Number(r.itc ?? 0)),
+  }));
+
+  const usedIdx = new Set<number>();
+  const edits: any[] = [];
+  const touchedPairs = new Set<string>();
+
+  for (const r of rows as any[]) {
+    const ourG = normGstinOf(r.our_gstin);
+    const sup = normGstinOf(r.recon_supplier_gstin || r.book_supplier_gstin);
+    const bTax = Number(r.book_taxable_value ?? 0);
+    const bItc = Number(r.itc_amount ?? r.book_itc ?? 0);
+    for (let i = 0; i < pool.length; i++) {
+      if (usedIdx.has(i)) continue;
+      const u = pool[i];
+      if (normGstinOf(u.our_gstin) !== ourG) continue; // Never cross GST registrations
+      if (normGstinOf(u.supplier_gstin) !== sup) continue;
+      if (Math.abs(bTax - u.taxable_value) <= 2 && Math.abs(bItc - u.itc) <= 2) {
+        usedIdx.add(i);
+        edits.push({
+          lineId: r.id,
+          recon: {
+            recon_invoice_no: String(u.invoice_no),
+            recon_invoice_date: String(u.invoice_date || '').slice(0, 10),
+          },
+        });
+        touchedPairs.add(`${ourG}|${r.period}`);
+        break;
+      }
+    }
+  }
+
+  if (!edits.length) {
+    return res.json({ ok: true, linked: 0, message: 'Koi Probable 2B match (same Supplier GSTIN + Taxable/ITC) nahi mila.' });
+  }
+
+  const bulk = await applyEdits(edits, {
+    by: actor,
+    reason: 'Books-only Probable 2B Auto-Link (GSTR-2B source untouched)',
+  });
+
+  const reconciled: any[] = [];
+  const twobCache = new Map<string, any[]>();
+  for (const pair of touchedPairs) {
+    const [g, p] = pair.split('|');
+    let cachedTwob = twobCache.get(g);
+    if (!cachedTwob) {
+      cachedTwob = (await loadBundleForReconcile(g, p)).twob;
+      twobCache.set(g, cachedTwob);
+    }
+    reconciled.push(await reReconcile(g, p, { changedBy: actor, reason: 'Books-only Probable 2B Auto-Link', cachedTwob }));
+  }
+
+  await audit(req.user, {
+    action: 'RECON_PROBABLE_2B_AUTOLINK', module: 'Reconciliation',
+    details: { gstin, periods: [...touchedPairs], linked: bulk.changedLines },
+  });
+  res.json({ ok: true, linked: bulk.changedLines, reconciled });
 }));
 
 /** Direct GSTR-2B file preview (.json / .xlsx / .csv) for Bill-to-Bill Input Credit matching. */
@@ -1268,24 +1531,102 @@ app.post('/api/lines/:id/classify', requirePerm('recon', 'edit'), wrap(async (re
   res.json({ ...out, line: await getLine(Number(req.params.id)) });
 }));
 
-/** Re-run the matcher for a whole GSTIN + month. */
+/** Re-run the matcher for a single month, month range, selected months, or active months of a GSTIN. */
 app.post('/api/rereconcile', requirePerm('recon', 'rereconcile'), wrap(async (req, res) => {
   const ready = await dbReady();
   if (!ready.ok) return res.status(503).json({ error: ready.reason });
-  const gstin = str(req.body?.gstin);
+  const gstin = normGstinOf(str(req.body?.gstin));
   const period = str(req.body?.period);
+  const rawPeriods: string[] = Array.isArray(req.body?.periods)
+    ? req.body.periods.map((p: any) => String(p).trim()).filter((p: string) => /^\d{4}-\d{2}$/.test(p))
+    : [];
+  const fromP = str(req.body?.fromPeriod);
+  const toP = str(req.body?.toPeriod);
+  let targetPeriods = rawPeriods.length
+    ? [...new Set(rawPeriods)].sort()
+    : (/^\d{4}-\d{2}$/.test(fromP) && /^\d{4}-\d{2}$/.test(toP))
+      ? monthRange(fromP <= toP ? fromP : toP, fromP <= toP ? toP : fromP)
+      : period ? [period] : [];
+
+  const actor = actorOf(req);
+  const reason = str(req.body?.reason) || undefined;
+
+  if (targetPeriods.length > 1) {
+    const results: any[] = [];
+    let cachedTwob: any[] | undefined;
+    for (const p of targetPeriods) {
+      if (!cachedTwob && gstin) {
+        cachedTwob = (await loadBundleForReconcile(gstin, p)).twob;
+      }
+      const r = await reReconcile(gstin, p, { changedBy: actor, reason, cachedTwob });
+      if (r.ok) results.push(r);
+    }
+    const totalMatched = results.reduce((s, r) => s + (r.matched || 0), 0);
+    const totalLines = results.reduce((s, r) => s + (r.lines || 0), 0);
+    await audit(req.user, {
+      action: 'RECONCILE_MULTI', module: 'Reconciliation',
+      gstin: gstin || null, period: targetPeriods[0],
+      reason: reason || `Reconciled ${targetPeriods.length} months (${targetPeriods.join(', ')})`,
+    });
+    return res.json({
+      ok: true,
+      gstin,
+      period: targetPeriods[targetPeriods.length - 1],
+      periods: targetPeriods,
+      lines: totalLines,
+      matched: totalMatched,
+      results,
+    });
+  }
+
   const out = await reReconcile(gstin, period, {
-    changedBy: actorOf(req),
-    reason: str(req.body?.reason) || undefined,
+    changedBy: actor,
+    reason,
   });
+
+  // Smart fallback: if the currently selected header month (e.g. Nov-2026 from system clock)
+  // has 0 purchase lines, automatically check if this GSTIN has other open months in purchase_lines,
+  // re-reconcile the latest month with data, and tell the UI to switch to that month!
+  if (!out.ok && gstin && /No purchase lines are stored/i.test(out.reason || '')) {
+    const avail = await withClient((c) =>
+      c.query(
+        `SELECT period, count(*)::int AS cnt
+           FROM purchase_lines
+          WHERE our_gstin = $1
+          GROUP BY period
+          ORDER BY period DESC`,
+        [gstin],
+      ),
+    );
+    if (avail.rows.length > 0) {
+      const latestPeriod = String(avail.rows[0].period);
+      const fallbackOut = await reReconcile(gstin, latestPeriod, {
+        changedBy: actor,
+        reason: reason || `Auto-switched from empty period ${period} to ${latestPeriod}`,
+      });
+      if (fallbackOut.ok) {
+        await audit(req.user, {
+          action: 'RECONCILE', module: 'Reconciliation',
+          gstin: gstin || null, period: latestPeriod,
+          reason: reason || null,
+        });
+        return res.json({
+          ...fallbackOut,
+          switchedFromPeriod: period,
+          switchedToPeriod: latestPeriod,
+        });
+      }
+    }
+  }
+
   if (out.ok) {
     await audit(req.user, {
       action: 'RECONCILE', module: 'Reconciliation',
       gstin: gstin || null, period: period || null,
-      reason: str(req.body?.reason) || null,
+      reason: reason || null,
     });
   }
-  res.status(out.ok ? 200 : 400).json(out);
+  res.status(out.ok ? 200 : 400).json({ ...out, error: out.ok ? undefined : out.reason });
 }));
 
 app.get('/api/locks', wrap(async (_req, res) => {
@@ -1706,9 +2047,19 @@ app.post('/api/purchase-file/preview', express.raw({ type: '*/*', limit: '200mb'
   const detected = sniffKind(rows);
   const parsed = parsePurchaseRegister(rows, 'purchase-file');
   const fallbackGstin = normGstinOf(str(req.query.fallbackGstin));
-  if (fallbackGstin) {
-    for (const b of parsed.rows) {
-      if (!normGstinOf(b.our_gstin)) b.our_gstin = fallbackGstin;
+  const forceDocType = docTypeOrNull(str(req.query.forceDocType));
+  const overridePeriod = /^\d{4}-\d{2}$/.test(str(req.query.overridePeriod)) ? str(req.query.overridePeriod) : '';
+  for (const b of parsed.rows) {
+    if (fallbackGstin && !normGstinOf(b.our_gstin)) b.our_gstin = fallbackGstin;
+    if (overridePeriod) b.period = overridePeriod;
+    if (forceDocType) {
+      b.document_type = forceDocType;
+      b.sign_effect = docSign(forceDocType);
+      b.taxable_value = docAmount(forceDocType, b.source_taxable_value ?? b.taxable_value);
+      b.igst = docAmount(forceDocType, b.source_igst ?? b.igst);
+      b.cgst = docAmount(forceDocType, b.source_cgst ?? b.cgst);
+      b.sgst = docAmount(forceDocType, b.source_sgst ?? b.sgst);
+      b.cess = docAmount(forceDocType, b.source_cess ?? b.cess);
     }
   }
 
@@ -1827,9 +2178,19 @@ app.post('/api/purchase-file/import', requirePerm('data', 'import_purchase'), ex
 
   const parsed = parsePurchaseRegister(rows, 'purchase-file');
   const fallbackGstin = normGstinOf(str(req.query.fallbackGstin));
-  if (fallbackGstin) {
-    for (const b of parsed.rows) {
-      if (!normGstinOf(b.our_gstin)) b.our_gstin = fallbackGstin;
+  const forceDocType = docTypeOrNull(str(req.query.forceDocType));
+  const overridePeriod = /^\d{4}-\d{2}$/.test(str(req.query.overridePeriod)) ? str(req.query.overridePeriod) : '';
+  for (const b of parsed.rows) {
+    if (fallbackGstin && !normGstinOf(b.our_gstin)) b.our_gstin = fallbackGstin;
+    if (overridePeriod) b.period = overridePeriod;
+    if (forceDocType) {
+      b.document_type = forceDocType;
+      b.sign_effect = docSign(forceDocType);
+      b.taxable_value = docAmount(forceDocType, b.source_taxable_value ?? b.taxable_value);
+      b.igst = docAmount(forceDocType, b.source_igst ?? b.igst);
+      b.cgst = docAmount(forceDocType, b.source_cgst ?? b.cgst);
+      b.sgst = docAmount(forceDocType, b.source_sgst ?? b.sgst);
+      b.cess = docAmount(forceDocType, b.source_cess ?? b.cess);
     }
   }
   if (!parsed.rows.length) {

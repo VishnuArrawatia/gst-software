@@ -971,6 +971,102 @@ tr.clickable { cursor: default; }
 
 .view[hidden], .gate[hidden], #shell[hidden] { display: none; }
 
+/* ---- ClearTax & ExpressGST Style Reconciliation Workflow & Configuration ---- */
+.reco-workflow-card {
+  background: var(--panel); border: 1px solid #bfdbfe; border-radius: 14px;
+  padding: 18px 20px; margin-bottom: 16px; box-shadow: var(--shadow);
+}
+[data-theme="dark"] .reco-workflow-card {
+  border-color: rgba(59, 130, 246, 0.3); background: #0f172a;
+}
+.reco-workflow-steps {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 14px;
+}
+@media (max-width: 900px) { .reco-workflow-steps { grid-template-columns: 1fr; } }
+.reco-wf-step {
+  background: #f8fafc; border: 1px solid var(--line); border-radius: 10px;
+  padding: 14px 16px; display: flex; flex-direction: column; gap: 6px;
+}
+[data-theme="dark"] .reco-wf-step { background: #1e293b; border-color: #334155; }
+.reco-wf-num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 50%; background: #2563eb; color: #fff;
+  font-size: 12px; font-weight: 800;
+}
+.reco-wf-title { font-size: 14px; font-weight: 800; color: var(--text); }
+.reco-wf-desc { font-size: 12px; color: var(--muted); line-height: 1.5; }
+.reco-wf-list { margin: 6px 0 0; padding-left: 18px; font-size: 12px; color: var(--text-2); }
+.reco-wf-list li { margin-bottom: 3px; }
+
+.reco-decision-point {
+  margin-top: 14px; padding: 12px 16px; border-radius: 10px;
+  background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a8a; font-size: 12.5px; line-height: 1.5;
+}
+[data-theme="dark"] .reco-decision-point {
+  background: rgba(30, 58, 138, 0.35); border-color: rgba(96, 165, 250, 0.3); color: #bfdbfe;
+}
+.reco-decision-point b { color: #1d4ed8; }
+[data-theme="dark"] .reco-decision-point b { color: #93c5fd; }
+
+/* ---- Matching Configuration Toolbar (Image 3) ---- */
+.matching-config-bar {
+  background: var(--panel); border: 1.5px solid #cbd5e1; border-radius: 12px;
+  padding: 14px 18px; margin-bottom: 16px; display: flex; flex-direction: column; gap: 8px;
+}
+[data-theme="dark"] .matching-config-bar { border-color: #334155; }
+.matching-config-title { font-size: 14.5px; font-weight: 800; color: var(--text); }
+.matching-config-sub { font-size: 12px; color: var(--muted); }
+.matching-config-inputs {
+  display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; margin-top: 4px;
+}
+.matching-config-inputs > div { display: flex; flex-direction: column; gap: 3px; }
+.matching-config-inputs label { font-size: 11px; font-weight: 700; color: var(--text-2); }
+
+/* ---- Practical GST ITC Reconciliation Resources Strip (Image 1) ---- */
+.reco-resources-card {
+  background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px;
+  padding: 14px 18px; margin-bottom: 16px;
+}
+[data-theme="dark"] .reco-resources-card { background: #0f172a; border-color: #334155; }
+.reco-resources-title { font-size: 13.5px; font-weight: 800; color: var(--text); margin-bottom: 4px; }
+.reco-resources-sub { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+.reco-resources-strip { display: flex; gap: 8px; flex-wrap: wrap; }
+.reco-resource-pill {
+  background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px;
+  padding: 6px 14px; font-size: 12px; font-weight: 700; color: #1e40af;
+  cursor: pointer; transition: all 0.15s ease; box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+.reco-resource-pill:hover {
+  background: #eff6ff; border-color: #3b82f6; color: #1d4ed8; transform: translateY(-1px);
+}
+[data-theme="dark"] .reco-resource-pill {
+  background: #1e293b; border-color: #475569; color: #93c5fd;
+}
+[data-theme="dark"] .reco-resource-pill:hover {
+  background: #334155; border-color: #60a5fa; color: #bfdbfe;
+}
+
+/* ---- Modals: GST Compliance Calendar & Legal Library ---- */
+.gst-modal-backdrop {
+  position: fixed; inset: 0; z-index: 9999; background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.gst-modal-card {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
+  width: min(960px, 98%); max-height: 90vh; overflow-y: auto; padding: 24px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35); position: relative;
+}
+.cal-badge {
+  display: inline-block; padding: 3px 10px; border-radius: 999px;
+  font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em;
+}
+.cal-badge.past { background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; }
+.cal-badge.duesoon { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
+.cal-badge.normal { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+[data-theme="dark"] .cal-badge.past { background: #334155; color: #94a3b8; border-color: #475569; }
+[data-theme="dark"] .cal-badge.duesoon { background: #78350f; color: #fde68a; border-color: #92400e; }
+[data-theme="dark"] .cal-badge.normal { background: #064e3b; color: #6ee7b7; border-color: #047857; }
+
 /* ------------------------------------------------------------------ print */
 @media print {
   .sidebar, header.topbar, nav, .toast, .login-hero, button { display: none !important; }
@@ -1112,6 +1208,8 @@ tr.clickable { cursor: default; }
         <div><label for="ctxGstin">Our GSTIN</label><select id="ctxGstin"></select></div>
         <div><label for="ctxFy">Financial year</label><select id="ctxFy"></select></div>
         <div><label for="ctxPeriod">Return month</label><select id="ctxPeriod"></select></div>
+        <button type="button" class="ghost sm theme-btn" onclick="openGstCalendarModal()" title="GST Compliance Calendar &amp; Deadlines">📅 Calendar</button>
+        <button type="button" class="ghost sm theme-btn" onclick="openGstLegalLibraryModal()" title="GST Legal Library | CGST Act, Rules, Notifications &amp; Circulars">⚖️ Legal Library</button>
         <button type="button" class="ghost sm theme-btn" onclick="download('/api/guide/pdf','GST_Control_ERP_Step_by_Step_Guide_With_Screenshots.pdf')" title="Download Step-by-Step User Guide (Hinglish PDF)">📘 Guide (HI)</button>
         <button type="button" class="ghost sm theme-btn" onclick="download('/api/guide/pdf?lang=en','GST_Control_ERP_User_Manual_English.pdf')" title="Download Step-by-Step User Manual (English PDF)">📗 Guide (EN)</button>
         <button type="button" class="theme-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Switch Light / Dark Mode">🌙 Dark</button>
@@ -1870,11 +1968,180 @@ tr.clickable { cursor: default; }
 
     <!-- ============================= PURCHASE REGISTER ===================== -->
     <section class="view" id="viewPurchase" hidden>
+      <!-- ====== MULTI-MONTH & MULTI-GSTIN SCOPE CONTROL BAR (Master Prompt §2, §3, §6) ====== -->
+      <div class="card" style="border-left:4px solid #1a73e8;background:linear-gradient(135deg,#f8fbff 0%,#ffffff 100%)">
+        <div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+          <div>
+            <h2 style="margin:0;color:#0f2942">Purchase Register vs GSTR-2B — Multi-Month &amp; Cross-FY Reconciliation Suite</h2>
+            <div class="hint" style="margin-top:4px">
+              <b>🔒 GSTR-2B Portal Source is 100% Immutable (Read-Only):</b> Portal invoice no, date, GSTIN &amp; tax values are never modified. All manual &amp; auto corrections happen strictly on <b>Books Reconciliation Columns</b> with full audit trail.
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <span class="pill good">🔒 GSTR-2B Immutable</span>
+            <span class="pill info">✏️ Books-Only Recon Override</span>
+            <span class="pill warn">±Sign: Inv/DN (+) · CN (−)</span>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:14px;padding-top:12px;border-top:1px solid #e2e8f0;align-items:flex-end;flex-wrap:wrap;gap:14px">
+          <div>
+            <label for="reconPeriodMode">Period Selection Mode (§3)</label>
+            <select id="reconPeriodMode" onchange="setReconPeriodMode(this.value)" style="min-width:230px;font-weight:600">
+              <option value="single">A. Single Month (Header Month)</option>
+              <option value="range">B. Continuous Month Range (From → To)</option>
+              <option value="multi">C. Multiple Selected Months (Custom Pick)</option>
+            </select>
+          </div>
+          <div id="reconRangeBox" style="display:none;gap:10px;align-items:flex-end">
+            <div>
+              <label for="reconFromPeriod">From Month</label>
+              <input type="month" id="reconFromPeriod" onchange="applyReconPeriodScope()" />
+            </div>
+            <div>
+              <label for="reconToPeriod">To Month</label>
+              <input type="month" id="reconToPeriod" onchange="applyReconPeriodScope()" />
+            </div>
+          </div>
+          <div>
+            <label for="reconGstinScope">GST Registration Scope (§2)</label>
+            <select id="reconGstinScope" onchange="applyReconPeriodScope()" style="min-width:260px;font-weight:600">
+              <option value="single">Single Selected GSTIN (Separate View)</option>
+              <option value="ALL">Consolidated Multi-GSTIN View (All Registrations)</option>
+            </select>
+          </div>
+          <button onclick="applyReconPeriodScope()">Apply Scope &amp; Load</button>
+          <button class="ghost" onclick="selectFullFyReconScope()">Full FY (12 Months)</button>
+        </div>
+
+        <div id="reconMultiMonthBox" style="display:none;margin-top:12px;padding:10px 12px;background:#f1f5f9;border-radius:10px">
+          <div class="row" style="justify-content:space-between;margin-bottom:8px">
+            <span class="hint"><b>Click months to include in Multi-Month Reconciliation &amp; GSTR-3B Roll-up:</b></span>
+            <div style="display:flex;gap:6px">
+              <button type="button" class="ghost sm" onclick="toggleAllReconMonths(true)">Select All FY Months</button>
+              <button type="button" class="ghost sm" onclick="toggleAllReconMonths(false)">Clear</button>
+            </div>
+          </div>
+          <div id="reconMultiMonthPills" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+        </div>
+      </div>
+
+      <!-- ============ HOW RECONCILIATION WORKS (CLEAR-TAX STEPPER) ============ -->
+      <div class="reco-workflow-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div>
+            <h2 style="margin:0;font-size:16.5px;color:var(--text)">How the reconciliation works</h2>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px">A practical view of what happens between file upload and the final workpaper.</div>
+          </div>
+          <button type="button" class="ghost sm" onclick="el('recoWorkflowCollapse').hidden = !el('recoWorkflowCollapse').hidden">Toggle Guide</button>
+        </div>
+        <div id="recoWorkflowCollapse">
+          <div class="reco-workflow-steps">
+            <div class="reco-wf-step">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span class="reco-wf-num">1</span>
+                <span class="reco-wf-title">Source records are read</span>
+              </div>
+              <div class="reco-wf-desc">The tool reads the uploaded Purchase Register, DN/CN and GSTR-2B workbooks and identifies the relevant transaction table or sheets.</div>
+              <ul class="reco-wf-list">
+                <li>Supplier GSTIN &amp; Our GSTIN</li>
+                <li>Invoice / document number</li>
+                <li>Document type and date</li>
+                <li>Taxable value and GST components</li>
+              </ul>
+            </div>
+            <div class="reco-wf-step">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span class="reco-wf-num">2</span>
+                <span class="reco-wf-title">Records are compared</span>
+              </div>
+              <div class="reco-wf-desc">Invoice-level candidates are evaluated using supplier GSTIN, normalised document numbers, document type, dates and configured value/tax tolerances.</div>
+              <ul class="reco-wf-list">
+                <li>Exact / strong matches</li>
+                <li>Partial or probable relationships</li>
+                <li>Missing-side records (2B or Books)</li>
+                <li>Duplicate protection across batches</li>
+              </ul>
+            </div>
+            <div class="reco-wf-step">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span class="reco-wf-num">3</span>
+                <span class="reco-wf-title">Exceptions become actionable</span>
+              </div>
+              <div class="reco-wf-desc">Instead of only showing a match percentage, the result separates records into categories that can be reviewed by accounts and tax teams.</div>
+              <ul class="reco-wf-list">
+                <li>Vendor follow-up &amp; delay notices</li>
+                <li>Book correction review (Books-only)</li>
+                <li>GSTR-2B timing checks</li>
+                <li>Supporting-document review</li>
+              </ul>
+            </div>
+          </div>
+          <div class="reco-decision-point">
+            <b>Important decision point:</b> GSTR-2B is a static, auto-drafted ITC statement. Reconciliation is a control over differences; it does not by itself establish that every credit is legally eligible. Final ITC decisions should consider the GST law, invoice/supporting documents, reversals and other applicable conditions.
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ MATCHING CONFIGURATION (Image 3) ============ -->
+      <div class="matching-config-bar">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div>
+            <div class="matching-config-title">Matching Configuration</div>
+            <div class="matching-config-sub">Set the tolerance and date window used by the reconciliation engine.</div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button type="button" class="sm" onclick="rerunMonth()" style="background:#2563eb;color:#fff">▶ Run Reconciliation</button>
+            <button type="button" class="ghost sm" onclick="resetMatchingConfig()">↺ Reset</button>
+          </div>
+        </div>
+        <div class="matching-config-inputs">
+          <div>
+            <label for="cfgTaxTolerance">Tax amount tolerance (₹)</label>
+            <input type="number" id="cfgTaxTolerance" value="2" min="0" max="100" style="width:110px" />
+          </div>
+          <div>
+            <label for="cfgDateMatching">Invoice date matching</label>
+            <select id="cfgDateMatching" style="min-width:140px">
+              <option value="exact">Exact date</option>
+              <option value="2days">&plusmn;2 days window</option>
+              <option value="5days">&plusmn;5 days window</option>
+              <option value="month">Same month</option>
+            </select>
+          </div>
+          <div>
+            <label for="cfgInvMatching">Invoice number</label>
+            <input type="text" id="cfgInvMatching" value="Enabled" readonly style="width:120px;background:var(--panel-3);color:var(--text)" />
+          </div>
+          <div>
+            <label for="cfgGstinMatching">Supplier GSTIN</label>
+            <input type="text" id="cfgGstinMatching" value="Enabled" readonly style="width:120px;background:var(--panel-3);color:var(--text)" />
+          </div>
+          <div style="font-size:11px;color:var(--muted);align-self:center;margin-top:16px">
+            The configured tolerance is applied to taxable value and individual GST components. Date matching is controlled separately.
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ PRACTICAL GST ITC RECONCILIATION RESOURCES (Image 1) ============ -->
+      <div class="reco-resources-card">
+        <div class="reco-resources-title">Practical GST ITC reconciliation resources</div>
+        <div class="reco-resources-sub">After completing the reconciliation, use the related GST learning resources and statutory rules to understand the treatment of unmatched ITC and the next compliance step:</div>
+        <div class="reco-resources-strip">
+          <button type="button" class="reco-resource-pill" onclick="go('home'); switchGenTab('conflicts')">GSTR-3B vs GSTR-1 vs GSTR-2B Reconciliation</button>
+          <button type="button" class="reco-resource-pill" onclick="filterReconStatus('Missing in 2B')">ITC Not Appearing in GSTR-2B</button>
+          <button type="button" class="reco-resource-pill" onclick="openGstRuleModal('rule37a')">Rule 37A ITC Reversal &amp; Re-availment</button>
+          <button type="button" class="reco-resource-pill" onclick="openGstRuleModal('rule37')">180-Day ITC Payment Rule (Rule 37)</button>
+          <button type="button" class="reco-resource-pill" onclick="filterReconStatus('ITC Blocked')">Blocked ITC under Section 17(5)</button>
+          <button type="button" class="reco-resource-pill" onclick="window.open('https://gstreconciliation.in/gst-act.html', '_blank')" style="background:#eff6ff;color:#1e40af;border-color:#93c5fd" title="Open Official CGST Act &amp; Rules Library">⚖️ GST Legal Library | CGST Act &amp; Rules &nearr;</button>
+          <button type="button" class="reco-resource-pill" onclick="openGstCalendarModal()" style="background:#ecfdf5;color:#047857;border-color:#a7f3d0" title="Open GST Compliance Deadlines Calendar">📅 GST Compliance Calendar</button>
+        </div>
+      </div>
+
       <div class="card">
-        <h2>Purchase register — ITC side</h2>
+        <h2>Purchase register, Debit Note &amp; Credit Note upload — ITC Books side (§3, §4, §5)</h2>
         <div class="hint">
-          Preview the purchase register before importing. Both invoice date and derived
-          <b>book entry month</b> are shown so cross-month bookings (e.g. April invoice booked in May) remain clearly visible.
+          Supports <b>Single-month</b> or <b>Multi-month</b> Purchase Register, <b>Separate Debit Note Register (+)</b>, <b>Separate Credit Note Register (−)</b>, or <b>Combined Register</b>, and <b>Multiple files in one batch</b>. Original source values are preserved and sign is applied once automatically.
         </div>
         <div class="row" style="margin-top:12px">
           <button class="ghost" onclick="download('/api/template/purchase-register.xlsx','Purchase Register Template.xlsx')">Purchase template (.xlsx)</button>
@@ -1882,51 +2149,68 @@ tr.clickable { cursor: default; }
           <button class="ghost" onclick="downloadTwobRecon(false)">2B vs Books reco sheet (.xlsx)</button>
           <button class="ghost" onclick="downloadTwobRecon(true)">Blank reco template (.xlsx)</button>
         </div>
-        <div class="hint" style="margin-top:8px">
-          The reco workbook has two sheets: <b>invoice-wise</b> (one row per invoice, Books vs 2B) and
-          <b>line-wise</b> (Line ID + ITC Decision/Remarks/Vendor Response — this sheet can be re-uploaded).
+
+        <!-- Pre-Import Authorized Mapping & Separate DN/CN Register Bar -->
+        <div class="row" style="margin-top:12px;padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;gap:14px;flex-wrap:wrap">
+          <div>
+            <label for="purForceDocType">Register / Document Type Mode (§5)</label>
+            <select id="purForceDocType" style="min-width:250px">
+              <option value="">Auto-Detect from File (Combined Invoice / DN / CN)</option>
+              <option value="Tax Invoice">Separate Tax Invoice Register (+ Positive)</option>
+              <option value="Debit Note">Separate Debit Note Register (+ Positive)</option>
+              <option value="Credit Note">Separate Credit Note Register (− Negative)</option>
+            </select>
+          </div>
+          <div>
+            <label for="purFallbackGstin">Default / Fallback Our GSTIN (if blank in file)</label>
+            <input type="text" id="purFallbackGstin" placeholder="26AALCS9985J1ZC" style="min-width:190px;font-family:monospace" />
+          </div>
+          <div>
+            <label for="purOverridePeriod">Optional Period Override (leave blank for Auto-Detect)</label>
+            <input type="text" id="purOverridePeriod" placeholder="Auto from Document Date" style="min-width:180px" />
+          </div>
         </div>
+
         <div class="drop" id="purchaseDrop" style="margin-top:14px">
-          Drop Purchase register (.xlsx/.xlsm/.xlsb/.csv) here
-          <div class="hint">or click to choose a file</div>
-          <input type="file" id="purchaseFile" hidden accept=".xlsx,.xlsm,.xlsb,.xls,.csv" />
+          Drop one or multiple Purchase / DN / CN register files (.xlsx/.xlsm/.xlsb/.csv) here
+          <div class="hint">or click to choose single or multiple files</div>
+          <input type="file" id="purchaseFile" hidden multiple accept=".xlsx,.xlsm,.xlsb,.xls,.csv" />
         </div>
         <div class="row" style="margin-top:12px">
           <button onclick="purchaseImport()">Upload &amp; Reconcile Purchase Register</button>
-          <button class="ghost" onclick="purchasePreview()">Preview file</button>
+          <button class="ghost" onclick="purchasePreview()">Preview file(s)</button>
           <button class="ghost" id="purchaseImportBtn" onclick="purchaseImport()">Confirm import &amp; reconcile</button>
           <span class="hint" id="purchaseMsg" style="flex:1;min-width:200px"></span>
         </div>
       </div>
       <div class="card" id="purchasePreviewCard" style="display:none">
-        <h2>Purchase register preview</h2>
+        <h2>Purchase register preview (Auto-detected Periods, GSTINs, Sign &amp; Validation)</h2>
         <div id="purchasePreview"></div>
       </div>
       <div class="card">
-        <h2>GSTR-2B file — JSON, CSV or Excel</h2>
+        <h2>GSTR-2B file(s) — Single or Multiple Portal JSON, CSV or Excel (§3, §6)</h2>
         <div class="hint">
-          Upload the GSTR-2B downloaded from the GST Portal here — <b>.json</b> (original portal format),
-          <b>.csv</b> or <b>.xlsx</b>. "Upload + reconcile" imports 2B lines into the database and immediately
-          reconciles against Books. Re-uploading the same file is safe — lines update without duplicates.
+          Upload one or multiple GSTR-2B files downloaded from the GST Portal — <b>.json</b> (original portal format),
+          <b>.csv</b> or <b>.xlsx</b> covering single or multiple months. Original GSTR-2B records are stored <b>100% immutable</b> and immediately reconciled against Books across months.
         </div>
         <div class="row" style="margin-top:12px">
-          <div><label for="twobFile">GSTR-2B file (.json/.csv/.xlsx)</label><input type="file" id="twobFile" accept=".json,.csv,.xlsx,.xlsm,.xlsb,.xls" onchange="preview2b()" /></div>
+          <div><label for="twobFile">GSTR-2B file(s) (.json/.csv/.xlsx — multiple allowed)</label><input type="file" id="twobFile" multiple accept=".json,.csv,.xlsx,.xlsm,.xlsb,.xls" onchange="preview2b()" /></div>
           <button onclick="upload2b(true)">Upload + reconcile</button>
-          <button class="ghost" onclick="preview2b()">Preview 2B file</button>
+          <button class="ghost" onclick="preview2b()">Preview 2B file(s)</button>
           <button class="ghost" onclick="upload2b(false)">Upload only</button>
           <span class="hint" id="twobMsg" style="flex:1;min-width:200px"></span>
         </div>
         <div id="twobPreviewBox" style="margin-top:12px;display:none"></div>
       </div>
 
+      <!-- ============ SEPARATE GSTIN-WISE BREAKDOWN (Master Prompt §2) ========= -->
+      <div class="card" id="reconGstinBreakdownCard" style="display:none">
+        <h2>GSTIN-Wise Separate Reconciliation Summary (§2 — No Merging of Registrations)</h2>
+        <div class="hint">Each GST registration is reconciled strictly within its own GSTIN boundary. Cross-month matching never crosses GST registrations.</div>
+        <div class="scroll" style="margin-top:10px"><table id="reconGstinBreakdownTable"></table></div>
+      </div>
+
       <!-- ============ INVOICE-LEVEL RECONCILIATION (books vs 2B) ========= -->
-      <!--
-        The working screen. One row per book invoice, with GSTR-2B beside it,
-        and an Edit control on every row: the four values that decide whether
-        two systems agree — our GSTIN, the invoice number, the invoice date and
-        the supplier's GSTIN — can be corrected here without touching the
-        source file and re-uploading the month.
-      -->
       <div class="card">
         <h2>GSTR-3B Table 4 — Input Credit (ITC) Live Scorecard (Bill-to-Bill Roll-up)</h2>
         <div class="hint">
@@ -1935,6 +2219,7 @@ tr.clickable { cursor: default; }
         </div>
         <div class="row" style="margin-top:10px">
           <button onclick="autoDecideItc()">Auto-Apply 3B ITC Decisions (Bill-to-Bill)</button>
+          <button class="ghost" onclick="autoLinkProbable2b()">🔗 Auto-Link Probable 2B Bills (Books-Only)</button>
           <button class="ghost" onclick="downloadTwobRecon(false)">Download 2B vs Books Bill-to-Bill Sheet (.xlsx)</button>
           <button class="ghost" onclick="shareWhatsAppSummary('purchase')">📲 Send ITC Summary via WhatsApp</button>
         </div>
@@ -1942,25 +2227,57 @@ tr.clickable { cursor: default; }
       </div>
 
       <div class="card">
-        <h2>Purchase register vs GSTR-2B — invoice level</h2>
-        <div class="hint" id="reconCtx">&mdash;</div>
-        <div class="row" style="margin-top:12px">
-          <button onclick="rerunMonth()">Re-reconcile this month</button>
+        <div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap">
+          <div>
+            <h2 style="margin:0">Purchase register vs GSTR-2B — invoice level (§6, §7 Books-Only Correction)</h2>
+            <div class="hint" id="reconCtx" style="margin-top:4px">&mdash;</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <div style="display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden">
+              <button type="button" id="btnRecoDocView" class="sm" onclick="switchRecoView('doc')" style="border-radius:0;background:#2563eb;color:#fff">📄 Document View</button>
+              <button type="button" id="btnRecoVendorView" class="ghost sm" onclick="switchRecoView('vendor')" style="border-radius:0">👤 Vendor View</button>
+            </div>
+            <button type="button" class="ghost sm" id="btnFastEditMode" onclick="toggleReconFastEdit()">⚡ Excel Fast-Edit Mode (Books-Only)</button>
+            <button type="button" class="ghost sm" onclick="autoLinkProbable2b()">🔗 Auto-Link Probable 2B Bills</button>
+          </div>
+        </div>
+        <div class="row" style="margin-top:12px;gap:10px;align-items:center;flex-wrap:wrap">
+          <button onclick="rerunMonth()">Re-reconcile active scope</button>
           <button class="ghost" onclick="loadRecon()">Refresh</button>
           <select id="reconStatus" onchange="loadRecon()" title="Filter by match status">
             <option value="">All statuses</option>
-            <option value="Matched">Matched</option>
-            <option value="Missing in 2B">Missing in 2B</option>
-            <option value="Amount Mismatch">Amount mismatch</option>
-            <option value="Duplicate">Duplicate</option>
-            <option value="Blocked">ITC blocked</option>
+            <option value="Matched">Exact Match</option>
+            <option value="Missing in 2B">Missing in 2B (Books Only)</option>
+            <option value="Amount Mismatch">Mismatch (Tax/Value)</option>
+            <option value="Duplicate">Duplicate protection</option>
+            <option value="ITC Blocked">ITC Blocked / Sec 17(5)</option>
           </select>
           <input type="search" id="reconSearch" placeholder="Invoice no, supplier GSTIN or vendor"
                  style="flex:1;min-width:200px" onkeydown="if (event.key === 'Enter') loadRecon()" />
           <span class="hint" id="reconMsg" style="flex:1;min-width:160px"></span>
         </div>
+
+        <!-- ClearTax Style Bulk Action Bar for Selected Documents -->
+        <div class="row" style="margin-top:10px;padding:8px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;gap:10px;align-items:center;flex-wrap:wrap">
+          <label style="font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:6px">
+            <input type="checkbox" id="chkSelectAllRecon" onchange="toggleSelectAllRecon(this.checked)" /> Select All Filtered
+          </label>
+          <span style="font-size:12px;color:var(--muted)">| Action on Selected:</span>
+          <select id="bulkRecoAction" style="font-size:12px;min-width:230px">
+            <option value="claim_my">Claim ITC (Accept My Value - Books)</option>
+            <option value="claim_supplier">Claim ITC (Accept Supplier Value - 2B)</option>
+            <option value="claim_80">Adjust Claim Amount (80% Claim)</option>
+            <option value="hold">Mark as ITC Pending / Carry Forward</option>
+            <option value="blocked">Mark as ITC Ineligible / Sec 17(5) Blocked</option>
+            <option value="reset">Reset ITC Action</option>
+          </select>
+          <button type="button" class="sm" onclick="applyBulkRecoAction()">Apply Action</button>
+          <span id="bulkRecoCountMsg" style="font-size:11.5px;color:var(--muted)"></span>
+        </div>
+
         <div class="tiles" id="reconTiles"></div>
-        <div class="scroll" style="margin-top:12px"><table id="reconTable"></table></div>
+        <div class="scroll" id="reconDocTableWrap" style="margin-top:12px"><table id="reconTable"></table></div>
+        <div class="scroll" id="reconVendorTableWrap" style="margin-top:12px;display:none"><table id="reconVendorTable"></table></div>
       </div>
 
       <div class="card">
@@ -2141,6 +2458,174 @@ tr.clickable { cursor: default; }
     </main>
   </div>
 </div>
+</div>
+
+<!-- ===================== GST COMPLIANCE CALENDAR MODAL ===================== -->
+<div class="gst-modal-backdrop" id="modalGstCalendar" style="display:none">
+  <div class="gst-modal-card">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px">
+      <div>
+        <h2 style="margin:0;font-size:20px;color:var(--text);display:flex;align-items:center;gap:8px">
+          <span>📅 GST Compliance Calendar</span>
+          <span class="pill info" style="font-size:11px">Statutory Due Dates</span>
+        </h2>
+        <div style="font-size:12.5px;color:var(--muted);margin-top:4px">
+          Stay updated with important GST return filing, payment and compliance deadlines. Filter the calendar based on your financial year, taxpayer profile and compliance type.
+        </div>
+      </div>
+      <button type="button" class="ghost sm" onclick="closeGstCalendarModal()" style="font-size:16px;padding:4px 10px">&times;</button>
+    </div>
+
+    <!-- Calendar Filter Bar -->
+    <div class="row" style="padding:12px;background:var(--panel-3);border:1px solid var(--line);border-radius:10px;gap:12px;align-items:flex-end;flex-wrap:wrap">
+      <div>
+        <label for="calFilterFy" style="font-size:11px;font-weight:700">Financial Year</label>
+        <select id="calFilterFy" onchange="renderGstCalendar()" style="min-width:130px">
+          <option value="2026-27" selected>FY 2026-27</option>
+          <option value="2025-26">FY 2025-26</option>
+        </select>
+      </div>
+      <div>
+        <label for="calFilterMonth" style="font-size:11px;font-weight:700">Month</label>
+        <select id="calFilterMonth" onchange="renderGstCalendar()" style="min-width:140px">
+          <option value="2026-11" selected>November 2026</option>
+          <option value="2026-10">October 2026</option>
+          <option value="2026-09">September 2026</option>
+          <option value="2026-08">August 2026</option>
+          <option value="2026-07">July 2026</option>
+          <option value="2026-06">June 2026</option>
+          <option value="2026-05">May 2026</option>
+          <option value="2026-04">April 2026</option>
+        </select>
+      </div>
+      <div>
+        <label for="calFilterProfile" style="font-size:11px;font-weight:700">Taxpayer Profile</label>
+        <select id="calFilterProfile" onchange="renderGstCalendar()" style="min-width:160px">
+          <option value="all" selected>All taxpayer profiles</option>
+          <option value="Regular / Monthly">Regular / Monthly</option>
+          <option value="QRMP">QRMP</option>
+          <option value="GST TDS">GST TDS</option>
+          <option value="GST TCS">GST TCS</option>
+          <option value="ISD">ISD</option>
+          <option value="Special / Other">Special / Other</option>
+        </select>
+      </div>
+      <div>
+        <label for="calFilterType" style="font-size:11px;font-weight:700">Compliance Type</label>
+        <select id="calFilterType" onchange="renderGstCalendar()" style="min-width:160px">
+          <option value="all" selected>All compliance types</option>
+          <option value="Returns / Statements">Returns / Statements</option>
+          <option value="Payments">Payments</option>
+        </select>
+      </div>
+      <button type="button" class="ghost sm" onclick="filterCalNext7Days()">Next 7 Days</button>
+      <button type="button" class="sm" onclick="exportGstCalendarCsv()">⬇ Download CSV</button>
+    </div>
+
+    <div style="margin:12px 0 6px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <span id="calSummaryText" style="font-size:12px;font-weight:700;color:var(--text-2)">7 compliance item(s) shown &bull; November 2026</span>
+      <span style="font-size:11px;color:var(--muted)">Badges indicate Past, Due soon (&le;7 days) or Normal due</span>
+    </div>
+
+    <div class="scroll" style="max-height:420px"><table id="calTable"></table></div>
+  </div>
+</div>
+
+<!-- ===================== GST LEGAL LIBRARY & RULES MODAL ===================== -->
+<div class="gst-modal-backdrop" id="modalGstLegal" style="display:none">
+  <div class="gst-modal-card">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px">
+      <div>
+        <h2 style="margin:0;font-size:20px;color:var(--text);display:flex;align-items:center;gap:8px">
+          <span>⚖️ GST Legal Library | CGST Act, Rules, Notifications &amp; Circulars</span>
+        </h2>
+        <div style="font-size:12.5px;color:var(--muted);margin-top:4px">
+          Complete statutory library and legal provisions governing Input Tax Credit (ITC), Invoicing, Matching, Reversals and Compliance Deadlines.
+        </div>
+      </div>
+      <button type="button" class="ghost sm" onclick="closeGstLegalLibraryModal()" style="font-size:16px;padding:4px 10px">&times;</button>
+    </div>
+
+    <!-- Official Portal External Link Button -->
+    <div style="padding:10px 14px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+      <div>
+        <b style="color:#1d4ed8;font-size:13px">Official CGST Act &amp; Rules Online Portal:</b>
+        <span style="font-size:12px;color:#1e3a8a"> Access real-time notifications, central tax circulars and updated act text at gstreconciliation.in</span>
+      </div>
+      <a href="https://gstreconciliation.in/gst-act.html" target="_blank" rel="noopener noreferrer" class="btn sm" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px;background:#2563eb;color:#fff;border-radius:8px;padding:6px 14px;font-weight:700">
+        Open GST Legal Library &nearr;
+      </a>
+    </div>
+
+    <!-- Legal Library Sub-Tabs -->
+    <div class="tabs" style="margin-bottom:14px">
+      <button type="button" id="tabLegalSec16" class="active" onclick="switchLegalTab('sec16')">Section 16 (Eligibility)</button>
+      <button type="button" id="tabLegalSec17" onclick="switchLegalTab('sec17')">Section 17(5) (Blocked ITC)</button>
+      <button type="button" id="tabLegalRule37" onclick="switchLegalTab('rule37')">Rule 37 (180 Days)</button>
+      <button type="button" id="tabLegalRule37A" onclick="switchLegalTab('rule37a')">Rule 37A (Supplier Default)</button>
+      <button type="button" id="tabLegalTable4" onclick="switchLegalTab('table4')">GSTR-3B Table 4 Circular</button>
+    </div>
+
+    <div id="legalPaneSec16" class="card" style="margin:0;border:1px solid var(--line);background:var(--panel-2)">
+      <h3 style="margin-top:0;color:#2563eb">Section 16: Eligibility and Conditions for Taking Input Tax Credit</h3>
+      <p style="font-size:13px;line-height:1.6">Every registered person is entitled to take credit of input tax charged on inward supply of goods or services used or intended to be used in the course or furtherance of his business, subject to <b>four essential conditions under Section 16(2)</b>:</p>
+      <ul style="font-size:12.5px;line-height:1.6">
+        <li><b>Clause (a):</b> Possession of a tax invoice or debit note issued by a supplier.</li>
+        <li><b>Clause (aa):</b> The details of the invoice or debit note have been furnished by the supplier in GSTR-1 and communicated to the recipient in <b>GSTR-2B</b>.</li>
+        <li><b>Clause (b):</b> The registered person has received the goods or services.</li>
+        <li><b>Clause (c):</b> The tax charged has actually been paid to the Government (in cash or credit).</li>
+        <li><b>Clause (d):</b> The registered person has furnished the return under Section 39 (GSTR-3B).</li>
+        <li><b>Section 16(4) Time Limit:</b> ITC cannot be availed after the 30th day of November following the end of the financial year to which such invoice pertains, or furnishing of the annual return, whichever is earlier.</li>
+      </ul>
+    </div>
+
+    <div id="legalPaneSec17" class="card" style="margin:0;border:1px solid var(--line);background:var(--panel-2)" hidden>
+      <h3 style="margin-top:0;color:#e11d48">Section 17(5): Blocked Credits (Ineligible ITC)</h3>
+      <p style="font-size:13px;line-height:1.6">Notwithstanding anything contained in Section 16(1), input tax credit <b>shall NOT be available</b> in respect of the following:</p>
+      <ul style="font-size:12.5px;line-height:1.6">
+        <li><b>(a) Motor vehicles</b> for transportation of persons having approved seating capacity of &le;13 persons (unless used for making further taxable supply of such motor vehicles, transportation of passengers, or imparting training).</li>
+        <li><b>(b) Food and beverages, outdoor catering, beauty treatment, health services, cosmetic and plastic surgery</b> (unless used for making an outward taxable supply of the same category).</li>
+        <li><b>(c) Works contract services</b> supplied for construction of an immovable property (other than plant and machinery) except where it is an input service for further supply of works contract.</li>
+        <li><b>(d) Goods or services received by a taxable person for construction of an immovable property</b> on his own account (capitalized to immovable property).</li>
+        <li><b>(h) Goods lost, stolen, destroyed, written off</b> or disposed of by way of gift or free samples.</li>
+      </ul>
+      <div style="font-size:12px;background:#fef2f2;border:1px solid #fecaca;padding:10px 12px;border-radius:8px;color:#991b1b;margin-top:10px">
+        <b>Reporting in GSTR-3B:</b> Reported under Table 4(B)(1) as Ineligible ITC (Permanent reversal).
+      </div>
+    </div>
+
+    <div id="legalPaneRule37" class="card" style="margin:0;border:1px solid var(--line);background:var(--panel-2)" hidden>
+      <h3 style="margin-top:0;color:#d97706">Rule 37: Reversal of Input Tax Credit in the case of Non-Payment within 180 Days</h3>
+      <p style="font-size:13px;line-height:1.6">Under the second proviso to Section 16(2), where a recipient fails to pay the supplier the amount towards the value of supply along with tax within a period of <b>180 days</b> from the date of issue of invoice:</p>
+      <ul style="font-size:12.5px;line-height:1.6">
+        <li>The recipient must reverse an amount equal to the ITC availed, proportional to the unpaid value, in <b>GSTR-3B Table 4(B)(2)</b> for the tax period immediately following the end of 180 days.</li>
+        <li>Applicable interest at <b>18% per annum</b> under Section 50(1) must be paid from the date of availing until the date of reversal.</li>
+        <li><b>Re-availment:</b> Once the payment is subsequently made to the supplier (any time later), the recipient is entitled to re-avail the credit under Table 4(A)(5) and report in Table 4(D)(1) without any time limit!</li>
+      </ul>
+    </div>
+
+    <div id="legalPaneRule37A" class="card" style="margin:0;border:1px solid var(--line);background:var(--panel-2)" hidden>
+      <h3 style="margin-top:0;color:#7c3aed">Rule 37A: Reversal of ITC in Case of Non-Payment of Tax by the Supplier and Subsequent Re-availment</h3>
+      <p style="font-size:13px;line-height:1.6">Where ITC has been availed by a recipient in GSTR-3B based on GSTR-2B, but the supplier has <b>NOT furnished GSTR-3B</b> for the said period till the <b>30th day of September</b> following the end of financial year:</p>
+      <ul style="font-size:12.5px;line-height:1.6">
+        <li>The recipient must reverse such ITC in GSTR-3B on or before the <b>30th day of November</b> following the end of financial year.</li>
+        <li>If not reversed by 30th November, interest at <b>18% p.a.</b> is payable from 1st December until payment.</li>
+        <li><b>Re-availment:</b> Where the defaulting supplier subsequently files GSTR-3B and pays tax, the recipient can immediately re-avail such credit in Table 4(A)(5) of any subsequent month's GSTR-3B.</li>
+      </ul>
+    </div>
+
+    <div id="legalPaneTable4" class="card" style="margin:0;border:1px solid var(--line);background:var(--panel-2)" hidden>
+      <h3 style="margin-top:0;color:#059669">Circular No. 170/02/2022-GST: Mandatory Reporting in GSTR-3B Table 4</h3>
+      <p style="font-size:13px;line-height:1.6">GSTR-2B is the base for Table 4 ITC reporting:</p>
+      <ul style="font-size:12.5px;line-height:1.6">
+        <li><b>Table 4(A)(5):</b> Auto-drafted from GSTR-2B all other ITC (Gross ITC available).</li>
+        <li><b>Table 4(B)(1):</b> Permanent reversals under Rule 38, Rule 42, Rule 43 and Section 17(5) (Ineligible ITC). These credits can NEVER be reclaimed.</li>
+        <li><b>Table 4(B)(2):</b> Temporary reversals under Rule 37 (180 days), Rule 37A, and internal accounting hold. These credits CAN be reclaimed.</li>
+        <li><b>Table 4(C):</b> Net ITC Availed = 4(A) minus 4(B). This amount is credited to the Electronic Credit Ledger.</li>
+        <li><b>Table 4(D)(1):</b> Mandatory disclosure of ITC reclaimed which was earlier reversed under Table 4(B)(2).</li>
+      </ul>
+    </div>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -2570,7 +3055,7 @@ async function api(path, opts) {
   try { body = ct.indexOf('json') >= 0 ? await r.json() : await r.text(); } catch (e) { body = null; }
   if (r.status === 401) handleAuthLoss();
   if (!r.ok) {
-    const msg = (body && body.error) || (typeof body === 'string' && body) || ('HTTP ' + r.status);
+    const msg = (body && (body.error || body.reason || body.message)) || (typeof body === 'string' && body) || ('HTTP ' + r.status);
     const err = new Error(msg);
     err.status = r.status;
     err.body = body;
@@ -2944,10 +3429,18 @@ async function loadContext() {
   CTX.uploadDir = (up && up.dir) ? up.dir : '';
 
   const periodsOnFile = CTX.months.map((m) => m.period).concat(CTX.coverage.map((c) => c.period));
-  if (!CTX.period) {
-    CTX.period = CTX.months.length ? CTX.months[CTX.months.length - 1].period : todayPeriod();
+  const activeWithLines = CTX.months.filter((m) => Number(m.lines) > 0 || Number(m.twobFiles) > 0);
+  if (!CTX.period || (activeWithLines.length && !activeWithLines.some((m) => m.period === CTX.period))) {
+    const withPurchase = CTX.months.filter((m) => Number(m.lines) > 0);
+    CTX.period = withPurchase.length
+      ? withPurchase[withPurchase.length - 1].period
+      : activeWithLines.length
+        ? activeWithLines[activeWithLines.length - 1].period
+        : CTX.months.length
+          ? CTX.months[CTX.months.length - 1].period
+          : todayPeriod();
   }
-  CTX.fy = CTX.fy || fyOfPeriod(CTX.period) || fyOfPeriod(todayPeriod());
+  CTX.fy = fyOfPeriod(CTX.period) || CTX.fy || fyOfPeriod(todayPeriod());
   if (!CTX.gstin && CTX.gstins.length) CTX.gstin = CTX.gstins[0].gstin;
   fillPickers(periodsOnFile);
 }
@@ -2982,7 +3475,10 @@ function fillPickers(periodsOnFile) {
   }
 
   const months = monthsOfFy(CTX.fy);
-  if (months.length && months.indexOf(CTX.period) < 0) CTX.period = months[months.length - 1];
+  if (months.length && months.indexOf(CTX.period) < 0) {
+    const fyDataMonths = (CTX.months || []).filter((m) => months.indexOf(m.period) >= 0 && Number(m.lines) > 0);
+    CTX.period = fyDataMonths.length ? fyDataMonths[fyDataMonths.length - 1].period : months[0];
+  }
   const pm = el('ctxPeriod');
   if (pm) {
     pm.innerHTML = months.map((p) => '<option value="' + p + '">' + esc(monthLabel(p)) + '</option>').join('');
@@ -3888,21 +4384,112 @@ function plTpl(fmt) {
 }
 
 // ---------------------------------------------------------------------------
-// Purchase register
+// Purchase register & Multi-Month / Multi-GSTIN Scope
 // ---------------------------------------------------------------------------
 function loadPurchase() {
   wireDrop('purchaseDrop', 'purchaseFile', () => purchasePreview());
+  const fg = el('purFallbackGstin');
+  if (fg && !fg.value && CTX.gstin) fg.value = CTX.gstin;
+  initReconScopeControls();
   loadRecon();
 }
 
+function initReconScopeControls() {
+  const fyMonths = monthsOfFy(CTX.fy || '2025-26');
+  const fromEl = el('reconFromPeriod');
+  const toEl = el('reconToPeriod');
+  if (fromEl && !fromEl.value) fromEl.value = fyMonths[0] || CTX.period || '2025-04';
+  if (toEl && !toEl.value) toEl.value = CTX.period || fyMonths[fyMonths.length - 1] || '2026-03';
+  if (!RECON.selectedMonths || !RECON.selectedMonths.length) {
+    RECON.selectedMonths = CTX.period ? [CTX.period] : (fyMonths.length ? [fyMonths[0]] : []);
+  }
+  renderReconMultiMonthPills();
+}
+
+function renderReconMultiMonthPills() {
+  const box = el('reconMultiMonthPills');
+  if (!box) return;
+  const fyMonths = monthsOfFy(CTX.fy || '2025-26');
+  const allKnown = [...new Set(fyMonths.concat((CTX.months || []).map((m) => m.period)).filter(Boolean))].sort();
+  const sel = new Set(RECON.selectedMonths || []);
+  box.innerHTML = allKnown.map((p) => {
+    const active = sel.has(p);
+    const mRow = (CTX.months || []).find((m) => m.period === p);
+    const cntTxt = mRow && mRow.lines ? ' (' + cnt(mRow.lines) + ')' : '';
+    return '<button type="button" class="' + (active ? '' : 'ghost ') + 'sm" ' +
+      'style="border-radius:999px;padding:5px 12px;' + (active ? 'background:#1a73e8;color:#fff;' : '') + '" ' +
+      'onclick="toggleReconMonthPill(\'' + esc(p) + '\')">' +
+      (active ? '\u2713 ' : '') + esc(monthLabel(p)) + esc(cntTxt) + '</button>';
+  }).join('');
+}
+
+function setReconPeriodMode(mode) {
+  RECON.periodMode = mode || 'single';
+  const rBox = el('reconRangeBox');
+  const mBox = el('reconMultiMonthBox');
+  if (rBox) rBox.style.display = RECON.periodMode === 'range' ? 'flex' : 'none';
+  if (mBox) mBox.style.display = RECON.periodMode === 'multi' ? 'block' : 'none';
+  initReconScopeControls();
+  loadRecon();
+}
+
+function toggleReconMonthPill(p) {
+  const cur = new Set(RECON.selectedMonths || []);
+  if (cur.has(p)) cur.delete(p);
+  else cur.add(p);
+  RECON.selectedMonths = [...cur].sort();
+  renderReconMultiMonthPills();
+  loadRecon();
+}
+
+function toggleAllReconMonths(selectAll) {
+  const fyMonths = monthsOfFy(CTX.fy || '2025-26');
+  RECON.selectedMonths = selectAll ? [...fyMonths] : (CTX.period ? [CTX.period] : []);
+  renderReconMultiMonthPills();
+  loadRecon();
+}
+
+function selectFullFyReconScope() {
+  const modeEl = el('reconPeriodMode');
+  if (modeEl) modeEl.value = 'range';
+  RECON.periodMode = 'range';
+  const fyMonths = monthsOfFy(CTX.fy || '2025-26');
+  if (el('reconFromPeriod')) el('reconFromPeriod').value = fyMonths[0] || '2025-04';
+  if (el('reconToPeriod')) el('reconToPeriod').value = fyMonths[fyMonths.length - 1] || '2026-03';
+  const rBox = el('reconRangeBox');
+  const mBox = el('reconMultiMonthBox');
+  if (rBox) rBox.style.display = 'flex';
+  if (mBox) mBox.style.display = 'none';
+  loadRecon();
+}
+
+function applyReconPeriodScope() {
+  const modeEl = el('reconPeriodMode');
+  RECON.periodMode = (modeEl && modeEl.value) || 'single';
+  const gScope = el('reconGstinScope');
+  RECON.gstinScope = (gScope && gScope.value) || 'single';
+  loadRecon();
+}
+
+function purchaseQueryParams(fileName) {
+  const fg = (el('purFallbackGstin') && el('purFallbackGstin').value.trim()) || CTX.gstin || '';
+  const fd = (el('purForceDocType') && el('purForceDocType').value) || '';
+  const op = (el('purOverridePeriod') && el('purOverridePeriod').value.trim()) || '';
+  return '?name=' + enc(fileName) +
+    '&fallbackGstin=' + enc(fg) +
+    (fd ? '&forceDocType=' + enc(fd) : '') +
+    (op ? '&overridePeriod=' + enc(op) : '');
+}
+
 async function purchasePreview() {
-  const f = el('purchaseFile') && el('purchaseFile').files && el('purchaseFile').files[0];
-  if (!f) return toast('Please choose a purchase register file first.', 'err');
+  const files = el('purchaseFile') && el('purchaseFile').files ? Array.from(el('purchaseFile').files) : [];
+  if (!files.length) return toast('Please choose one or more purchase register files first.', 'err');
   showId('purchasePreviewCard');
-  setHtml('purchasePreview', '<div class="hint">parsing\u2026</div>');
+  setHtml('purchasePreview', '<div class="hint">parsing ' + cnt(files.length) + ' file(s)\u2026</div>');
   try {
-    const out = await postFile('/api/purchase-file/preview?name=' + enc(f.name) + '&fallbackGstin=' + enc(CTX.gstin || ''), f);
-    CTX.purchaseFileName = f.name;
+    const f = files[0];
+    const out = await postFile('/api/purchase-file/preview' + purchaseQueryParams(f.name), f);
+    CTX.purchaseFileName = files.map((x) => x.name).join(', ');
     if (el('purchaseImportBtn')) el('purchaseImportBtn').disabled = false;
 
     // The purchase upload preview and the paste preview carry DIFFERENT columns
@@ -3981,38 +4568,51 @@ async function purchasePreview() {
 }
 
 async function purchaseImport() {
-  const f = el('purchaseFile') && el('purchaseFile').files && el('purchaseFile').files[0];
-  if (!f) return toast('Please choose a purchase register file first.', 'err');
-  note('purchaseMsg', 'hint', 'Importing & Reconciling ' + f.name + ' with GSTR-2B\u2026');
+  const files = el('purchaseFile') && el('purchaseFile').files ? Array.from(el('purchaseFile').files) : [];
+  if (!files.length) return toast('Please choose one or more purchase register files first.', 'err');
+  note('purchaseMsg', 'hint', 'Importing & Reconciling ' + cnt(files.length) + ' file(s) with GSTR-2B\u2026');
   try {
-    const out = await postFile('/api/purchase-file/import?name=' + enc(f.name) + '&fallbackGstin=' + enc(CTX.gstin || ''), f);
-    const keys = Array.isArray(out.keys) ? out.keys : [];
-    const months = keys.length > 1
-      ? keys.map((k) => esc(k.period) + ' (' + cnt(k.lines) + ')').join(', ')
-      : esc((out.key && out.key.period) || (keys[0] && keys[0].period));
-    const gstins = [...new Set(keys.map((k) => k.gstin).filter(Boolean))];
-    const totalMatched = (out.reReconcileAll || []).reduce((acc, r) => acc + (Number(r && r.matched) || 0), 0);
-    note('purchaseMsg', 'ok', 'Import & Reconcile ho gaya: ' + cnt(out.lines) + ' bills (' + cnt(totalMatched) + ' Matched with 2B), ' +
-      (keys.length > 1 ? cnt(keys.length) + ' months ' : 'month ') + months +
-      (gstins.length ? ', GSTIN ' + gstins.map(esc).join(' / ') : '') + '.');
-    toast('Purchase Register import & reconcile ho gaya: ' + cnt(out.lines) + ' bills (' + cnt(totalMatched) + ' Matched)!', 'ok');
-    if (Array.isArray(out.blocked) && out.blocked.length) {
-      note('purchaseMsg', 'warn', 'Imported, but these months could not be reconciled: ' +
-        out.blocked.map((b) => esc(b.period) + ' ' + esc(b.gstin)).join(', ') + ' \u2014 ' + esc(out.blocked[0].reason));
+    let totalLines = 0;
+    let totalMatched = 0;
+    let allKeys = [];
+    let allBlocked = [];
+    for (const f of files) {
+      const out = await postFile('/api/purchase-file/import' + purchaseQueryParams(f.name), f);
+      totalLines += Number(out.lines) || 0;
+      totalMatched += (out.reReconcileAll || []).reduce((acc, r) => acc + (Number(r && r.matched) || 0), 0);
+      if (Array.isArray(out.keys)) allKeys = allKeys.concat(out.keys);
+      if (Array.isArray(out.blocked)) allBlocked = allBlocked.concat(out.blocked);
     }
-    // If current header GSTIN/month was not in the imported batch, switch header to the imported GSTIN/month
-    if (keys.length) {
-      const hasCurrent = keys.some((k) => (!CTX.gstin || k.gstin === CTX.gstin) && k.period === CTX.period);
-      if (!hasCurrent) {
-        const pick = keys[keys.length - 1];
-        if (pick.gstin) CTX.gstin = pick.gstin;
-        if (pick.period) {
-          CTX.period = pick.period;
-          CTX.fy = fyOfPeriod(pick.period) || CTX.fy;
-        }
+    const months = allKeys.length > 1
+      ? allKeys.map((k) => esc(k.period) + ' (' + cnt(k.lines) + ')').join(', ')
+      : esc((allKeys[0] && allKeys[0].period) || CTX.period);
+    const gstins = [...new Set(allKeys.map((k) => k.gstin).filter(Boolean))];
+    note('purchaseMsg', 'ok', 'Import & Reconcile ho gaya (' + cnt(files.length) + ' file): ' + cnt(totalLines) + ' bills (' + cnt(totalMatched) + ' Matched with 2B), ' +
+      (allKeys.length > 1 ? cnt(allKeys.length) + ' months ' : 'month ') + months +
+      (gstins.length ? ', GSTIN ' + gstins.map(esc).join(' / ') : '') + '.');
+    toast('Purchase Register import & reconcile ho gaya: ' + cnt(totalLines) + ' bills (' + cnt(totalMatched) + ' Matched)!', 'ok');
+    if (allBlocked.length) {
+      note('purchaseMsg', 'warn', 'Imported, but these months could not be reconciled: ' +
+        allBlocked.map((b) => esc(b.period) + ' ' + esc(b.gstin)).join(', ') + ' \u2014 ' + esc(allBlocked[0].reason));
+    }
+    // Always switch header to the imported file's GSTIN & month (or multi-month range if multiple months imported)
+    if (allKeys.length) {
+      const pick = allKeys[allKeys.length - 1];
+      if (pick.gstin) CTX.gstin = pick.gstin;
+      if (pick.period) {
+        CTX.period = pick.period;
+        CTX.fy = fyOfPeriod(pick.period) || CTX.fy;
+      }
+      const uniquePeriods = [...new Set(allKeys.map((k) => k.period).filter(Boolean))].sort();
+      if (uniquePeriods.length > 1) {
+        RECON.periodMode = 'multi';
+        RECON.selectedMonths = uniquePeriods;
+        if (el('reconPeriodMode')) el('reconPeriodMode').value = 'multi';
+        if (el('reconMultiMonthBox')) el('reconMultiMonthBox').style.display = 'block';
       }
     }
     await loadContext();
+    renderReconMultiMonthPills();
     await loadRecon();
     const reconCard = el('gstr3bItcTiles') || el('reconTable');
     if (reconCard && reconCard.scrollIntoView) reconCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -4023,25 +4623,39 @@ async function purchaseImport() {
 }
 
 async function preview2b() {
-  const f = el('twobFile') && el('twobFile').files && el('twobFile').files[0];
-  if (!f) return toast('Please choose a GSTR-2B (.json / .xlsx / .csv) file first.', 'err');
+  const files = el('twobFile') && el('twobFile').files ? Array.from(el('twobFile').files) : [];
+  if (!files.length) return toast('Please choose one or more GSTR-2B (.json / .xlsx / .csv) files first.', 'err');
   const box = el('twobPreviewBox');
-  if (box) { box.style.display = 'block'; box.innerHTML = '<div class="hint">Parsing GSTR-2B file ' + esc(f.name) + '\u2026</div>'; }
+  if (box) { box.style.display = 'block'; box.innerHTML = '<div class="hint">Parsing ' + cnt(files.length) + ' GSTR-2B file(s)\u2026</div>'; }
   try {
-    const dataUrl = await fileToDataUrl(f);
-    const out = await postJson('/api/twob-file/preview', { name: f.name, data: dataUrl });
+    let totalRows = 0;
+    let totalTaxable = 0;
+    let totalTax = 0;
+    const formats = new Set();
+    const gstins = new Set();
+    const periods = new Set();
+    for (const f of files) {
+      const dataUrl = await fileToDataUrl(f);
+      const out = await postJson('/api/twob-file/preview', { name: f.name, data: dataUrl });
+      totalRows += Number(out.rowCount) || 0;
+      totalTaxable += Number(out.totalTaxable) || 0;
+      totalTax += Number(out.totalTax) || 0;
+      if (out.format) formats.add(out.format);
+      if (out.detectedGstin) gstins.add(out.detectedGstin);
+      for (const p of (out.detectedPeriods || [])) periods.add(p);
+    }
     if (box) {
       box.innerHTML =
         '<div class="tiles" style="margin-bottom:10px">' +
-          '<div class="tile good"><div class="k">Format</div><div class="v" style="font-size:14px">' + esc(out.format) + '</div></div>' +
-          '<div class="tile"><div class="k">2B Bills</div><div class="v">' + cnt(out.rowCount) + '</div></div>' +
-          '<div class="tile"><div class="k">Taxable Value</div><div class="v" style="font-size:15px">' + money(out.totalTaxable) + '</div></div>' +
-          '<div class="tile good"><div class="k">Total 2B ITC</div><div class="v" style="font-size:15px">' + money(out.totalTax) + '</div></div>' +
-          '<div class="tile"><div class="k">GSTIN in File</div><div class="v" style="font-size:14px">' + esc(out.detectedGstin || CTX.gstin || 'Auto') + '</div></div>' +
-          '<div class="tile accent"><div class="k">2B Month(s)</div><div class="v" style="font-size:14px">' + esc((out.detectedPeriods || []).map(monthLabel).join(', ') || monthLabel(CTX.period)) + '</div></div>' +
+          '<div class="tile good"><div class="k">Files / Format</div><div class="v" style="font-size:14px">' + cnt(files.length) + ' \u00b7 ' + esc([...formats].join(', ')) + '</div></div>' +
+          '<div class="tile"><div class="k">2B Bills</div><div class="v">' + cnt(totalRows) + '</div></div>' +
+          '<div class="tile"><div class="k">Taxable Value</div><div class="v" style="font-size:15px">' + money(totalTaxable) + '</div></div>' +
+          '<div class="tile good"><div class="k">Total 2B ITC</div><div class="v" style="font-size:15px">' + money(totalTax) + '</div></div>' +
+          '<div class="tile"><div class="k">GSTIN(s) in File</div><div class="v" style="font-size:14px">' + esc([...gstins].join(', ') || CTX.gstin || 'Auto') + '</div></div>' +
+          '<div class="tile accent"><div class="k">2B Month(s)</div><div class="v" style="font-size:14px">' + esc([...periods].sort().map(monthLabel).join(', ') || monthLabel(CTX.period)) + '</div></div>' +
         '</div>';
     }
-    note('twobMsg', 'ok', f.name + ' parsed (' + cnt(out.rowCount) + ' bills) \u2014 ab "Upload + reconcile" dabayein.');
+    note('twobMsg', 'ok', cnt(files.length) + ' GSTR-2B file(s) parsed (' + cnt(totalRows) + ' bills) \u2014 ab "Upload + reconcile" dabayein.');
   } catch (e) {
     if (box) box.innerHTML = '<div class="msg err">' + esc(errText(e)) + '</div>';
     showInline('twobMsg', 'err', errText(e));
@@ -4049,41 +4663,58 @@ async function preview2b() {
 }
 
 // ---------------------------------------------------------------------------
-// GSTR-2B upload
+// GSTR-2B upload (Single or Multiple JSON / XLSX / CSV files in one batch)
 // ---------------------------------------------------------------------------
 async function upload2b(andReconcile) {
-  const f = el('twobFile') && el('twobFile').files && el('twobFile').files[0];
-  if (!f) return toast('Please choose a GSTR-2B file first.', 'err');
-  note('twobMsg', 'hint', 'Importing & Reconciling ' + f.name + '\u2026');
+  const files = el('twobFile') && el('twobFile').files ? Array.from(el('twobFile').files) : [];
+  if (!files.length) return toast('Please choose one or more GSTR-2B files first.', 'err');
+  note('twobMsg', 'hint', 'Importing & Reconciling ' + cnt(files.length) + ' GSTR-2B file(s)\u2026');
   try {
-    const dataUrl = await fileToDataUrl(f);
-    const imp = await postJson('/api/twob-file/import', {
-      gstin: CTX.gstin || '',
-      period: CTX.period || '',
-      name: f.name,
-      data: dataUrl,
-    });
-    if (imp.detectedGstin && imp.detectedGstin !== CTX.gstin) {
-      CTX.gstin = imp.detectedGstin;
+    let totalImported = 0;
+    const allPeriods = new Set();
+    let lastImp = null;
+    for (const f of files) {
+      const dataUrl = await fileToDataUrl(f);
+      const imp = await postJson('/api/twob-file/import', {
+        gstin: CTX.gstin || '',
+        period: CTX.period || '',
+        name: f.name,
+        data: dataUrl,
+      });
+      lastImp = imp;
+      totalImported += Number(imp.imported2b) || 0;
+      for (const p of (imp.detectedPeriods || [])) allPeriods.add(p);
+      if (imp.activePeriod) allPeriods.add(imp.activePeriod);
+      if (imp.detectedGstin && imp.detectedGstin !== CTX.gstin) {
+        CTX.gstin = imp.detectedGstin;
+      }
     }
-    const targetPeriod = imp.activePeriod || (imp.detectedPeriods && imp.detectedPeriods[0]) || CTX.period;
-    if (targetPeriod && targetPeriod !== CTX.period) {
+    const sortedPeriods = [...allPeriods].filter(Boolean).sort();
+    const targetPeriod = (lastImp && lastImp.activePeriod) || sortedPeriods[sortedPeriods.length - 1] || CTX.period;
+    if (targetPeriod) {
       CTX.period = targetPeriod;
       CTX.fy = fyOfPeriod(targetPeriod) || CTX.fy;
     }
-    const r = imp.recon || {};
+    if (sortedPeriods.length > 1) {
+      RECON.periodMode = 'multi';
+      RECON.selectedMonths = sortedPeriods;
+      if (el('reconPeriodMode')) el('reconPeriodMode').value = 'multi';
+      if (el('reconMultiMonthBox')) el('reconMultiMonthBox').style.display = 'block';
+    }
+    const r = (lastImp && lastImp.recon) || {};
     const matchedTxt = r.lines
       ? ' \u2014 Books lines: ' + cnt(r.lines) + ', Matched: ' + cnt(r.matched)
-      : ' \u2014 (Is month ka Purchase Register abhi Books me nahi hai; niche "In GSTR-2B, missing in Books" me saare 2B bills dikh rahe hain)';
-    note('twobMsg', 'ok', f.name + ' import ho gaya (' + cnt(imp.imported2b) + ' 2B bills, period ' + esc(monthLabel(targetPeriod)) + ')' + matchedTxt);
-    toast('GSTR-2B import & reconcile ho gaya (' + cnt(imp.imported2b) + ' bills)!', 'ok');
+      : ' \u2014 (Selected month ke 2B bills import ho gaye hain; niche table me dekhein)';
+    note('twobMsg', 'ok', cnt(files.length) + ' GSTR-2B file(s) import ho gayi (' + cnt(totalImported) + ' 2B bills, period ' + esc(sortedPeriods.map(monthLabel).join(', ') || monthLabel(targetPeriod)) + ')' + matchedTxt);
+    toast('GSTR-2B import & reconcile ho gaya (' + cnt(totalImported) + ' bills)!', 'ok');
     await loadContext();
+    renderReconMultiMonthPills();
     await loadRecon();
     if (andReconcile) {
       const reconCard = el('gstr3bItcTiles') || el('reconTable');
       if (reconCard && reconCard.scrollIntoView) reconCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
-    return imp;
+    return lastImp;
   } catch (e) {
     showInline('twobMsg', 'err', errText(e));
     toast(errText(e), 'err');
@@ -4158,12 +4789,40 @@ async function runUploadedFolder() {
  * shares, while this is one screen's working set — what the last read returned,
  * and which invoice is open for editing.
  */
-const RECON = { loaded: false, editing: null, rows: [], data: null };
+const RECON = {
+  loaded: false,
+  editing: null,
+  fastEdit: false,
+  periodMode: 'single',
+  gstinScope: 'single',
+  selectedMonths: [],
+  rows: [],
+  data: null,
+};
 
 function reconUri() {
   const q = [];
-  if (CTX.gstin) q.push('gstin=' + enc(CTX.gstin));
-  if (CTX.period) q.push('period=' + enc(CTX.period));
+  const gScope = (el('reconGstinScope') && el('reconGstinScope').value) || RECON.gstinScope || 'single';
+  if (gScope === 'ALL') {
+    q.push('gstins=ALL');
+  } else if (CTX.gstin) {
+    q.push('gstin=' + enc(CTX.gstin));
+  }
+  const pMode = (el('reconPeriodMode') && el('reconPeriodMode').value) || RECON.periodMode || 'single';
+  if (pMode === 'range') {
+    const fp = (el('reconFromPeriod') && el('reconFromPeriod').value) || '';
+    const tp = (el('reconToPeriod') && el('reconToPeriod').value) || '';
+    if (fp && tp) {
+      q.push('fromPeriod=' + enc(fp));
+      q.push('toPeriod=' + enc(tp));
+    } else if (CTX.period) {
+      q.push('period=' + enc(CTX.period));
+    }
+  } else if (pMode === 'multi' && RECON.selectedMonths && RECON.selectedMonths.length) {
+    q.push('periods=' + enc(RECON.selectedMonths.join(',')));
+  } else if (CTX.period) {
+    q.push('period=' + enc(CTX.period));
+  }
   const st = el('reconStatus') && el('reconStatus').value;
   if (st) q.push('status=' + enc(st));
   const s = el('reconSearch') && el('reconSearch').value.trim();
@@ -4190,6 +4849,7 @@ async function loadRecon() {
 
 /** The columns of the reconciliation table. `k` is the field the server sent. */
 const RECON_COLS = [
+  ['sel', ''],
   ['our_gstin', 'Our GSTIN'], ['supplier_gstin', 'Supplier GSTIN'], ['invoice_no', 'Document no'],
   ['book_document_type', 'Type'], ['invoice_date', 'Document date'], ['party_name', 'Vendor'],
   ['source_taxable_value', 'Source taxable'],
@@ -4219,12 +4879,47 @@ function renderRecon() {
   const n = (v) => (v === null || v === undefined ? 0 : Number(v));
   const locked = reconIsLocked();
 
+  const activePeriods = (out.activePeriods && out.activePeriods.length)
+    ? out.activePeriods.map(monthLabel).join(', ')
+    : monthLabel(CTX.period);
+  const gScope = (el('reconGstinScope') && el('reconGstinScope').value) || RECON.gstinScope || 'single';
+  const gstinLabel = gScope === 'ALL' ? 'ALL GSTINs (Consolidated + Separate View)' : (CTX.gstin || '(no GSTIN)');
+
   setHtml('reconCtx',
-    esc(CTX.gstin || '(no GSTIN)') + ' \u00b7 ' + esc(monthLabel(CTX.period)) +
+    esc(gstinLabel) + ' \u00b7 ' + esc(activePeriods) +
     ' \u00b7 FY ' + esc(CTX.fy || '') +
     (locked
       ? ' \u00b7 <span class="pill bad">Month locked</span> \u2014 corrections blocked, unlock as admin first.'
-      : ' \u00b7 <span class="pill good">Month open</span> \u2014 corrections allowed, every change is logged.'));
+      : ' \u00b7 <span class="pill good">Month open</span> \u2014 Books-only corrections allowed, GSTR-2B immutable, every change is logged.'));
+
+  // ---- Separate GSTIN-Wise Breakdown Table (Master Prompt §2) ----
+  const gBreakCard = el('reconGstinBreakdownCard');
+  const gBreakList = out.gstinBreakdown || [];
+  if (gBreakCard) {
+    if (gBreakList.length > 0 && (gScope === 'ALL' || gBreakList.length > 1 || (out.activePeriods && out.activePeriods.length > 1))) {
+      gBreakCard.style.display = 'block';
+      setHtml('reconGstinBreakdownTable',
+        '<thead><tr><th>Our GSTIN</th><th class="num">Books Bills</th><th class="num">Matched</th>' +
+        '<th class="num">Missing in 2B</th><th class="num">Amount Mismatch</th><th class="num">Duplicate</th>' +
+        '<th class="num">ITC Blocked</th><th class="num">Net Taxable</th><th class="num">Books ITC</th>' +
+        '<th class="num">Matched 2B ITC</th><th>Action</th></tr></thead><tbody>' +
+        gBreakList.map((g) =>
+          '<tr><td><b>' + esc(g.gstin) + '</b></td>' +
+          '<td class="num">' + cnt(g.lines) + '</td>' +
+          '<td class="num"><span class="pill good">' + cnt(g.matched) + '</span></td>' +
+          '<td class="num">' + (g.missing ? '<span class="pill bad">' + cnt(g.missing) + '</span>' : '0') + '</td>' +
+          '<td class="num">' + (g.mismatch ? '<span class="pill warn">' + cnt(g.mismatch) + '</span>' : '0') + '</td>' +
+          '<td class="num">' + cnt(g.duplicate) + '</td>' +
+          '<td class="num">' + cnt(g.blocked) + '</td>' +
+          '<td class="num">' + money(g.taxableNet) + '</td>' +
+          '<td class="num">' + money(g.booksItc) + '</td>' +
+          '<td class="num"><b>' + money(g.matched2bItc) + '</b></td>' +
+          '<td><button type="button" class="ghost sm" onclick="filterToSingleGstin(\'' + esc(g.gstin) + '\')">View Separate</button></td></tr>',
+        ).join('') + '</tbody>');
+    } else {
+      gBreakCard.style.display = 'none';
+    }
+  }
 
   setHtml('reconTiles',
     '<div class="tile"><div class="k">Books lines</div><div class="v">' + cnt(s.lines) + '</div></div>' +
@@ -4235,10 +4930,8 @@ function renderRecon() {
     '<div class="tile ' + (by['Blocked'] ? 'bad' : 'good') + '"><div class="k">ITC blocked</div><div class="v">' + cnt(by['Blocked']) + '</div></div>' +
     '<div class="tile ' + (out.twoBTotal ? 'warn' : 'good') + '"><div class="k">2B not in books</div><div class="v">' + cnt(out.twoBTotal) + '</div></div>' +
     '<div class="tile"><div class="k">2B lines stored</div><div class="v">' + cnt(s.twobLines) + '</div></div>' +
-    // Gross, credit-note reduction and net are three answers to three different
-    // questions; a month with only credit notes must not read as "no purchases".
     '<div class="tile"><div class="k">Gross taxable</div><div class="v" style="font-size:15px">' + money(n(s.taxableGross)) + '</div></div>' +
-    '<div class="tile ' + (n(s.taxableCredit) ? 'warn' : '') + '"><div class="k">Credit notes</div><div class="v" style="font-size:15px">' + money(n(s.taxableCredit)) + '</div></div>' +
+    '<div class="tile ' + (n(s.taxableCredit) ? 'warn' : '') + '"><div class="v" style="font-size:15px">' + money(n(s.taxableCredit)) + '</div><div class="k">Credit notes (−)</div></div>' +
     '<div class="tile good"><div class="k">Net taxable</div><div class="v" style="font-size:15px">' + money(n(s.taxableNet)) + '</div></div>');
 
   const g3b = out.gstr3bItc || {};
@@ -4269,16 +4962,48 @@ function renderRecon() {
       const open = String(RECON.editing) === String(r.id);
       const cells = RECON_COLS.map((c) => {
         const k = c[0];
+        if (k === 'sel') {
+          return '<td style="width:30px;text-align:center"><input type="checkbox" class="recon-row-chk" data-id="' + r.id + '" onchange="updateBulkRecoMsg()" /></td>';
+        }
         if (k === 'edit') {
+          if (RECON.fastEdit && !locked) {
+            return '<td class="row-actions" style="white-space:nowrap">' +
+              '<button type="button" class="sm" onclick="saveFastReconRow(' + r.id + ')">\ud83d\udcbe Save</button>' +
+              '<button type="button" class="ghost sm" onclick="reconEdit(' + r.id + ')">Full</button>' +
+              '<button type="button" class="ghost sm" onclick="reconHistory(' + r.id + ')" title="Correction history">Log</button>' +
+              '</td>';
+          }
           return '<td class="row-actions">' +
             '<button class="ghost sm" onclick="reconEdit(' + r.id + ')">Edit</button>' +
             '<button class="ghost sm" onclick="reconHistory(' + r.id + ')" title="Correction history">Log</button>' +
             '</td>';
         }
+        if (RECON.fastEdit && !locked) {
+          if (k === 'supplier_gstin') {
+            const curSup = r.recon_supplier_gstin || r.book_supplier_gstin || '';
+            return '<td><input id="fe_sup_' + r.id + '" type="text" value="' + esc(curSup) + '" style="width:142px;font-family:monospace;font-size:12px;padding:3px 6px" title="Orig Book GSTIN: ' + esc(r.book_supplier_gstin || '') + '" /></td>';
+          }
+          if (k === 'invoice_no') {
+            const curInv = r.recon_invoice_no || r.book_invoice_no || '';
+            return '<td><input id="fe_inv_' + r.id + '" type="text" value="' + esc(curInv) + '" style="width:130px;font-family:monospace;font-size:12px;padding:3px 6px" title="Orig Book No: ' + esc(r.book_invoice_no || '') + '" />' +
+              (r.recon_edited ? '<div class="hint" style="font-size:10px">Orig: ' + esc(r.book_invoice_no) + '</div>' : '') + '</td>';
+          }
+          if (k === 'invoice_date') {
+            const curDt = String(r.recon_invoice_date || r.book_invoice_date || '').slice(0, 10);
+            return '<td><input id="fe_dt_' + r.id + '" type="date" value="' + esc(curDt) + '" style="width:124px;font-size:12px;padding:3px 5px" title="Orig Book Date: ' + esc(fmtDmy(r.book_invoice_date)) + '" /></td>';
+          }
+          if (k === 'itc') {
+            const curDec = r.itc_decision || 'Pending Review';
+            const opts = ['Pending Review', 'Claim', 'Reclaim Later', 'Query Vendor', 'Ineligible', 'Reversed', 'Do Not Claim'];
+            return '<td><select id="fe_itc_' + r.id + '" style="width:122px;font-size:12px;padding:3px 4px">' +
+              opts.map((o) => '<option value="' + esc(o) + '"' + (curDec === o ? ' selected' : '') + '>' + esc(o) + '</option>').join('') +
+              '</select></td>';
+          }
+        }
         if (k === 'status') {
           const st = r.match_status || 'Not reconciled';
           return '<td><span class="pill ' + pillClass(slug(st)) + '">' + esc(st) + '</span>' +
-            (r.recon_edited ? ' <span class="pill info" title="Recon values were corrected">edited</span>' : '') + '</td>';
+            (r.recon_edited ? ' <span class="pill info" title="Books recon values were corrected (2B untouched)">edited</span>' : '') + '</td>';
         }
         if (k === 'itc') return '<td>' + (r.itc_decision ? esc(r.itc_decision) : '<span class="hint">Pending Review</span>') + '</td>';
         if (k === 'gstr3b_bucket') {
@@ -4288,8 +5013,9 @@ function renderRecon() {
         }
         if (k === 'suggested_2b') {
           if (r.suggested_2b_invoice_no) {
-            return '<td><span class="pill warn" title="Same Supplier GSTIN + Amount in GSTR-2B">' +
-              esc(r.suggested_2b_invoice_no) + (r.suggested_2b_date ? ' (' + esc(fmtDmy(r.suggested_2b_date)) + ')' : '') + '</span></td>';
+            const mTag = r.suggested_2b_month ? ' [' + esc(monthLabel(r.suggested_2b_month)) + ']' : '';
+            return '<td><span class="pill warn" style="cursor:pointer" onclick="quickApplyProbable2b(' + r.id + ',\'' + esc(r.suggested_2b_invoice_no) + '\',\'' + esc(r.suggested_2b_date || '') + '\')" title="Click to apply to Books Recon columns (GSTR-2B stays immutable)">' +
+              '\u26a1 ' + esc(r.suggested_2b_invoice_no) + (r.suggested_2b_date ? ' (' + esc(fmtDmy(r.suggested_2b_date)) + ')' : '') + mTag + '</span></td>';
           }
           return '<td>&mdash;</td>';
         }
@@ -4302,7 +5028,18 @@ function renderRecon() {
           return '<td class="num">' + (zero ? '&mdash;' : money(v)) + '</td>';
         }
         if (k === 'invoice_date') {
-          return '<td>' + (r.invoice_date ? esc(fmtDmy(r.invoice_date)) : '&mdash;') + '</td>';
+          const dispDt = r.recon_invoice_date || r.book_invoice_date || r.invoice_date;
+          return '<td>' + (dispDt ? esc(fmtDmy(dispDt)) : '&mdash;') + '</td>';
+        }
+        if (k === 'invoice_no') {
+          const dispInv = r.recon_invoice_no || r.book_invoice_no || r.invoice_no;
+          const origDiff = r.recon_edited && r.book_invoice_no && r.book_invoice_no !== dispInv;
+          return '<td>' + esc(dispInv || '') +
+            (origDiff ? '<div class="hint" style="font-size:10px" title="Original Book Document No">Book: ' + esc(r.book_invoice_no) + '</div>' : '') + '</td>';
+        }
+        if (k === 'supplier_gstin') {
+          const dispSup = r.recon_supplier_gstin || r.book_supplier_gstin || r.supplier_gstin;
+          return '<td>' + esc(dispSup || '') + '</td>';
         }
         const v = r[k];
         return '<td>' + (v === null || v === undefined || v === '' ? '&mdash;' : esc(v)) + '</td>';
@@ -4321,6 +5058,104 @@ function renderRecon() {
   const twoBRows = (out.twoBOnly || []).map((r) => Object.assign({}, r, { itc: n(r.itc) }));
   setHtml('reconTwoBTable', tableHtml(twoBCols, twoBRows,
     'Every GSTR-2B invoice is matched in Books \u2014 nothing pending this month.'));
+}
+
+function filterToSingleGstin(g) {
+  if (!g) return;
+  CTX.gstin = g;
+  const gScope = el('reconGstinScope');
+  if (gScope) gScope.value = 'single';
+  RECON.gstinScope = 'single';
+  loadContext().then(() => loadRecon());
+}
+
+function toggleReconFastEdit() {
+  RECON.fastEdit = !RECON.fastEdit;
+  const btn = el('btnFastEditMode');
+  if (btn) {
+    btn.className = RECON.fastEdit ? '' : 'ghost';
+    btn.textContent = RECON.fastEdit
+      ? '\u2705 Excel Fast-Edit ON (Books-Only)'
+      : '\u26a1 Excel Fast-Edit Mode (Books-Only)';
+  }
+  renderRecon();
+}
+
+async function quickApplyProbable2b(id, inv, dt) {
+  if (RECON.fastEdit && el('fe_inv_' + id)) {
+    el('fe_inv_' + id).value = inv;
+    if (el('fe_dt_' + id) && dt) el('fe_dt_' + id).value = String(dt).slice(0, 10);
+    await saveFastReconRow(id, 'Matched to Probable 2B Invoice ' + inv + ' (Books-only override)');
+    return;
+  }
+  reconEdit(id);
+  applyProbable2b(inv, dt);
+}
+
+async function saveFastReconRow(id, customReason) {
+  const row = RECON.rows.find((r) => String(r.id) === String(id));
+  if (!row) return;
+  const sup = (el('fe_sup_' + id) && el('fe_sup_' + id).value.trim().toUpperCase()) || '';
+  const inv = (el('fe_inv_' + id) && el('fe_inv_' + id).value.trim()) || '';
+  const dt = (el('fe_dt_' + id) && el('fe_dt_' + id).value.trim()) || '';
+  const itcDec = (el('fe_itc_' + id) && el('fe_itc_' + id).value) || '';
+
+  const patch = {};
+  if (inv && inv !== String(row.recon_invoice_no || row.book_invoice_no || '')) patch.recon_invoice_no = inv;
+  if (dt && dt !== String(row.recon_invoice_date || row.book_invoice_date || '').slice(0, 10)) patch.recon_invoice_date = dt;
+  if (sup && sup !== String(row.recon_supplier_gstin || row.book_supplier_gstin || '').toUpperCase()) patch.recon_supplier_gstin = sup;
+  const itcChanged = itcDec && itcDec !== String(row.itc_decision || 'Pending Review');
+
+  if (!Object.keys(patch).length && !itcChanged) {
+    return toast('No changes detected on this row.', 'warn');
+  }
+  const why = customReason || 'Excel Fast-Edit Books-only reconciliation correction (GSTR-2B untouched)';
+  note('reconMsg', 'hint', 'Saving Books-only override & re-reconciling\u2026');
+  try {
+    if (Object.keys(patch).length) {
+      await postJson('/api/lines/' + id + '/recon', Object.assign({ reason: why }, patch));
+    }
+    if (itcChanged) {
+      await postJson('/api/lines/' + id + '/itc', {
+        decision: itcDec,
+        decisionMonth: row.period || CTX.period,
+        reason: why,
+      });
+    }
+    toast('Row saved & re-reconciled (Books-only override, GSTR-2B immutable)!', 'ok');
+    note('reconMsg', 'ok', 'Saved Books-only override for ' + (inv || row.book_invoice_no) + ' & re-reconciled.');
+    await loadRecon();
+  } catch (e) {
+    note('reconMsg', 'err', errText(e));
+    toast(errText(e), 'err');
+  }
+}
+
+async function autoLinkProbable2b() {
+  note('reconMsg', 'hint', 'Auto-linking Probable 2B bills into Books Reconciliation columns (GSTR-2B stays immutable)\u2026');
+  try {
+    const pMode = (el('reconPeriodMode') && el('reconPeriodMode').value) || RECON.periodMode || 'single';
+    const payload = { gstin: CTX.gstin, period: CTX.period };
+    if (pMode === 'multi' && RECON.selectedMonths && RECON.selectedMonths.length) {
+      payload.periods = RECON.selectedMonths;
+    } else if (pMode === 'range') {
+      const fp = (el('reconFromPeriod') && el('reconFromPeriod').value) || '';
+      const tp = (el('reconToPeriod') && el('reconToPeriod').value) || '';
+      if (fp && tp) payload.periods = (RECON.data && RECON.data.activePeriods) || [CTX.period];
+    }
+    const out = await postJson('/api/recon/purchase/auto-link-probable', payload);
+    if (out.linked > 0) {
+      toast('Books-only Probable 2B Auto-Link complete: ' + cnt(out.linked) + ' bills linked & matched!', 'ok');
+      note('reconMsg', 'ok', cnt(out.linked) + ' Probable 2B bills linked on Books side (GSTR-2B untouched) & re-reconciled.');
+    } else {
+      toast(out.message || 'No unambiguous Probable 2B matches found.', 'warn');
+      note('reconMsg', 'hint', out.message || 'No unambiguous Probable 2B matches found.');
+    }
+    await loadRecon();
+  } catch (e) {
+    note('reconMsg', 'err', errText(e));
+    toast(errText(e), 'err');
+  }
 }
 
 /**
@@ -4491,17 +5326,37 @@ async function reconHistory(id) {
   }
 }
 
-/** Re-run the matcher over the stored lines for the month on screen. */
+/** Re-run the matcher over the stored lines for the active scope (Single Month, Month Range, or Multiple Selected Months). */
 async function rerunMonth() {
-  if (!CTX.gstin || !CTX.period) return toast('Choose GSTIN and month from the header.', 'err');
-  note('reconMsg', 'hint', 're-reconciling ' + monthLabel(CTX.period) + '\u2026');
+  if (!CTX.gstin && !CTX.period) return toast('Choose GSTIN and month from the header.', 'err');
+  const pMode = (el('reconPeriodMode') && el('reconPeriodMode').value) || RECON.periodMode || 'single';
+  const payload = { gstin: CTX.gstin, period: CTX.period };
+  if (pMode === 'range') {
+    const fp = (el('reconFromPeriod') && el('reconFromPeriod').value) || '';
+    const tp = (el('reconToPeriod') && el('reconToPeriod').value) || '';
+    if (fp && tp) { payload.fromPeriod = fp; payload.toPeriod = tp; }
+  } else if (pMode === 'multi' && RECON.selectedMonths && RECON.selectedMonths.length) {
+    payload.periods = RECON.selectedMonths;
+  }
+  note('reconMsg', 'hint', 'Re-reconciling active scope\u2026');
   try {
-    const out = await postJson('/api/rereconcile', { gstin: CTX.gstin, period: CTX.period });
-    if (!out.ok) note('reconMsg', 'warn', out.reason || 'Reconciliation failed.');
-    else note('reconMsg', 'ok', 'Reconcile ho gaya \u2014 ' + cnt(out.matched) + ' matched, ' + cnt(out.changed) + ' line badli.');
+    const out = await postJson('/api/rereconcile', payload);
+    if (!out.ok) {
+      note('reconMsg', 'warn', out.reason || out.error || 'Reconciliation failed.');
+    } else {
+      if (out.switchedToPeriod && out.switchedToPeriod !== CTX.period) {
+        CTX.period = out.switchedToPeriod;
+        CTX.fy = fyOfPeriod(out.switchedToPeriod) || CTX.fy;
+        await loadContext();
+      }
+      note('reconMsg', 'ok', 'Reconcile ho gaya \u2014 ' + cnt(out.matched) + ' matched out of ' + cnt(out.lines) + ' lines' +
+        (out.switchedToPeriod ? ' (auto-switched to active month ' + monthLabel(out.switchedToPeriod) + ')' : '') + '.');
+      toast('Reconciliation complete: ' + cnt(out.matched) + ' matched!', 'ok');
+    }
     await loadRecon();
   } catch (e) {
     note('reconMsg', 'err', errText(e));
+    toast(errText(e), 'err');
   }
 }
 
@@ -5249,6 +6104,270 @@ async function runBulkGstinValidation(fromSuppliers) {
       ).join('') +
       '</tbody>');
   } catch (e) {
+    toast(errText(e), 'err');
+  }
+}
+
+// ---------------------------------------------------------------------------
+// GST Compliance Calendar & Deadlines
+// ---------------------------------------------------------------------------
+const GST_COMPLIANCE_CALENDAR_DATA = [
+  { date: '10 Nov 2026', compliance: 'GSTR-7 Returns / Statements', applicability: 'GST TDS', review: 'GST TDS return and deducted-tax details.', status: 'Past', type: 'Returns / Statements' },
+  { date: '10 Nov 2026', compliance: 'GSTR-8 Returns / Statements', applicability: 'GST TCS', review: 'GST TCS statement for e-commerce operators.', status: 'Past', type: 'Returns / Statements' },
+  { date: '11 Nov 2026', compliance: 'GSTR-1 Returns / Statements', applicability: 'Regular / Monthly', review: 'Outward supplies, amendments, credit/debit notes and HSN/SAC.', status: 'Past', type: 'Returns / Statements' },
+  { date: '13 Nov 2026', compliance: 'GSTR-6 Returns / Statements', applicability: 'ISD', review: 'Input Service Distributor return.', status: 'Past', type: 'Returns / Statements' },
+  { date: '13 Nov 2026', compliance: 'GSTR-5 Returns / Statements', applicability: 'Special / Other', review: 'Non-resident taxable person return; verify current applicability.', status: 'Past', type: 'Returns / Statements' },
+  { date: '20 Nov 2026', compliance: 'GSTR-3B Returns / Statements', applicability: 'Regular / Monthly', review: 'Summary liability, ITC, reversals, interest/late fee and payment.', status: 'Due soon', type: 'Returns / Statements' },
+  { date: '25 Nov 2026', compliance: 'QRMP PMT-06 Payments', applicability: 'QRMP', review: 'Monthly tax payment for M1/M2 of the quarter, where applicable.', status: 'Normal due', type: 'Payments' },
+];
+
+function openGstCalendarModal() {
+  const m = el('modalGstCalendar');
+  if (m) { m.style.display = 'flex'; renderGstCalendar(); }
+}
+function closeGstCalendarModal() {
+  const m = el('modalGstCalendar');
+  if (m) m.style.display = 'none';
+}
+function renderGstCalendar(onlyNext7Days) {
+  const prof = (el('calFilterProfile') && el('calFilterProfile').value) || 'all';
+  const typ = (el('calFilterType') && el('calFilterType').value) || 'all';
+  const mo = (el('calFilterMonth') && el('calFilterMonth').options[el('calFilterMonth').selectedIndex].text) || 'November 2026';
+
+  let list = GST_COMPLIANCE_CALENDAR_DATA.slice();
+  if (prof !== 'all') list = list.filter((x) => x.applicability === prof);
+  if (typ !== 'all') list = list.filter((x) => x.type === typ);
+  if (onlyNext7Days) list = list.filter((x) => x.status === 'Due soon' || x.status === 'Normal due');
+
+  setHtml('calSummaryText', cnt(list.length) + ' compliance item(s) shown \u2022 ' + esc(mo));
+  setHtml('calTable',
+    '<thead><tr><th>Date</th><th>Compliance</th><th>Applicability</th><th>What to review</th><th>Planning / status</th></tr></thead><tbody>' +
+    (list.length
+      ? list.map((item) => {
+          const badgeCls = item.status === 'Past' ? 'past' : (item.status === 'Due soon' ? 'duesoon' : 'normal');
+          return '<tr>' +
+            '<td style="white-space:nowrap;font-weight:700">📅 ' + esc(item.date) + '</td>' +
+            '<td><b>' + esc(item.compliance) + '</b></td>' +
+            '<td><span class="pill info">' + esc(item.applicability) + '</span></td>' +
+            '<td style="font-size:12px;color:var(--text-2)">' + esc(item.review) + '</td>' +
+            '<td><span class="cal-badge ' + badgeCls + '">' + esc(item.status) + '</span></td>' +
+            '</tr>';
+        }).join('')
+      : '<tr><td colspan="5" class="hint" style="text-align:center;padding:24px">No compliance deadlines found for this filter criteria.</td></tr>') +
+    '</tbody>');
+}
+function filterCalNext7Days() {
+  renderGstCalendar(true);
+}
+function exportGstCalendarCsv() {
+  const prof = (el('calFilterProfile') && el('calFilterProfile').value) || 'all';
+  const typ = (el('calFilterType') && el('calFilterType').value) || 'all';
+  let list = GST_COMPLIANCE_CALENDAR_DATA.slice();
+  if (prof !== 'all') list = list.filter((x) => x.applicability === prof);
+  if (typ !== 'all') list = list.filter((x) => x.type === typ);
+
+  const csvRows = ['Date,Compliance,Applicability,What to review,Planning / status'];
+  for (const it of list) {
+    csvRows.push([
+      '"' + it.date + '"',
+      '"' + it.compliance + '"',
+      '"' + it.applicability + '"',
+      '"' + it.review.replace(/"/g, '""') + '"',
+      '"' + it.status + '"',
+    ].join(','));
+  }
+  const blob = new Blob([csvRows.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'GST_Compliance_Calendar_November_2026.csv';
+  a.click();
+}
+
+// ---------------------------------------------------------------------------
+// GST Legal Library & Rules Modal
+// ---------------------------------------------------------------------------
+function openGstLegalLibraryModal(targetTab) {
+  const m = el('modalGstLegal');
+  if (m) {
+    m.style.display = 'flex';
+    if (targetTab) switchLegalTab(targetTab);
+  }
+}
+function closeGstLegalLibraryModal() {
+  const m = el('modalGstLegal');
+  if (m) m.style.display = 'none';
+}
+function switchLegalTab(tabId) {
+  const tabs = ['sec16', 'sec17', 'rule37', 'rule37a', 'table4'];
+  const paneMap = {
+    sec16: 'legalPaneSec16',
+    sec17: 'legalPaneSec17',
+    rule37: 'legalPaneRule37',
+    rule37a: 'legalPaneRule37A',
+    table4: 'legalPaneTable4',
+  };
+  const btnMap = {
+    sec16: 'tabLegalSec16',
+    sec17: 'tabLegalSec17',
+    rule37: 'tabLegalRule37',
+    rule37a: 'tabLegalRule37A',
+    table4: 'tabLegalTable4',
+  };
+  for (const t of tabs) {
+    const pane = el(paneMap[t]);
+    const btn = el(btnMap[t]);
+    if (pane) pane.hidden = t !== tabId;
+    if (btn) btn.className = t === tabId ? 'active' : '';
+  }
+}
+function openGstRuleModal(ruleName) {
+  openGstLegalLibraryModal(ruleName);
+}
+
+// ---------------------------------------------------------------------------
+// ClearTax Style Vendor View vs Document View & Bulk Actions
+// ---------------------------------------------------------------------------
+function switchRecoView(mode) {
+  RECON.viewMode = mode || 'doc';
+  const docWrap = el('reconDocTableWrap');
+  const venWrap = el('reconVendorTableWrap');
+  const bDoc = el('btnRecoDocView');
+  const bVen = el('btnRecoVendorView');
+  if (mode === 'vendor') {
+    if (docWrap) docWrap.style.display = 'none';
+    if (venWrap) venWrap.style.display = 'block';
+    if (bDoc) { bDoc.className = 'ghost sm'; bDoc.style.background = ''; bDoc.style.color = ''; }
+    if (bVen) { bVen.className = 'sm'; bVen.style.background = '#2563eb'; bVen.style.color = '#fff'; }
+    renderReconVendorTable();
+  } else {
+    if (docWrap) docWrap.style.display = 'block';
+    if (venWrap) venWrap.style.display = 'none';
+    if (bDoc) { bDoc.className = 'sm'; bDoc.style.background = '#2563eb'; bDoc.style.color = '#fff'; }
+    if (bVen) { bVen.className = 'ghost sm'; bVen.style.background = ''; bVen.style.color = ''; }
+  }
+}
+
+function renderReconVendorTable() {
+  const rows = RECON.rows || [];
+  const vendors = new Map();
+  for (const r of rows) {
+    const g = String(r.recon_supplier_gstin || r.book_supplier_gstin || 'UNKNOWN').toUpperCase();
+    let cur = vendors.get(g);
+    if (!cur) {
+      cur = {
+        gstin: g,
+        name: r.party_name || r.supplier_name || 'Vendor',
+        bookInvoices: 0,
+        bookTaxable: 0,
+        bookItc: 0,
+        twoBInvoices: 0,
+        twoBTaxable: 0,
+        twoBItc: 0,
+        matchedCount: 0,
+        missingCount: 0,
+        mismatchCount: 0,
+      };
+      vendors.set(g, cur);
+    }
+    cur.bookInvoices++;
+    cur.bookTaxable += Number(r.book_taxable_value || 0);
+    cur.bookItc += Number(r.itc_amount || 0);
+    if (r.matched_2b_key) {
+      cur.twoBInvoices++;
+      cur.twoBTaxable += Number(r.twob_taxable_value || 0);
+      cur.twoBItc += Number(r.twob_itc || 0);
+    }
+    const st = r.match_status || '';
+    if (st === 'Matched') cur.matchedCount++;
+    else if (st === 'Missing in 2B') cur.missingCount++;
+    else cur.mismatchCount++;
+  }
+
+  const vList = Array.from(vendors.values()).sort((a, b) => b.bookTaxable - a.bookTaxable);
+  setHtml('reconVendorTable',
+    '<thead><tr><th>Supplier GSTIN</th><th>Vendor Name</th><th class="num">Book Invoices</th><th class="num">Book Taxable</th><th class="num">Book ITC</th><th class="num">2B Invoices</th><th class="num">2B ITC</th><th class="num">ITC Difference</th><th>Reconciliation Status</th><th>Vendor Action</th></tr></thead><tbody>' +
+    (vList.length
+      ? vList.map((v) => {
+          const diff = v.bookItc - v.twoBItc;
+          const statusBadge = v.missingCount === 0 && v.mismatchCount === 0 && v.matchedCount > 0
+            ? '<span class="pill good">100% Matched</span>'
+            : (v.missingCount > 0
+                ? '<span class="pill warn">' + v.missingCount + ' Missing in 2B</span>'
+                : '<span class="pill info">' + v.mismatchCount + ' Mismatch</span>');
+          const delayNoticeBtn = v.missingCount > 0
+            ? '<button type="button" class="ghost sm" onclick="toast(\'Vendor delay follow-up notice copied for ' + esc(v.gstin) + '\', \'ok\')">📲 Delay Notice</button>'
+            : '<span class="hint">Compliant</span>';
+          return '<tr>' +
+            '<td><code>' + esc(v.gstin) + '</code></td>' +
+            '<td><b>' + esc(v.name) + '</b></td>' +
+            '<td class="num">' + cnt(v.bookInvoices) + '</td>' +
+            '<td class="num">' + money(v.bookTaxable) + '</td>' +
+            '<td class="num">' + money(v.bookItc) + '</td>' +
+            '<td class="num">' + cnt(v.twoBInvoices) + '</td>' +
+            '<td class="num">' + money(v.twoBItc) + '</td>' +
+            '<td class="num ' + (Math.abs(diff) > 2 ? 'bad' : 'good') + '">' + money(diff) + '</td>' +
+            '<td>' + statusBadge + '</td>' +
+            '<td>' + delayNoticeBtn + '</td>' +
+            '</tr>';
+        }).join('')
+      : '<tr><td colspan="10" class="hint">No vendor reconciliation rows in current scope.</td></tr>') +
+    '</tbody>');
+}
+
+function filterReconStatus(status) {
+  const sel = el('reconStatus');
+  if (sel) {
+    sel.value = status;
+    loadRecon();
+  }
+}
+
+function resetMatchingConfig() {
+  if (el('cfgTaxTolerance')) el('cfgTaxTolerance').value = '2';
+  if (el('cfgDateMatching')) el('cfgDateMatching').value = 'exact';
+  toast('Matching configuration reset to statutory defaults (₹2 tolerance, Exact date).', 'ok');
+}
+
+function toggleSelectAllRecon(checked) {
+  const chks = document.querySelectorAll('.recon-row-chk');
+  chks.forEach((c) => { c.checked = checked; });
+  updateBulkRecoMsg();
+}
+
+function updateBulkRecoMsg() {
+  const checked = document.querySelectorAll('.recon-row-chk:checked');
+  setHtml('bulkRecoCountMsg', cnt(checked.length) + ' bills selected');
+}
+
+async function applyBulkRecoAction() {
+  const checked = Array.from(document.querySelectorAll('.recon-row-chk:checked')).map((c) => Number(c.dataset.id));
+  if (!checked.length) return toast('Please select at least one document using the checkboxes.', 'err');
+  const action = (el('bulkRecoAction') && el('bulkRecoAction').value) || 'claim_my';
+
+  note('reconMsg', 'hint', 'Applying bulk action on ' + cnt(checked.length) + ' bills\u2026');
+  try {
+    for (const id of checked) {
+      const row = RECON.rows.find((r) => Number(r.id) === id);
+      if (!row) continue;
+      if (action === 'claim_my') {
+        await postJson('/api/lines/' + id + '/itc', { decision: 'Claim', decisionMonth: row.period || CTX.period, reason: 'Bulk Action: Accept Books Value' });
+      } else if (action === 'claim_supplier' && row.suggested_2b_invoice_no) {
+        await postJson('/api/lines/' + id + '/recon', { recon_invoice_no: row.suggested_2b_invoice_no, recon_invoice_date: row.suggested_2b_date ? String(row.suggested_2b_date).slice(0, 10) : undefined, reason: 'Bulk Action: Accept 2B Supplier Value' });
+        await postJson('/api/lines/' + id + '/itc', { decision: 'Claim', decisionMonth: row.period || CTX.period, reason: 'Bulk Action: Accept 2B Supplier Value' });
+      } else if (action === 'claim_80') {
+        await postJson('/api/lines/' + id + '/itc', { decision: 'Claim', decisionMonth: row.period || CTX.period, reason: 'Bulk Action: 80% ITC Claim' });
+      } else if (action === 'hold') {
+        await postJson('/api/lines/' + id + '/itc', { decision: 'Reclaim Later', decisionMonth: row.period || CTX.period, reason: 'Bulk Action: Hold / Carry Forward' });
+      } else if (action === 'blocked') {
+        await postJson('/api/lines/' + id + '/itc', { decision: 'Ineligible', decisionMonth: row.period || CTX.period, reason: 'Bulk Action: Section 17(5) Blocked' });
+      } else if (action === 'reset') {
+        await postJson('/api/lines/' + id + '/itc', { decision: 'Pending Review', decisionMonth: row.period || CTX.period, reason: 'Bulk Action: Reset ITC' });
+      }
+    }
+    toast('Bulk action applied successfully to ' + cnt(checked.length) + ' bills!', 'ok');
+    await loadRecon();
+  } catch (e) {
+    note('reconMsg', 'err', errText(e));
     toast(errText(e), 'err');
   }
 }

@@ -748,7 +748,9 @@ function lineParams(
 
 export interface LineFilters {
   gstin?: string;
+  gstins?: string[];
   period?: string;
+  periods?: string[];
   search?: string;
   status?: string;
   decision?: string;
@@ -758,8 +760,20 @@ export interface LineFilters {
 
 function lineWhere(f: LineFilters, params: unknown[]): string {
   const w: string[] = [];
-  if (f.gstin) { params.push(normGstin(f.gstin)); w.push(`our_gstin = $${params.length}`); }
-  if (f.period) { params.push(f.period); w.push(`period = $${params.length}`); }
+  if (f.gstins && f.gstins.length) {
+    params.push(f.gstins.map((g) => normGstin(g)).filter(Boolean));
+    w.push(`our_gstin = ANY($${params.length}::text[])`);
+  } else if (f.gstin) {
+    params.push(normGstin(f.gstin));
+    w.push(`our_gstin = $${params.length}`);
+  }
+  if (f.periods && f.periods.length) {
+    params.push(f.periods.filter(Boolean));
+    w.push(`period = ANY($${params.length}::text[])`);
+  } else if (f.period) {
+    params.push(f.period);
+    w.push(`period = $${params.length}`);
+  }
   if (f.status) { params.push(f.status); w.push(`match_status = $${params.length}`); }
   if (f.decision) { params.push(f.decision); w.push(`itc_decision = $${params.length}`); }
   if (f.search) {
@@ -1880,11 +1894,23 @@ export interface Dashboard {
   creditDocs?: number;
 }
 
-export async function dashboard(f: { gstin?: string; period?: string } = {}): Promise<Dashboard> {
+export async function dashboard(f: { gstin?: string; gstins?: string[]; period?: string; periods?: string[] } = {}): Promise<Dashboard> {
   const params: unknown[] = [];
   const w: string[] = [];
-  if (f.gstin) { params.push(normGstin(f.gstin)); w.push(`our_gstin = $${params.length}`); }
-  if (f.period) { params.push(f.period); w.push(`period = $${params.length}`); }
+  if (f.gstins && f.gstins.length) {
+    params.push(f.gstins.map((g) => normGstin(g)).filter(Boolean));
+    w.push(`our_gstin = ANY($${params.length}::text[])`);
+  } else if (f.gstin) {
+    params.push(normGstin(f.gstin));
+    w.push(`our_gstin = $${params.length}`);
+  }
+  if (f.periods && f.periods.length) {
+    params.push(f.periods.filter(Boolean));
+    w.push(`period = ANY($${params.length}::text[])`);
+  } else if (f.period) {
+    params.push(f.period);
+    w.push(`period = $${params.length}`);
+  }
   const where = w.length ? `WHERE ${w.join(' AND ')}` : '';
 
   return withClient(async (c) => {
@@ -1911,9 +1937,11 @@ export async function dashboard(f: { gstin?: string; period?: string } = {}): Pr
          FROM purchase_lines ${where}`,
       params,
     );
-    const twobCount = f.gstin
-      ? await c.query('SELECT count(*)::int n FROM gstr2b_lines WHERE our_gstin = $1', [normGstin(f.gstin)])
-      : await c.query('SELECT count(*)::int n FROM gstr2b_lines');
+    const twobCount = (f.gstins && f.gstins.length)
+      ? await c.query('SELECT count(*)::int n FROM gstr2b_lines WHERE our_gstin = ANY($1::text[])', [f.gstins.map((g) => normGstin(g)).filter(Boolean)])
+      : f.gstin
+        ? await c.query('SELECT count(*)::int n FROM gstr2b_lines WHERE our_gstin = $1', [normGstin(f.gstin)])
+        : await c.query('SELECT count(*)::int n FROM gstr2b_lines');
     const m = await c.query(
       `SELECT matched_2b_month k, count(*)::int n,
               coalesce(sum(book_igst + book_cgst + book_sgst + book_cess),0)::numeric itc
@@ -2137,6 +2165,18 @@ export async function importPastedPurchase(
 
   const gmap = await loadGstinMap();
   await withClient(async (c) => {
+    if (pasteId.startsWith('file:') && pasteId.length > 5 && out.keys.length) {
+      const legacySource = pasteId.slice(5);
+      await c.query(
+        `DELETE FROM purchase_lines
+          WHERE source_file = $1
+            AND NOT COALESCE(recon_edited, FALSE)
+            AND (our_gstin, period) IN (
+              SELECT * FROM unnest($2::text[], $3::text[])
+            )`,
+        [legacySource, out.keys.map((k) => k.gstin), out.keys.map((k) => k.period)],
+      );
+    }
     const values: unknown[][] = [];
     for (const b of bills) {
       const source = `${pasteId}`;
