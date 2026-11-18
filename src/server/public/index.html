@@ -637,72 +637,138 @@ tr.clickable { cursor: default; }
   .login-side h1 { font-size: 21px; }
 }
 
-/* ------------------------------------------------ Google AI Studio Hero */
-.ai-hero {
+/* ---------------------------------------- Gen-GST Style Hero & 5x2 Grid */
+.gst-hero-wrap {
+  display: grid; grid-template-columns: 1.25fr 0.95fr; gap: 28px; align-items: center;
+  padding: 28px 30px; margin-bottom: 22px;
+  background: var(--panel);
+  border: 1px solid var(--line); border-radius: 18px;
+  box-shadow: var(--shadow);
+}
+.gst-hero-title {
+  font-size: 27px; font-weight: 800; line-height: 1.25; letter-spacing: -0.02em; color: var(--text);
+}
+.gst-hero-title span {
+  color: #2563eb; display: block; margin-top: 2px;
+}
+[data-theme="dark"] .gst-hero-title span { color: #60a5fa; }
+.gst-bullet-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 11px 22px;
+  margin-top: 20px; padding: 0; list-style: none;
+}
+.gst-bullet-grid li {
+  display: flex; align-items: flex-start; gap: 9px;
+  font-size: 13px; font-weight: 500; color: var(--text-2); line-height: 1.45;
+}
+.gst-bullet-dot {
+  width: 7px; height: 7px; border-radius: 50%; background: #2563eb;
+  flex: none; margin-top: 6px;
+}
+.gst-poster-card {
   position: relative; overflow: hidden;
-  display: grid; grid-template-columns: 1.25fr 0.95fr; gap: 22px; align-items: stretch;
-  padding: 24px 26px; margin-bottom: 20px;
-  border-radius: 18px;
-  background:
-    radial-gradient(650px 280px at 90% 0%, rgba(99, 102, 241, 0.35), transparent 65%),
-    radial-gradient(500px 260px at 10% 110%, rgba(16, 185, 129, 0.22), transparent 60%),
-    linear-gradient(135deg, #0f172a 0%, #1e1b4b 52%, #1e3a8a 100%);
-  color: #f8fafc;
-  border: 1px solid rgba(148, 163, 184, 0.22);
-  box-shadow: 0 18px 42px -18px rgba(15, 23, 42, 0.45);
+  border-radius: 16px; padding: 26px 24px;
+  background: linear-gradient(135deg, #f8fbff 0%, #e0ecff 52%, #dbeafe 100%);
+  border: 1px solid #bfdbfe;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; min-height: 256px;
+  box-shadow: 0 12px 30px -14px rgba(37, 99, 235, 0.25);
 }
-.ai-hero-badge-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
-.ai-hero-pill {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 4px 11px; border-radius: 999px; font-size: 10.5px; font-weight: 800;
-  letter-spacing: 0.08em; text-transform: uppercase;
-  background: rgba(99, 102, 241, 0.24); border: 1px solid rgba(165, 180, 252, 0.35); color: #e0e7ff;
+[data-theme="dark"] .gst-poster-card {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 52%, #1e3a8a 100%);
+  border-color: rgba(96, 165, 250, 0.3);
 }
-.ai-hero-pill.emerald {
-  background: rgba(16, 185, 129, 0.2); border-color: rgba(52, 211, 153, 0.4); color: #a7f3d0;
+.gst-poster-brand {
+  position: absolute; top: 14px; left: 16px;
+  display: inline-flex; align-items: center; gap: 8px;
+  background: #ffffff; padding: 5px 11px; border-radius: 10px;
+  border: 1px solid #cbd5e1; font-size: 11px; font-weight: 800; color: #0f172a;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
 }
-.ai-hero h2 {
-  font-size: 22px; font-weight: 800; letter-spacing: -0.02em; color: #ffffff; line-height: 1.25;
+.gst-emblem {
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-size: 46px; font-weight: 900; letter-spacing: 0.03em;
+  color: #0284c7; line-height: 1; position: relative; margin-top: 16px;
 }
-.ai-hero p {
-  color: #cbd5e1; font-size: 13px; line-height: 1.6; margin: 8px 0 0; max-width: 72ch;
+[data-theme="dark"] .gst-emblem { color: #38bdf8; }
+.gst-emblem-arc {
+  display: block; width: 118px; height: 6px; margin: 4px auto 10px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #f97316 0%, #f59e0b 55%, #10b981 100%);
 }
-.ai-hero-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
-.ai-hero-btn {
-  background: linear-gradient(135deg, #6366f1 0%, #3b82f6 100%);
-  color: #fff; border: 1px solid rgba(255, 255, 255, 0.16);
-  padding: 9px 15px; border-radius: 11px; font-size: 12.5px; font-weight: 700;
-  box-shadow: 0 8px 20px -6px rgba(59, 130, 246, 0.55);
+.gst-poster-kicker {
+  font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
+  color: #1e293b;
 }
-.ai-hero-btn.glass {
-  background: rgba(255, 255, 255, 0.09); color: #f1f5f9;
-  border: 1px solid rgba(255, 255, 255, 0.18); box-shadow: none;
-  backdrop-filter: blur(8px);
+[data-theme="dark"] .gst-poster-kicker { color: #e2e8f0; }
+.gst-poster-red {
+  font-size: 20px; font-weight: 900; letter-spacing: 0.02em; text-transform: uppercase;
+  color: #e11d48; margin: 3px 0 6px;
 }
-.ai-hero-btn.glass:hover {
-  background: rgba(255, 255, 255, 0.17); border-color: rgba(255, 255, 255, 0.35);
+[data-theme="dark"] .gst-poster-red { color: #fb7185; }
+.gst-poster-pill {
+  display: inline-block; background: #334155; color: #ffffff;
+  font-size: 11.5px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 5px 16px; border-radius: 8px;
 }
-.ai-hero-grid {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+
+/* ---- e-Filing / e-Invoice / e-Way Bill / All In One 5x2 Feature Grid ---- */
+.gst-suite-box {
+  background: #f4f8ff; border: 1px solid #dbeafe; border-radius: 18px;
+  padding: 22px 24px 26px; margin-bottom: 22px;
 }
-.ai-mini-card {
-  background: rgba(15, 23, 42, 0.52); border: 1px solid rgba(255, 255, 255, 0.13);
-  border-radius: 13px; padding: 12px 14px; cursor: pointer;
-  transition: all 0.16s ease; backdrop-filter: blur(10px);
-  display: flex; flex-direction: column; justify-content: space-between; gap: 6px;
+[data-theme="dark"] .gst-suite-box {
+  background: #0d1526; border-color: rgba(59, 130, 246, 0.22);
 }
-.ai-mini-card:hover {
-  background: rgba(30, 41, 59, 0.75); border-color: rgba(165, 180, 252, 0.45);
-  transform: translateY(-2px);
+.gst-suite-tabs {
+  display: flex; align-items: center; justify-content: center; gap: 32px; flex-wrap: wrap;
+  margin-bottom: 20px; border-bottom: 1px solid rgba(37, 99, 235, 0.14); padding-bottom: 12px;
 }
-.ai-mini-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.ai-mini-tag {
-  font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
-  color: #93c5fd;
+.gst-suite-tab {
+  background: transparent; border: 0; box-shadow: none;
+  color: var(--text); font-size: 15px; font-weight: 800; padding: 6px 4px;
+  cursor: pointer; position: relative;
 }
-.ai-mini-title { font-size: 13.5px; font-weight: 700; color: #ffffff; }
-.ai-mini-sub { font-size: 11.5px; color: #94a3b8; line-height: 1.4; }
-@media (max-width: 1080px) { .ai-hero { grid-template-columns: 1fr; } }
+.gst-suite-tab:hover { color: #2563eb; filter: none; transform: none; }
+.gst-suite-tab.active { color: #2563eb; }
+[data-theme="dark"] .gst-suite-tab.active { color: #60a5fa; }
+.gst-suite-tab.active::after {
+  content: ''; position: absolute; left: 50%; bottom: -13px; transform: translateX(-50%);
+  width: 0; height: 0;
+  border-left: 7px solid transparent; border-right: 7px solid transparent;
+  border-top: 7px solid #2563eb;
+}
+.gst-feature-grid {
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px;
+}
+.gst-feat-card {
+  background: var(--panel); border: 1px solid #dbeafe; border-radius: 14px;
+  padding: 22px 14px 18px; text-align: center; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 13px;
+  transition: all 0.18s ease;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
+}
+[data-theme="dark"] .gst-feat-card { border-color: var(--line); }
+.gst-feat-card:hover {
+  border-color: #2563eb; transform: translateY(-3px);
+  box-shadow: 0 12px 24px -10px rgba(37, 99, 235, 0.22);
+}
+.gst-feat-ico {
+  width: 56px; height: 56px; border-radius: 14px;
+  display: grid; place-items: center;
+  color: #2563eb; background: rgba(37, 99, 235, 0.06);
+  transition: all 0.18s ease;
+}
+[data-theme="dark"] .gst-feat-ico { color: #60a5fa; background: rgba(59, 130, 246, 0.12); }
+.gst-feat-card:hover .gst-feat-ico {
+  background: #2563eb; color: #ffffff;
+}
+.gst-feat-ico svg { width: 34px; height: 34px; }
+.gst-feat-title {
+  font-size: 13px; font-weight: 700; color: var(--text); line-height: 1.38;
+}
+@media (max-width: 1200px) { .gst-feature-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 1020px) { .gst-hero-wrap { grid-template-columns: 1fr; } .gst-bullet-grid { grid-template-columns: 1fr; } }
+@media (max-width: 720px) { .gst-feature-grid { grid-template-columns: repeat(2, 1fr); } }
 
 /* ------------------------------------------------------------ responsive */
 @media (max-width: 1400px) { .crumb { display: none; } }
@@ -870,57 +936,122 @@ tr.clickable { cursor: default; }
 
     <!-- ============================== DASHBOARD ============================ -->
     <section class="view" id="viewHome">
-      <div class="ai-hero">
-        <div class="ai-hero-left">
-          <div class="ai-hero-badge-row">
-            <span class="ai-hero-pill">✨ Vishnu Intelligence Services &bull; Enterprise Suite</span>
-            <span class="ai-hero-pill emerald">● GSTR-1 to GSTR-9/9C &amp; IMS Active</span>
+      <div class="gst-hero-wrap">
+        <div>
+          <h2 class="gst-hero-title">
+            Best GST Software for
+            <span>Unlimited Return Filing &amp; Bill-to-Bill Reconciliation</span>
+          </h2>
+          <ul class="gst-bullet-grid">
+            <li><span class="gst-bullet-dot"></span><span>Unlimited GST Return Filing (GSTR-1, 3B, 9 &amp; 9C)</span></li>
+            <li><span class="gst-bullet-dot"></span><span>GST 2.0 Ready Software with 40% Slab Updates</span></li>
+            <li><span class="gst-bullet-dot"></span><span>Bill-to-Bill Purchase vs GSTR-2B ITC Matching</span></li>
+            <li><span class="gst-bullet-dot"></span><span>IMS Feature for Correct ITC Calculation</span></li>
+            <li><span class="gst-bullet-dot"></span><span>E-Invoice (IRN) &amp; E-Way Bill Compliance Tracking</span></li>
+            <li><span class="gst-bullet-dot"></span><span>Generate Tax Working for Regular &amp; RCM Supplies</span></li>
+            <li><span class="gst-bullet-dot"></span><span>Advanced Portal JSON &amp; Excel Import / Export Facility</span></li>
+            <li><span class="gst-bullet-dot"></span><span>Auto Error Detection with Summary Details</span></li>
+            <li><span class="gst-bullet-dot"></span><span>GST Returns Match / Mismatch Reporting</span></li>
+            <li><span class="gst-bullet-dot"></span><span>Easy Reconciliation (GSTR-1, 3B, 2B, P&amp;L, ITC)</span></li>
+          </ul>
+        </div>
+        <div class="gst-poster-card">
+          <div class="gst-poster-brand">
+            <span style="color:#2563eb">&#9670;</span> VISHNU INTELLIGENCE SERVICES
           </div>
-          <h2>GST Compliance &amp; Bill-to-Bill Control &mdash; SAKAR &amp; SVN</h2>
-          <p>
-            End-to-end outward GSTR-1 reconciliation against SAP/Books, inward GSTR-2B bill-to-bill matching
-            with live GSTR-3B Table 4 Input Tax Credit roll-ups, P&amp;L turnover audit, IMS portal actions,
-            and 12-month GSTR-9 &amp; 9C annual compilation.
-          </p>
-          <div class="ai-hero-actions">
-            <button type="button" class="ai-hero-btn" onclick="go('sales')">📤 Upload Sales Register</button>
-            <button type="button" class="ai-hero-btn glass" onclick="go('portal')">☁️ Upload Portal GSTR-1</button>
-            <button type="button" class="ai-hero-btn glass" onclick="go('purchase')">📥 Purchase vs 2B + 3B ITC</button>
-            <button type="button" class="ai-hero-btn glass" onclick="go('gstr9')">🏛️ GSTR-9 / 9C &amp; IMS</button>
+          <div class="gst-emblem">
+            GST
+            <span class="gst-emblem-arc"></span>
+          </div>
+          <div class="gst-poster-kicker">YOUR ONE STOP</div>
+          <div class="gst-poster-red">GST COMPLIANCE</div>
+          <div class="gst-poster-pill">SOFTWARE SOLUTION</div>
+          <div class="row" style="margin-top:16px;justify-content:center">
+            <button type="button" class="sm" onclick="go('sales')">Upload Sales (GSTR-1)</button>
+            <button type="button" class="ghost sm" onclick="go('purchase')">Purchase vs 2B (3B ITC)</button>
           </div>
         </div>
-        <div class="ai-hero-grid">
-          <div class="ai-mini-card" onclick="go('outward')">
-            <div class="ai-mini-top">
-              <span class="ai-mini-tag">OUTWARD &bull; GSTR-1</span>
-              <span class="pill good" style="font-size:10px;padding:2px 8px">Bill-to-Bill</span>
+      </div>
+
+      <!-- 5x2 Feature Icon Card Grid (e-Filing / e-Invoice / e-Way Bill / All In One) -->
+      <div class="gst-suite-box">
+        <div class="gst-suite-tabs">
+          <button type="button" class="gst-suite-tab active" onclick="go('outward')">e-Filing</button>
+          <button type="button" class="gst-suite-tab" onclick="go('purchase')">e-Invoice &amp; 2B</button>
+          <button type="button" class="gst-suite-tab" onclick="go('purchase')">e-Way Bill</button>
+          <button type="button" class="gst-suite-tab" onclick="go('gstr9')">GSTR-9, 9C &amp; IMS</button>
+          <button type="button" class="gst-suite-tab" onclick="go('reports')">All In One</button>
+        </div>
+
+        <div class="gst-feature-grid">
+          <div class="gst-feat-card" onclick="go('outward')">
+            <div class="gst-feat-ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h8"/><path d="M8 17h5"/><path d="M8 9h2"/></svg>
             </div>
-            <div class="ai-mini-title">Books vs Filed GSTR-1</div>
-            <div class="ai-mini-sub">B2B, B2CL, B2CS, CDNR, CDNUR, EXP &amp; Table 12 HSN comparison</div>
+            <div class="gst-feat-title">GSTR Forms - 1, 3B, 2B, 9</div>
           </div>
-          <div class="ai-mini-card" onclick="go('purchase')">
-            <div class="ai-mini-top">
-              <span class="ai-mini-tag">INWARD &bull; GSTR-2B &amp; 3B</span>
-              <span class="pill info" style="font-size:10px;padding:2px 8px">Table 4 ITC</span>
+
+          <div class="gst-feat-card" onclick="go('gstr9')">
+            <div class="gst-feat-ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><circle cx="15" cy="14" r="3"/><path d="m14 17-.5 4 1.5-1 1.5 1-.5-4"/><path d="M8 9h5"/><path d="M8 13h3"/></svg>
             </div>
-            <div class="ai-mini-title">Purchase vs 2B + 3B ITC</div>
-            <div class="ai-mini-sub">4(A)(5) Eligible, 4(A)(3) RCM, 4(B) Sec 17(5) Blocked &amp; Probable 2B</div>
+            <div class="gst-feat-title">GSTR-9C Self-Certification Form</div>
           </div>
-          <div class="ai-mini-card" onclick="go('pl')">
-            <div class="ai-mini-top">
-              <span class="ai-mini-tag">TURNOVER &bull; AUDIT</span>
-              <span class="pill warn" style="font-size:10px;padding:2px 8px">Trial Balance</span>
+
+          <div class="gst-feat-card" onclick="go('hsn')">
+            <div class="gst-feat-ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 12v4"/><path d="M10 12v4"/><path d="M14 12v4"/><path d="M17 12v4"/><path d="M7 8h10"/></svg>
             </div>
-            <div class="ai-mini-title">P&amp;L vs GSTR-1 Recon</div>
-            <div class="ai-mini-sub">Company-level revenue heads matched against GSTR-1 outward tables</div>
+            <div class="gst-feat-title">HSN Code Summary (Table 12)</div>
           </div>
-          <div class="ai-mini-card" onclick="go('gstr9')">
-            <div class="ai-mini-top">
-              <span class="ai-mini-tag">ANNUAL &bull; PORTAL</span>
-              <span class="pill good" style="font-size:10px;padding:2px 8px">12 Months</span>
+
+          <div class="gst-feat-card" onclick="go('purchase')">
+            <div class="gst-feat-ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
             </div>
-            <div class="ai-mini-title">GSTR-9, 9C &amp; IMS Desk</div>
-            <div class="ai-mini-sub">Tables 4–18 compiler, 9C audit &amp; Accept/Reject/Pending IMS CSV</div>
+            <div class="gst-feat-title">Reconciliation Facility (2B &amp; 3B ITC)</div>
+          </div>
+
+          <div class="gst-feat-card" onclick="document.getElementById('monthChips')&&document.getElementById('monthChips').scrollIntoView({behavior:'smooth'})">
+            <div class="gst-feat-ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M2 18h20"/><path d="M8 10h8"/><path d="M8 14h5"/></svg>
+            </div>
+            <div class="gst-feat-title">GST Return Filing Status</div>
+          </div>
+
+          <div class="gst-feat-card" onclick="go('sales')">
+            <div class="gst-feat-ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M8 13v-3"/><path d="M12 13V7"/><path d="M16 13v-5"/></svg>
+            </div>
+            <div class="gst-feat-title">Sales &amp; Purchase Register</div>
+          </div>
+
+          <div class="gst-feat-card" onclick="go('outward')">
+            <div class="gst-feat-ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M4 20 21 3"/><path d="M21 16v5h-5"/><path d="M15 15l6 6"/><path d="M4 4l5 5"/></svg>
+            </div>
+            <div class="gst-feat-title">Match Mismatch Reporting</div>
+          </div>
+
+          <div class="gst-feat-card" onclick="go('pl')">
+            <div class="gst-feat-ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </div>
+            <div class="gst-feat-title">Errors Identification &amp; P&amp;L Audit</div>
+          </div>
+
+          <div class="gst-feat-card" onclick="go('portal')">
+            <div class="gst-feat-ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </div>
+            <div class="gst-feat-title">Import / Export Facility</div>
+          </div>
+
+          <div class="gst-feat-card" onclick="go('reports')">
+            <div class="gst-feat-ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+            </div>
+            <div class="gst-feat-title">Reports &amp; Database Backup</div>
           </div>
         </div>
       </div>
@@ -2094,6 +2225,7 @@ function renderNav() {
  */
 function injectPageHeads() {
   for (const name of VIEWS) {
+    if (name === 'home') continue;
     const section = document.getElementById('view' + name[0].toUpperCase() + name.slice(1));
     const meta = VIEW_META[name];
     if (!section || !meta || section.dataset.headDone === '1') continue;
