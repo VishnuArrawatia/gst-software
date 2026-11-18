@@ -3156,7 +3156,7 @@ app.get('/api/gstr9c/json', wrap(async (req, res) => {
   const g9c = buildGstr9c(g9, { sales });
   const payload = {
     gstin: g9c.gstin,
-    fp: g9c.fp,
+    fp: g9.fp,
     fy: g9c.fy,
     table5_turnover_recon: g9c.turnoverRecon,
     table9_tax_liability_recon: g9c.taxLiabilityRecon,
