@@ -7,12 +7,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet" />
-<script>
-  try {
-    var savedTheme = localStorage.getItem('gst_erp_theme') || 'light';
-    document.documentElement.setAttribute('data-theme', savedTheme);
-  } catch (e) {}
-</script>
 <style>
 /* ==========================================================================
    GST CONTROL ERP — Modern SaaS Design System (Light + Midnight Dark)
@@ -63,12 +57,12 @@
   --drop-bg: rgba(15, 23, 42, 0.5);
   --banner-bg: linear-gradient(125deg, #111a2e 0%, #0b1120 100%);
 
-  --radius: 14px;
-  --radius-sm: 10px;
+  --radius: 16px;
+  --radius-sm: 11px;
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 12px 32px -16px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  --shadow-hover: 0 8px 24px -10px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.07);
-  --sidebar-w: 248px;
-  --topbar-h: 66px;
+  --shadow-hover: 0 10px 28px -10px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --sidebar-w: 288px;
+  --topbar-h: 70px;
 }
 
 [data-theme="light"] {
@@ -173,28 +167,69 @@ a:hover { text-decoration: underline; }
 .gold-rule { height: 1px; background: var(--line); margin: 0 6px 12px; }
 
 .nav-label {
-  font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted);
-  padding: 12px 10px 6px; font-weight: 700;
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted);
+  padding: 14px 10px 6px; font-weight: 800;
 }
-nav { display: flex; flex-direction: column; gap: 3px; padding: 0; }
+nav { display: flex; flex-direction: column; gap: 4px; padding: 0; }
 .navlink {
   display: flex; align-items: center; gap: 11px; width: 100%;
-  background: transparent; color: var(--text-2); border: 0; border-radius: var(--radius-sm);
-  padding: 9.5px 12px; font: inherit; font-size: 13.5px; font-weight: 500; text-align: left;
-  cursor: pointer; position: relative; transition: all 0.15s ease; box-shadow: none;
+  background: transparent; color: var(--text-2); border: 1px solid transparent; border-radius: 12px;
+  padding: 8.5px 10px; font: inherit; font-size: 13px; font-weight: 500; text-align: left;
+  cursor: pointer; position: relative; transition: all 0.16s ease; box-shadow: none;
 }
-.navlink:hover { background: var(--panel-3); color: var(--text); filter: none; }
+.navlink:hover { background: var(--panel-3); color: var(--text); border-color: var(--line); filter: none; transform: translateX(2px); }
 .navlink.active {
   background: var(--accent-soft); color: var(--accent); font-weight: 600;
+  border-color: rgba(79, 70, 229, 0.24);
+  box-shadow: 0 4px 14px -6px rgba(79, 70, 229, 0.25);
 }
-[data-theme="dark"] .navlink.active { color: #a5b4fc; }
+[data-theme="dark"] .navlink.active { color: #c7d2fe; border-color: rgba(129, 140, 248, 0.28); }
 .navlink.active::before {
   content: ''; position: absolute; left: 0; top: 8px; bottom: 8px; width: 3.5px;
-  border-radius: 0 4px 4px 0; background: var(--accent);
+  border-radius: 0 4px 4px 0; background: var(--accent-grad);
 }
-.navlink .ico { width: 18px; height: 18px; flex: none; opacity: 0.8; }
-.navlink.active .ico { opacity: 1; color: var(--accent); }
-[data-theme="dark"] .navlink.active .ico { color: #a5b4fc; }
+.nav-ico-box {
+  width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; flex: none;
+  background: var(--panel-3); border: 1px solid var(--line); color: var(--text-2);
+  transition: all 0.16s ease;
+}
+.navlink:hover .nav-ico-box { border-color: var(--accent); color: var(--accent); }
+.navlink.active .nav-ico-box {
+  background: var(--accent-grad); border-color: transparent; color: #fff;
+  box-shadow: 0 4px 12px -4px rgba(79, 70, 229, 0.55);
+}
+.navlink .ico { width: 17px; height: 17px; flex: none; opacity: 0.95; }
+.navlink.active .ico { opacity: 1; color: #fff; }
+.nav-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.nav-title-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.nav-title { font-size: 13px; font-weight: 600; color: inherit; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nav-sub { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 400; }
+.navlink.active .nav-sub { color: var(--accent); opacity: 0.85; }
+[data-theme="dark"] .navlink.active .nav-sub { color: #a5b4fc; }
+.nav-badge {
+  font-size: 9.5px; font-weight: 700; padding: 2px 6.5px; border-radius: 999px;
+  background: var(--panel-3); border: 1px solid var(--line); color: var(--muted);
+  letter-spacing: 0.03em; flex: none;
+}
+.navlink.active .nav-badge {
+  background: var(--accent); color: #fff; border-color: transparent;
+}
+.dual-logo-pill {
+  display: inline-flex; align-items: center; gap: 8px; padding: 5px 10px;
+  border-radius: 12px; background: #ffffff; border: 1px solid var(--line);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+.dual-logo-pill img { height: 22px; width: auto; object-fit: contain; display: block; }
+.dual-logo-sep { width: 1px; height: 18px; background: #cbd5e1; }
+.db-live-pill {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px;
+  border-radius: 999px; font-size: 11px; font-weight: 700;
+  background: var(--good-soft); color: var(--good-text); border: 1px solid rgba(16, 185, 129, 0.28);
+}
+.db-live-dot {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--good);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.22);
+}
 .sidebar-foot { margin-top: auto; padding: 14px 6px 0; border-top: 1px solid var(--line); }
 
 .main-col { display: flex; flex-direction: column; min-width: 0; }
@@ -235,8 +270,8 @@ main { padding: 24px 26px 64px; max-width: 1640px; width: 100%; margin: 0 auto; 
 
 /* ------------------------------------------------------------ page header */
 .page-head {
-  display: flex; align-items: flex-start; gap: 18px; flex-wrap: wrap;
-  padding: 20px 22px; margin-bottom: 20px;
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  padding: 18px 22px; margin-bottom: 20px;
   background: var(--panel);
   border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow);
   position: relative; overflow: hidden;
@@ -245,13 +280,23 @@ main { padding: 24px 26px 64px; max-width: 1640px; width: 100%; margin: 0 auto; 
   content: ''; position: absolute; inset: 0 auto 0 0; width: 4px;
   background: var(--accent-grad);
 }
+.ph-icon-badge {
+  width: 46px; height: 46px; border-radius: 13px; display: grid; place-items: center; flex: none;
+  background: var(--accent-soft); color: var(--accent); border: 1px solid rgba(79, 70, 229, 0.2);
+}
+[data-theme="dark"] .ph-icon-badge { color: #a5b4fc; }
 .page-head .ph-text { flex: 1 1 320px; min-width: 240px; }
+.ph-eyebrow {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--accent); margin-bottom: 3px;
+}
+[data-theme="dark"] .ph-eyebrow { color: #a5b4fc; }
 .page-head h1 { font-size: 20px; letter-spacing: -0.02em; color: var(--text); }
-.page-head .ph-sub { color: var(--muted); font-size: 13px; margin-top: 5px; max-width: 92ch; }
-.page-head .ph-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
-.page-head .ph-img {
-  width: 168px; height: 92px; flex: none; border-radius: 10px; object-fit: cover;
-  border: 1px solid var(--line); box-shadow: var(--shadow);
+.page-head .ph-sub { color: var(--muted); font-size: 13px; margin-top: 4px; max-width: 95ch; }
+.page-head .ph-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.ph-right-badge {
+  display: flex; flex-direction: column; align-items: flex-end; gap: 6px; margin-left: auto;
 }
 .chipstat {
   display: inline-flex; align-items: center; gap: 6px; font-size: 12px;
@@ -592,18 +637,72 @@ tr.clickable { cursor: default; }
   .login-side h1 { font-size: 21px; }
 }
 
-/* -------------------------------------------------------- banner artwork */
-.banner {
-  display: flex; align-items: center; gap: 22px; padding: 0; margin-bottom: 20px;
-  border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow);
-  background: var(--banner-bg);
+/* ------------------------------------------------ Google AI Studio Hero */
+.ai-hero {
+  position: relative; overflow: hidden;
+  display: grid; grid-template-columns: 1.25fr 0.95fr; gap: 22px; align-items: stretch;
+  padding: 24px 26px; margin-bottom: 20px;
+  border-radius: 18px;
+  background:
+    radial-gradient(650px 280px at 90% 0%, rgba(99, 102, 241, 0.35), transparent 65%),
+    radial-gradient(500px 260px at 10% 110%, rgba(16, 185, 129, 0.22), transparent 60%),
+    linear-gradient(135deg, #0f172a 0%, #1e1b4b 52%, #1e3a8a 100%);
+  color: #f8fafc;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  box-shadow: 0 18px 42px -18px rgba(15, 23, 42, 0.45);
 }
-.banner img { width: 300px; height: 128px; object-fit: cover; flex: none; }
-.banner .bn-text { padding: 18px 22px; flex: 1 1 320px; }
-.banner .bn-text h2 { font-size: 17px; text-transform: none; letter-spacing: -0.01em; color: var(--text); }
-.banner .bn-text h2::before { display: none; }
-.banner .bn-text p { color: var(--muted); font-size: 13px; margin: 6px 0 0; max-width: 92ch; }
-@media (max-width: 760px) { .banner img { width: 100%; height: 120px; } .banner { flex-direction: column; align-items: stretch; } }
+.ai-hero-badge-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.ai-hero-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 11px; border-radius: 999px; font-size: 10.5px; font-weight: 800;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  background: rgba(99, 102, 241, 0.24); border: 1px solid rgba(165, 180, 252, 0.35); color: #e0e7ff;
+}
+.ai-hero-pill.emerald {
+  background: rgba(16, 185, 129, 0.2); border-color: rgba(52, 211, 153, 0.4); color: #a7f3d0;
+}
+.ai-hero h2 {
+  font-size: 22px; font-weight: 800; letter-spacing: -0.02em; color: #ffffff; line-height: 1.25;
+}
+.ai-hero p {
+  color: #cbd5e1; font-size: 13px; line-height: 1.6; margin: 8px 0 0; max-width: 72ch;
+}
+.ai-hero-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+.ai-hero-btn {
+  background: linear-gradient(135deg, #6366f1 0%, #3b82f6 100%);
+  color: #fff; border: 1px solid rgba(255, 255, 255, 0.16);
+  padding: 9px 15px; border-radius: 11px; font-size: 12.5px; font-weight: 700;
+  box-shadow: 0 8px 20px -6px rgba(59, 130, 246, 0.55);
+}
+.ai-hero-btn.glass {
+  background: rgba(255, 255, 255, 0.09); color: #f1f5f9;
+  border: 1px solid rgba(255, 255, 255, 0.18); box-shadow: none;
+  backdrop-filter: blur(8px);
+}
+.ai-hero-btn.glass:hover {
+  background: rgba(255, 255, 255, 0.17); border-color: rgba(255, 255, 255, 0.35);
+}
+.ai-hero-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+}
+.ai-mini-card {
+  background: rgba(15, 23, 42, 0.52); border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 13px; padding: 12px 14px; cursor: pointer;
+  transition: all 0.16s ease; backdrop-filter: blur(10px);
+  display: flex; flex-direction: column; justify-content: space-between; gap: 6px;
+}
+.ai-mini-card:hover {
+  background: rgba(30, 41, 59, 0.75); border-color: rgba(165, 180, 252, 0.45);
+  transform: translateY(-2px);
+}
+.ai-mini-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ai-mini-tag {
+  font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
+  color: #93c5fd;
+}
+.ai-mini-title { font-size: 13.5px; font-weight: 700; color: #ffffff; }
+.ai-mini-sub { font-size: 11.5px; color: #94a3b8; line-height: 1.4; }
+@media (max-width: 1080px) { .ai-hero { grid-template-columns: 1fr; } }
 
 /* ------------------------------------------------------------ responsive */
 @media (max-width: 1400px) { .crumb { display: none; } }
@@ -717,23 +816,31 @@ tr.clickable { cursor: default; }
   <aside class="sidebar">
     <div class="brand">
       <div class="mark">GST</div>
-      <div>
-        <div class="brand-name">GST CONTROL ERP</div>
-        <span class="tag">Vishnu Intelligence Services</span>
+      <div style="min-width:0">
+        <div class="brand-name">GST<span style="color:var(--accent)">Control</span>Pro</div>
+        <span class="tag">SVN &amp; SAKAR GROUP &bull; ERP</span>
       </div>
     </div>
+    <div style="padding:0 6px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+      <div class="dual-logo-pill" title="SVN Opto &amp; Sakar Electricals">
+        <img src="/logos/companies/svn-group.png" alt="SVN" onerror="this.src='/logos/semo.png'" />
+        <span class="dual-logo-sep"></span>
+        <img src="/logos/companies/sakar-zeto-flare.png" alt="SAKAR" onerror="this.src='/logos/sakar.png'" />
+      </div>
+      <span class="db-live-pill" title="PostgreSQL Database Connected"><span class="db-live-dot"></span>PG Live</span>
+    </div>
     <div class="gold-rule"></div>
-    <div class="nav-label">Compliance workspace</div>
     <nav id="nav"></nav>
     <div class="sidebar-foot">
       <div class="who">
         <span class="user-chip">
           <span class="avatar" id="whoAvatar">&#8226;</span>
-          <span id="whoami"></span>
+          <span id="whoami" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
         </span>
       </div>
-      <div style="margin-top:10px">
-        <button class="ghost sm" id="btnSignOut" type="button" style="width:100%">Sign out</button>
+      <div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <button class="ghost sm" type="button" onclick="copyOfficeLink()" title="Copy Office LAN Link">🔗 Office Link</button>
+        <button class="ghost sm" id="btnSignOut" type="button">Sign out</button>
       </div>
     </div>
   </aside>
@@ -750,6 +857,8 @@ tr.clickable { cursor: default; }
         <div><label for="ctxGstin">Our GSTIN</label><select id="ctxGstin"></select></div>
         <div><label for="ctxFy">Financial year</label><select id="ctxFy"></select></div>
         <div><label for="ctxPeriod">Return month</label><select id="ctxPeriod"></select></div>
+        <button type="button" class="ghost sm theme-btn" onclick="download('/api/guide/pdf','GST_Control_ERP_Step_by_Step_Guide_With_Screenshots.pdf')" title="Download Step-by-Step User Guide (Hinglish PDF)">📘 Guide (HI)</button>
+        <button type="button" class="ghost sm theme-btn" onclick="download('/api/guide/pdf?lang=en','GST_Control_ERP_User_Manual_English.pdf')" title="Download Step-by-Step User Manual (English PDF)">📗 Guide (EN)</button>
         <button type="button" class="theme-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Switch Light / Dark Mode">🌙 Dark</button>
       </div>
     </header>
@@ -758,18 +867,57 @@ tr.clickable { cursor: default; }
 
     <!-- ============================== DASHBOARD ============================ -->
     <section class="view" id="viewHome">
-      <div class="banner">
-        <img src="/assets/gst-blocks-cart.jpg" alt="" loading="lazy" />
-        <div class="bn-text">
-          <h2>GSTR-1 filing control &mdash; SAKAR &amp; SVN</h2>
+      <div class="ai-hero">
+        <div class="ai-hero-left">
+          <div class="ai-hero-badge-row">
+            <span class="ai-hero-pill">✨ Google AI Studio Enterprise Suite</span>
+            <span class="ai-hero-pill emerald">● GSTR-1 to GSTR-9/9C &amp; IMS Active</span>
+          </div>
+          <h2>GST Compliance &amp; Bill-to-Bill Control &mdash; SAKAR &amp; SVN</h2>
           <p>
-            Every figure on this page comes from that month's actual data. Months with no data
-            show as &ldquo;Not started&rdquo; &mdash; empty months are never hidden so gaps remain visible.
+            End-to-end outward GSTR-1 reconciliation against SAP/Books, inward GSTR-2B bill-to-bill matching
+            with live GSTR-3B Table 4 Input Tax Credit roll-ups, P&amp;L turnover audit, IMS portal actions,
+            and 12-month GSTR-9 &amp; 9C annual compilation.
           </p>
-          <div class="row" style="margin-top:12px">
-            <button onclick="go('sales')">Upload Books Sales Register</button>
-            <button class="ghost" onclick="go('portal')">Upload Portal GSTR-1</button>
-            <button class="ghost" onclick="go('outward')">Open reconciliation</button>
+          <div class="ai-hero-actions">
+            <button type="button" class="ai-hero-btn" onclick="go('sales')">📤 Upload Sales Register</button>
+            <button type="button" class="ai-hero-btn glass" onclick="go('portal')">☁️ Upload Portal GSTR-1</button>
+            <button type="button" class="ai-hero-btn glass" onclick="go('purchase')">📥 Purchase vs 2B + 3B ITC</button>
+            <button type="button" class="ai-hero-btn glass" onclick="go('gstr9')">🏛️ GSTR-9 / 9C &amp; IMS</button>
+          </div>
+        </div>
+        <div class="ai-hero-grid">
+          <div class="ai-mini-card" onclick="go('outward')">
+            <div class="ai-mini-top">
+              <span class="ai-mini-tag">OUTWARD &bull; GSTR-1</span>
+              <span class="pill good" style="font-size:10px;padding:2px 8px">Bill-to-Bill</span>
+            </div>
+            <div class="ai-mini-title">Books vs Filed GSTR-1</div>
+            <div class="ai-mini-sub">B2B, B2CL, B2CS, CDNR, CDNUR, EXP &amp; Table 12 HSN comparison</div>
+          </div>
+          <div class="ai-mini-card" onclick="go('purchase')">
+            <div class="ai-mini-top">
+              <span class="ai-mini-tag">INWARD &bull; GSTR-2B &amp; 3B</span>
+              <span class="pill info" style="font-size:10px;padding:2px 8px">Table 4 ITC</span>
+            </div>
+            <div class="ai-mini-title">Purchase vs 2B + 3B ITC</div>
+            <div class="ai-mini-sub">4(A)(5) Eligible, 4(A)(3) RCM, 4(B) Sec 17(5) Blocked &amp; Probable 2B</div>
+          </div>
+          <div class="ai-mini-card" onclick="go('pl')">
+            <div class="ai-mini-top">
+              <span class="ai-mini-tag">TURNOVER &bull; AUDIT</span>
+              <span class="pill warn" style="font-size:10px;padding:2px 8px">Trial Balance</span>
+            </div>
+            <div class="ai-mini-title">P&amp;L vs GSTR-1 Recon</div>
+            <div class="ai-mini-sub">Company-level revenue heads matched against GSTR-1 outward tables</div>
+          </div>
+          <div class="ai-mini-card" onclick="go('gstr9')">
+            <div class="ai-mini-top">
+              <span class="ai-mini-tag">ANNUAL &bull; PORTAL</span>
+              <span class="pill good" style="font-size:10px;padding:2px 8px">12 Months</span>
+            </div>
+            <div class="ai-mini-title">GSTR-9, 9C &amp; IMS Desk</div>
+            <div class="ai-mini-sub">Tables 4–18 compiler, 9C audit &amp; Accept/Reject/Pending IMS CSV</div>
           </div>
         </div>
       </div>
@@ -785,40 +933,40 @@ tr.clickable { cursor: default; }
         </div>
         <div class="steps" style="margin-top:14px">
           <div class="step">
-            <div class="n">STEP 1</div>
+            <div class="n">STEP 01</div>
             <div class="t">Sales Register template</div>
             <div class="hint">Format for new files — every column is documented in the Instructions sheet.</div>
-            <div style="margin-top:10px"><button class="ghost" onclick="downloadSalesTemplate('xlsx')">Template .xlsx</button></div>
+            <div style="margin-top:10px"><button class="ghost sm" onclick="downloadSalesTemplate('xlsx')">Template .xlsx</button></div>
           </div>
           <div class="step">
-            <div class="n">STEP 2</div>
+            <div class="n">STEP 02</div>
             <div class="t">Books Sales Register</div>
             <div class="hint">Upload the SAP/Books Sales Register to <b>preview</b> first, then run reconciliation.</div>
-            <div style="margin-top:10px"><button onclick="go('sales')">Open Books</button></div>
+            <div style="margin-top:10px"><button class="sm" onclick="go('sales')">Open Books</button></div>
           </div>
           <div class="step">
-            <div class="n">STEP 3</div>
+            <div class="n">STEP 03</div>
             <div class="t">Portal pre-filled GSTR-1</div>
             <div class="hint">Upload and import the file downloaded from the GST Portal here.</div>
-            <div style="margin-top:10px"><button onclick="go('portal')">Open Portal</button></div>
+            <div style="margin-top:10px"><button class="sm" onclick="go('portal')">Open Portal</button></div>
           </div>
           <div class="step">
-            <div class="n">STEP 4</div>
+            <div class="n">STEP 04</div>
             <div class="t">Rebuild GSTR-1 draft</div>
             <div class="hint">Build this period's draft return from Books (safe: replaces draft, never duplicates).</div>
-            <div style="margin-top:10px"><button onclick="go('outward')">Open reconciliation</button></div>
+            <div style="margin-top:10px"><button class="sm" onclick="go('outward')">Open reconciliation</button></div>
           </div>
           <div class="step">
-            <div class="n">STEP 5</div>
+            <div class="n">STEP 05</div>
             <div class="t">Reconcile draft vs filed</div>
             <div class="hint">See undeclared invoices and amount differences — invoice-wise.</div>
-            <div style="margin-top:10px"><button onclick="go('outward')">Compare</button></div>
+            <div style="margin-top:10px"><button class="sm" onclick="go('outward')">Compare</button></div>
           </div>
           <div class="step">
-            <div class="n">STEP 6</div>
+            <div class="n">STEP 06</div>
             <div class="t">HSN Summary (table 12)</div>
             <div class="hint">Books vs Portal HSN comparison with quantity and UQC — export ready.</div>
-            <div style="margin-top:10px"><button onclick="go('hsn')">Open HSN</button></div>
+            <div style="margin-top:10px"><button class="sm" onclick="go('hsn')">Open HSN</button></div>
           </div>
         </div>
       </div>
@@ -830,10 +978,9 @@ tr.clickable { cursor: default; }
           appear empty rather than hidden. Click any month to open its GSTR-1 reconciliation.
         </div>
         <div class="row" style="margin-top:12px;align-items:center">
-          <img src="/assets/calendar-2027.jpg" alt="" loading="lazy"
-               style="width:150px;height:74px;object-fit:cover;border:1px solid var(--line);border-radius:8px" />
-          <span class="chipstat">Financial year <b id="fyRange">&mdash;</b></span>
-          <span class="chipstat">Return month <b id="periodRange">&mdash;</b></span>
+          <span class="chipstat">📅 Financial year <b id="fyRange">&mdash;</b></span>
+          <span class="chipstat">🗓️ Active return month <b id="periodRange">&mdash;</b></span>
+          <span class="chipstat">🏢 Group <b>SAKAR &amp; SVN OPTO</b></span>
         </div>
         <div class="month-chips" id="monthChips" style="margin-top:14px"></div>
         <div class="row" style="margin-top:4px">
@@ -1265,6 +1412,21 @@ tr.clickable { cursor: default; }
 <script>
 'use strict';
 
+try {
+  var savedThemeInit = localStorage.getItem('gst_erp_theme') || 'light';
+  document.documentElement.setAttribute('data-theme', savedThemeInit);
+} catch (e) {}
+
+function copyOfficeLink() {
+  var url = window.location.origin;
+  try {
+    navigator.clipboard.writeText(url);
+    toast('Office Link Copied: ' + url + ' — share with your Accounts Team!', 'ok');
+  } catch (e) {
+    toast('Office Link: ' + url, 'ok');
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Financial year and month helpers.
 //
@@ -1448,17 +1610,17 @@ function icon(name, size) {
 }
 
 const NAV = [
-  { id: 'dashboard', label: 'Dashboard', view: 'home', icon: 'dashboard' },
-  { id: 'books-sales', label: 'Books / Sales Register', view: 'sales', icon: 'sales' },
-  { id: 'portal-g1', label: 'Portal GSTR-1', view: 'portal', icon: 'portal' },
-  { id: 'gstr1-recon', label: 'GSTR-1 Reconciliation', view: 'outward', icon: 'recon' },
-  { id: 'hsn-summary', label: 'HSN Summary (12)', view: 'hsn', icon: 'hsn' },
-  { id: 'pl-recon', label: 'P&L vs GSTR-1', view: 'pl', icon: 'pl' },
-  { id: 'purchase-register', label: 'Purchase vs GSTR-2B', view: 'purchase', icon: 'recon' },
-  { id: 'paste-register', label: 'Paste Register', view: 'paste', icon: 'paste' },
-  { id: 'gstr9-annual', label: 'GSTR-9 & 9C Annual', view: 'gstr9', icon: 'reports' },
-  { id: 'reports', label: 'Reports', view: 'reports', icon: 'reports' },
-  { id: 'masters', label: 'Masters', view: 'masters', icon: 'masters' },
+  { id: 'dashboard', label: 'Dashboard', view: 'home', icon: 'dashboard', sub: 'Overview, KPIs & 12-month matrix', badge: 'Live', group: 'Outward & GSTR-1 Control' },
+  { id: 'books-sales', label: 'Books / Sales Register', view: 'sales', icon: 'sales', sub: 'SAP outward register & item lines', badge: 'Books', group: 'Outward & GSTR-1 Control' },
+  { id: 'portal-g1', label: 'Portal GSTR-1', view: 'portal', icon: 'portal', sub: 'Portal JSON & Excel pre-filled', badge: 'Portal', group: 'Outward & GSTR-1 Control' },
+  { id: 'gstr1-recon', label: 'GSTR-1 Reconciliation', view: 'outward', icon: 'recon', sub: 'Bill-to-bill Books vs Portal match', badge: 'GSTR-1', group: 'Outward & GSTR-1 Control' },
+  { id: 'hsn-summary', label: 'HSN Summary (12)', view: 'hsn', icon: 'hsn', sub: 'B2B & B2C Table 12 UQC comparison', badge: 'Table 12', group: 'Outward & GSTR-1 Control' },
+  { id: 'pl-recon', label: 'P&L vs GSTR-1', view: 'pl', icon: 'pl', sub: 'Trial Balance turnover vs GSTR-1', badge: 'P&L', group: 'Outward & GSTR-1 Control' },
+  { id: 'purchase-register', label: 'Purchase vs GSTR-2B', view: 'purchase', icon: 'purchase', sub: 'Bill-to-bill 2B match & Table 4 ITC', badge: '3B ITC', group: 'Inward, 2B & GSTR-3B ITC' },
+  { id: 'paste-register', label: 'Paste Register', view: 'paste', icon: 'paste', sub: 'Quick Excel clipboard import', badge: 'Paste', group: 'Inward, 2B & GSTR-3B ITC' },
+  { id: 'gstr9-annual', label: 'GSTR-9 & 9C Annual', view: 'gstr9', icon: 'reports', sub: '12-month GSTR-9, 9C & IMS Actions', badge: '9 & IMS', group: 'Annual, Reports & Admin' },
+  { id: 'reports', label: 'Reports & Working', view: 'reports', icon: 'reports', sub: '14+ Excel workbooks & round-trip', badge: '14+', group: 'Annual, Reports & Admin' },
+  { id: 'masters', label: 'Masters & Team', view: 'masters', icon: 'masters', sub: 'Companies, Units, GSTINs & Users', badge: 'Admin', group: 'Annual, Reports & Admin' },
 ];
 
 /**
@@ -1468,59 +1630,81 @@ const NAV = [
  */
 const VIEW_META = {
   home: {
-    title: 'Compliance dashboard',
+    title: 'Compliance Dashboard',
     sub: 'At a glance: active months, filed returns, and pending items. Every figure comes directly from monthly data — no hardcoded numbers.',
-    img: '/assets/gst-touch.jpg',
+    eyebrow: 'GOOGLE AI STUDIO SUITE \u2022 EXECUTIVE OVERVIEW',
+    badge: 'Live PostgreSQL',
+    icon: 'dashboard',
   },
   sales: {
     title: 'Books / Sales Register',
     sub: 'Input file for GSTR-1. Preview first — invoice counts, item lines, periods, GSTINs, and skipped rows. Preview does not save anything.',
-    img: '/assets/gst-blocks-cart.jpg',
+    eyebrow: 'OUTWARD SUPPLIES \u2022 SAP / BOOKS INTAKE',
+    badge: 'Item & Invoice Level',
+    icon: 'sales',
   },
   portal: {
-    title: 'Portal GSTR-1 (pre-filled download)',
-    sub: 'Import pre-filled GSTR-1 downloaded from the GST Portal. Separate source, preview, and totals from Books — never overwrites each other.',
-    img: '/assets/gst-laptop.jpg',
+    title: 'Portal GSTR-1 (Pre-Filled Download)',
+    sub: 'Import pre-filled GSTR-1 (.json / .xlsx / .csv) downloaded from the GST Portal. Separate source, preview, and totals from Books.',
+    eyebrow: 'OUTWARD SUPPLIES \u2022 GSTN PORTAL SOURCE',
+    badge: 'JSON & Excel Ready',
+    icon: 'portal',
   },
   outward: {
-    title: 'GSTR-1 reconciliation',
+    title: 'GSTR-1 Bill-to-Bill Reconciliation',
     sub: 'Draft built from Books vs Portal filed return, invoice-wise. Track undeclared invoices, amount differences, and table mismatches here.',
-    img: '/assets/gst-touch.jpg',
+    eyebrow: 'OUTWARD CONTROL \u2022 BOOKS VS PORTAL GSTR-1',
+    badge: '7 Match Outcomes',
+    icon: 'recon',
   },
   hsn: {
-    title: 'HSN summary \u2014 table 12',
+    title: 'HSN Summary \u2014 Table 12 (B2B & B2C)',
     sub: 'Books HSN summary and Portal HSN side by side. UQC and quantity come from item-wise registers; invoice-level registers also work cleanly.',
-    img: '/assets/gst-blocks.jpg',
+    eyebrow: 'OUTWARD CONTROL \u2022 GSTR-1 TABLE 12',
+    badge: 'B2B & B2C Split',
+    icon: 'hsn',
   },
   pl: {
-    title: 'P&L vs GSTR-1',
+    title: 'Profit & Loss vs GSTR-1 Turnover Audit',
     sub: 'P&L is company-level while GST is GSTIN-wise, so this screen selects by company. Reasons require a head-wise difference to save.',
-    img: '/assets/gst-rupee.jpg',
+    eyebrow: 'REVENUE AUDIT \u2022 TRIAL BALANCE VS GSTR-1',
+    badge: 'GSTR-9C Ready',
+    icon: 'pl',
   },
   purchase: {
-    title: 'Purchase register \u2014 ITC side',
-    sub: 'Both invoice date and book entry date are shown, since an April invoice can be booked in May — keeping Books-vs-return timing gaps visible.',
-    img: '/assets/gst-blocks.jpg',
+    title: 'Purchase Register vs GSTR-2B & GSTR-3B Table 4 ITC',
+    sub: 'Bill-to-bill inward reconciliation with Probable 2B matching, inline corrections, and live GSTR-3B Table 4 Input Tax Credit buckets.',
+    eyebrow: 'INWARD CREDIT CONTROL \u2022 GSTR-2B & 3B TABLE 4',
+    badge: 'Bill-to-Bill ITC',
+    icon: 'purchase',
   },
   paste: {
-    title: 'Paste register',
+    title: 'Clipboard Paste Register',
     sub: 'Copy rows from Excel and paste here with the header row. Preview runs the exact same parser as file upload.',
-    img: '/assets/gst-blocks-cart.jpg',
+    eyebrow: 'FAST INTAKE \u2022 EXCEL CLIPBOARD PARSER',
+    badge: 'Instant Preview',
+    icon: 'paste',
   },
   gstr9: {
-    title: 'GSTR-9 Annual & GSTR-9C Audit Control',
-    sub: 'Complete 12-month reconciliation from GSTR-1, GSTR-2B/IMS, and GSTR-3B to Annual GSTR-9 / GSTR-9C in one place.',
-    img: '/assets/gst-rupee.jpg',
+    title: 'GSTR-9 Annual Return, GSTR-9C Audit & IMS Action Desk',
+    sub: 'Complete 12-month reconciliation from GSTR-1, GSTR-2B/IMS, and GSTR-3B to Annual GSTR-9 (Tables 4\u201318) and GSTR-9C.',
+    eyebrow: 'ANNUAL COMPLIANCE \u2022 GSTR-9, 9C & IMS',
+    badge: '12-Month Roll-up',
+    icon: 'reports',
   },
   reports: {
-    title: 'Reports & downloads',
-    sub: 'Reconciliation workbook, HSN, and month-wise reports in Excel and CSV. Downloads apply the GSTIN and period selected in the header.',
-    img: '/assets/gst-rupee.jpg',
+    title: 'Reports, Working Sheets & Excel Round-Trip',
+    sub: '14+ Reconciliation workbooks, HSN summaries, and exception registers in Excel and CSV. Edit offline and re-upload to apply.',
+    eyebrow: 'REPORTING CENTER \u2022 EXCEL ROUND-TRIP',
+    badge: '14+ Workbooks',
+    icon: 'reports',
   },
   masters: {
-    title: 'Masters \u2014 companies, units & GSTIN',
-    sub: 'Company, unit, and GSTIN registrations. Display names can be updated while company ID, GSTIN, and PAN remain immutable.',
-    img: '/assets/gst-touch.jpg',
+    title: 'Masters \u2014 Companies, Units, GSTINs & Team Access',
+    sub: 'Company, unit, and GSTIN registrations, user permissions, and period lock controls.',
+    eyebrow: 'ADMINISTRATION \u2022 GOVERNANCE & SECURITY',
+    badge: 'RBAC & Locks',
+    icon: 'masters',
   },
 };
 
@@ -1871,9 +2055,27 @@ async function enter(user) {
 }
 
 function renderNav() {
-  setHtml('nav', NAV.map((n) =>
-    '<button type="button" class="navlink" data-view="' + n.view + '" id="nav-' + n.id + '" title="' + esc(n.label) + '">' +
-    icon(n.icon) + '<span>' + esc(n.label) + '</span></button>').join(''));
+  let lastGroup = '';
+  const html = [];
+  for (const n of NAV) {
+    if (n.group && n.group !== lastGroup) {
+      lastGroup = n.group;
+      html.push('<div class="nav-label">' + esc(n.group) + '</div>');
+    }
+    html.push(
+      '<button type="button" class="navlink" data-view="' + n.view + '" id="nav-' + n.id + '" title="' + esc(n.label) + '">' +
+        '<span class="nav-ico-box">' + icon(n.icon, 17) + '</span>' +
+        '<span class="nav-body">' +
+          '<span class="nav-title-row">' +
+            '<span class="nav-title">' + esc(n.label) + '</span>' +
+            (n.badge ? '<span class="nav-badge">' + esc(n.badge) + '</span>' : '') +
+          '</span>' +
+          (n.sub ? '<span class="nav-sub">' + esc(n.sub) + '</span>' : '') +
+        '</span>' +
+      '</button>',
+    );
+  }
+  setHtml('nav', html.join(''));
   for (const n of NAV) {
     const b = el('nav-' + n.id);
     if (b) b.onclick = () => showView(n.view);
@@ -1896,10 +2098,16 @@ function injectPageHeads() {
     const head = document.createElement('div');
     head.className = 'page-head';
     head.innerHTML =
-      '<div class="ph-text"><h1>' + esc(meta.title) + '</h1>' +
-      '<div class="ph-sub">' + esc(meta.sub) + '</div>' +
-      '<div class="ph-chips" id="ph-' + name + '"></div></div>' +
-      (meta.img ? '<img class="ph-img" src="' + esc(meta.img) + '" alt="" loading="lazy" />' : '');
+      '<div class="ph-icon-badge">' + icon(meta.icon || 'dashboard', 22) + '</div>' +
+      '<div class="ph-text">' +
+        (meta.eyebrow ? '<div class="ph-eyebrow">' + esc(meta.eyebrow) + '</div>' : '') +
+        '<h1>' + esc(meta.title) + '</h1>' +
+        '<div class="ph-sub">' + esc(meta.sub) + '</div>' +
+        '<div class="ph-chips" id="ph-' + name + '"></div>' +
+      '</div>' +
+      '<div class="ph-right-badge">' +
+        (meta.badge ? '<span class="pill good">' + esc(meta.badge) + '</span>' : '') +
+      '</div>';
     section.insertBefore(head, section.firstChild);
   }
 }
