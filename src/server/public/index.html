@@ -903,6 +903,59 @@ tr.clickable { cursor: default; }
   .gen-navy-directory { grid-template-columns: 1fr; }
 }
 
+/* ---- ExpressGST Visual Analytics, Charts, ITC Tracker & Notices ---- */
+.exp-nav-strip {
+  display: flex; gap: 10px; flex-wrap: wrap; margin: 10px 0 14px;
+}
+.exp-amber-pill {
+  background: linear-gradient(135deg, #fde68a 0%, #fcd34d 100%);
+  color: #78350f; border: 1px solid #f59e0b; border-radius: 10px;
+  padding: 8px 14px; font-size: 12.5px; font-weight: 800; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 8px;
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.2);
+}
+.exp-amber-pill:hover {
+  background: linear-gradient(135deg, #fcd34d 0%, #f59e0b 100%);
+  color: #451a03; transform: translateY(-1px); filter: none;
+}
+.exp-chart-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 14px 0;
+}
+.exp-chart-box {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+  padding: 14px 16px; box-shadow: var(--shadow);
+}
+.exp-chart-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  font-size: 12.5px; font-weight: 800; color: var(--text); margin-bottom: 10px;
+}
+.exp-return-tabs {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
+  background: var(--panel); border: 1.5px solid #fca5a5; border-radius: 14px;
+  padding: 8px; margin-bottom: 14px;
+}
+.exp-ret-pill {
+  background: transparent; color: var(--text); border: 0; border-radius: 10px;
+  padding: 10px 14px; font-size: 14px; font-weight: 800; cursor: pointer;
+  box-shadow: none; text-align: center;
+}
+.exp-ret-pill:hover { background: rgba(244, 63, 94, 0.08); color: #e11d48; filter: none; transform: none; }
+.exp-ret-pill.active {
+  background: linear-gradient(135deg, #fb7185 0%, #e11d48 100%);
+  color: #ffffff; box-shadow: 0 6px 16px -6px rgba(225, 29, 72, 0.55);
+}
+.exp-ret-panel {
+  background: var(--panel); border: 1.5px solid #fecdd3; border-radius: 16px;
+  padding: 20px 22px; margin-bottom: 20px; box-shadow: var(--shadow);
+}
+[data-theme="dark"] .exp-return-tabs, [data-theme="dark"] .exp-ret-panel {
+  border-color: rgba(251, 113, 133, 0.35);
+}
+@media (max-width: 960px) {
+  .exp-chart-grid { grid-template-columns: 1fr; }
+  .exp-return-tabs { grid-template-columns: repeat(2, 1fr); }
+}
+
 /* ------------------------------------------------------------ responsive */
 @media (max-width: 1400px) { .crumb { display: none; } }
 #ctxPeriod { min-width: 118px; }
@@ -1199,25 +1252,25 @@ tr.clickable { cursor: default; }
           <!-- Left Floating White Arrow Tabs -->
           <div class="gen-left-tabs" id="genLeftTabs">
             <button type="button" class="gen-left-tab active" data-gentab="dashboard" onclick="switchGenTab('dashboard')">
-              <span>GST Executive Dashboard</span><span class="arr">&rarr;</span>
+              <span>All-in-One AI Dashboard</span><span class="arr">&rarr;</span>
+            </button>
+            <button type="button" class="gen-left-tab" data-gentab="conflicts" onclick="switchGenTab('conflicts')">
+              <span>Ready Recon &amp; Conflicts</span><span class="arr">&#8599;</span>
             </button>
             <button type="button" class="gen-left-tab" data-gentab="suppliers" onclick="switchGenTab('suppliers')">
-              <span>Supplier Return Status</span><span class="arr">&#8599;</span>
+              <span>2A/2B Supplier Wise Reco</span><span class="arr">&#8599;</span>
             </button>
-            <button type="button" class="gen-left-tab" data-gentab="ledgers" onclick="switchGenTab('ledgers')">
-              <span>GST Various Ledgers</span><span class="arr">&#8599;</span>
+            <button type="button" class="gen-left-tab" data-gentab="itctracker" onclick="switchGenTab('itctracker')">
+              <span>3B Table 4 ITC Tracker</span><span class="arr">&#8599;</span>
+            </button>
+            <button type="button" class="gen-left-tab" data-gentab="ewb" onclick="switchGenTab('ewb')">
+              <span>E-Way Bill &amp; E-Invoice</span><span class="arr">&#8599;</span>
+            </button>
+            <button type="button" class="gen-left-tab" data-gentab="notices" onclick="switchGenTab('notices')">
+              <span>Notice Management</span><span class="arr">&#8599;</span>
             </button>
             <button type="button" class="gen-left-tab" data-gentab="validator" onclick="switchGenTab('validator')">
               <span>Auto Error &amp; GSTIN Check</span><span class="arr">&#8599;</span>
-            </button>
-            <button type="button" class="gen-left-tab" data-gentab="einvoice" onclick="go('purchase')">
-              <span>GST E-Invoice &amp; E-WayBill</span><span class="arr">&#8599;</span>
-            </button>
-            <button type="button" class="gen-left-tab" data-gentab="gstr1form" onclick="go('outward')">
-              <span>GSTR-1 &amp; 1A Outward Form</span><span class="arr">&#8599;</span>
-            </button>
-            <button type="button" class="gen-left-tab" data-gentab="itcliab" onclick="go('gstr9')">
-              <span>GSTR-9, 9C &amp; ITC Liability</span><span class="arr">&#8599;</span>
             </button>
           </div>
 
@@ -1270,34 +1323,108 @@ tr.clickable { cursor: default; }
             <div class="gen-body-split">
               <!-- Center Active Tab Content -->
               <div class="gen-main-pane">
-                <!-- Pane 1: 4-Way Reconciliation (1 vs 3B vs 2B vs Books) -->
+                <!-- Pane 1: All-in-One AI Dashboard (12-Month Return Strip + Charts + Cash/Credit Ledger + 4-Way Recon) -->
                 <div id="genPane-dashboard">
                   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px">
-                    <b style="font-size:13px;color:var(--text)">4-Way Return &amp; ITC Reconciliation (Books vs GSTR-1/2B vs GSTR-3B)</b>
-                    <span class="pill good" style="font-size:11px">Live PostgreSQL Figures</span>
+                    <b style="font-size:13px;color:var(--text)">12-Month Return Summary &amp; Books Import Matrix (Apr &ndash; Mar)</b>
+                    <span class="pill good" style="font-size:11px">AI-Powered Reconciliation &amp; ITC Management</span>
                   </div>
-                  <div class="scroll" style="max-height:260px"><table id="genFourWayTable"></table></div>
+                  <div class="scroll" style="max-height:175px;margin-bottom:12px"><table id="exp12MonthMatrix"></table></div>
+
+                  <div class="exp-chart-grid">
+                    <div class="exp-chart-box">
+                      <div class="exp-chart-head">
+                        <span>Sales by GSTR-1 vs Purchase by GSTR-2B</span>
+                        <span style="font-size:11px;color:var(--muted)"><b style="color:#1e40af">&#9632;</b> Sales (R1) &nbsp; <b style="color:#06b6d4">&#9632;</b> Purchase (2B)</span>
+                      </div>
+                      <div id="expSalesVsPurchaseChart"></div>
+                    </div>
+                    <div class="exp-chart-box">
+                      <div class="exp-chart-head">
+                        <span>Net Tax Liability (R1 Output Tax &minus; 2B ITC)</span>
+                        <span style="font-size:11px;color:var(--muted)"><b style="color:#2563eb">&#9632;</b> Output &minus; Input Tax</span>
+                      </div>
+                      <div id="expNetLiabilityChart"></div>
+                    </div>
+                  </div>
+
+                  <div style="margin-top:10px">
+                    <b style="font-size:12.5px;color:var(--text)">Electronic Cash &amp; Credit Ledger Balance + 4-Way Reconciliation</b>
+                    <div class="scroll" style="max-height:185px;margin-top:6px"><table id="genFourWayTable"></table></div>
+                  </div>
                 </div>
 
-                <!-- Pane 2: Supplier Return Filing Status & Seller-Wise Match/Mismatch -->
+                <!-- Pane 2: Ready Reconciliation Data & 12-Month Conflict Summary (Screenshot 2) -->
+                <div id="genPane-conflicts" hidden>
+                  <div style="margin-bottom:6px"><b style="font-size:12.5px;color:var(--text)">Directly Navigate to &mdash; Purchase / Input Supply Dashboard</b></div>
+                  <div class="exp-nav-strip">
+                    <button type="button" class="exp-amber-pill" onclick="go('purchase')">📄 Invoice wise Reco &gt;</button>
+                    <button type="button" class="exp-amber-pill" onclick="switchGenTab('suppliers')">👤 Supplier wise Reco &gt;</button>
+                    <button type="button" class="exp-amber-pill" onclick="go('gstr9')">% Rate wise Reco &gt;</button>
+                    <button type="button" class="exp-amber-pill" onclick="go('outward')">🧮 Invoice-rate Reco &gt;</button>
+                    <button type="button" class="exp-amber-pill" onclick="switchGenTab('itctracker')">✅ ITC Tracker &gt;</button>
+                  </div>
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:8px">
+                    <b style="font-size:13px;color:var(--text)">12-Month Conflict Summary Matrix (Missing in 2B, Unbooked 2B, Blocked Sec 17(5) &amp; RCM)</b>
+                    <span class="pill warn" style="font-size:11px">PAN-Level Conflict Detection</span>
+                  </div>
+                  <div class="scroll" style="max-height:240px"><table id="expConflictMatrix"></table></div>
+                </div>
+
+                <!-- Pane 3: Supplier Return Filing Status & Seller-Wise Match/Mismatch (Screenshot 3) -->
                 <div id="genPane-suppliers" hidden>
                   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px">
-                    <b style="font-size:13px;color:var(--text)">Supplier Return Filing Status &amp; Seller-Wise Match / Mismatch Notification</b>
-                    <span class="pill info" style="font-size:11px">GSTR-2B vs Purchase Register</span>
+                    <b style="font-size:13px;color:var(--text)">2A/2B Supplier-Wise Reconciliation &amp; Vendor Upload Pending</b>
+                    <span class="pill info" style="font-size:11px">Follow up with delaying vendors</span>
                   </div>
-                  <div class="scroll" style="max-height:260px"><table id="genSupplierTable"></table></div>
+                  <div class="scroll" style="max-height:310px"><table id="genSupplierTable"></table></div>
                 </div>
 
-                <!-- Pane 3: Various Ledgers Preview -->
-                <div id="genPane-ledgers" hidden>
+                <!-- Pane 4: GSTR-3B Table 4 Eligible ITC Tracker (Screenshot 7) -->
+                <div id="genPane-itctracker" hidden>
                   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px">
-                    <b style="font-size:13px;color:var(--text)">GST Various Ledgers — RCM Liability vs ITC, ECRRS Credit Reversal &amp; 2B Rejected</b>
-                    <button type="button" class="sm" onclick="go('gstr9')">Open Full Annual Ledgers &rarr;</button>
+                    <b style="font-size:13px;color:var(--text)">4. Eligible ITC — GSTR-3B Table 4 Structured Drill-Down (2B vs 3B vs Books)</b>
+                    <div class="row" style="gap:8px">
+                      <button type="button" class="sm" onclick="autoDecideItc()">Auto-populate ITC Claimed</button>
+                      <button type="button" class="ghost sm" onclick="go('purchase')">Open Bill-to-Bill Editor &rarr;</button>
+                    </div>
                   </div>
-                  <div class="scroll" style="max-height:260px"><table id="genLedgersPreviewTable"></table></div>
+                  <div class="scroll" style="max-height:310px"><table id="expTable4Tree"></table></div>
                 </div>
 
-                <!-- Pane 4: Bulk GSTIN & Checksum Validator -->
+                <!-- Pane 5: E-Way Bill & E-Invoice Matching Dashboard (Screenshot 4) -->
+                <div id="genPane-ewb" hidden>
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px">
+                    <b style="font-size:13px;color:var(--text)">E-Way Bill &amp; E-Invoice Matching Dashboard — Management Insights</b>
+                    <button type="button" class="sm" onclick="go('purchase')">Open E-Doc Register &rarr;</button>
+                  </div>
+                  <div class="tiles" id="expEwbKpis" style="margin-bottom:12px"></div>
+                  <div class="exp-chart-grid">
+                    <div class="exp-chart-box">
+                      <div class="exp-chart-head"><span>EWB &amp; E-Invoice Statistics</span></div>
+                      <div id="expEwbBars"></div>
+                    </div>
+                    <div class="exp-chart-box">
+                      <div class="exp-chart-head"><span>Reconciliation Status Breakdown</span></div>
+                      <div id="expReconDonut"></div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Pane 6: Notice & Order Management (Screenshots 5 & 6) -->
+                <div id="genPane-notices" hidden>
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px">
+                    <b style="font-size:13px;color:var(--text)">Notices &amp; Orders — DRC-01B, DRC-01C, ASMT-10 &amp; Sec 73/74 Tracker</b>
+                    <button type="button" class="sm" onclick="promptAddNotice()">+ Log New Notice / Reply</button>
+                  </div>
+                  <div class="scroll" style="max-height:270px"><table id="expNoticesTable"></table></div>
+                  <div class="hint" style="margin-top:8px">
+                    <b style="color:#059669">&#9632; Green:</b> Reply submitted / Matched &nbsp; | &nbsp;
+                    <b style="color:#e11d48">&#9632; Red:</b> Reply / Action pending against Intimation or Notice.
+                  </div>
+                </div>
+
+                <!-- Pane 7: Bulk GSTIN & Checksum Validator -->
                 <div id="genPane-validator" hidden>
                   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px">
                     <b style="font-size:13px;color:var(--text)">Auto Error Identification — Bulk GSTIN &amp; Modulo-36 Checksum Validator</b>
@@ -1350,6 +1477,42 @@ tr.clickable { cursor: default; }
               <span>Company: <b id="genFootCo">SAKAR &amp; SVN GROUP</b></span>
               <span>GSTIN: <b id="genFootGstin">26AALCS9985J1ZC</b></span>
               <span>Brand: <b>Vishnu Intelligence Services</b></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============== 4-PILL RETURN FILING SWITCHER (Screenshot 9 Style) ============== -->
+      <div class="card">
+        <div style="text-align:center;margin-bottom:14px">
+          <h2 style="justify-content:center;font-size:21px;text-transform:none;letter-spacing:-0.02em;color:var(--text)">
+            File GSTR-1, GSTR-3B &amp; GSTR-9/9C and Reconcile GSTR-2A/2B with Books in Seconds
+          </h2>
+          <div class="hint">Simplify your GST return filing experience with Vishnu Intelligence Services</div>
+        </div>
+        <div class="exp-return-tabs" id="expRetTabs">
+          <button type="button" class="exp-ret-pill active" data-retpill="gstr9" onclick="switchRetPill('gstr9')">GSTR 9 &amp; 9C</button>
+          <button type="button" class="exp-ret-pill" data-retpill="gstr2b" onclick="switchRetPill('gstr2b')">GSTR-2A/2B</button>
+          <button type="button" class="exp-ret-pill" data-retpill="gstr3b" onclick="switchRetPill('gstr3b')">GSTR-3B</button>
+          <button type="button" class="exp-ret-pill" data-retpill="gstr1" onclick="switchRetPill('gstr1')">GSTR-1</button>
+        </div>
+        <div class="exp-ret-panel" id="expRetPanelBody">
+          <div class="split">
+            <div>
+              <h3 style="margin-top:0;font-size:17px;text-transform:none;color:var(--text)">GSTR-9 Annual Return &amp; GSTR-9C Audit</h3>
+              <ul class="gst-bullet-grid" style="grid-template-columns:1fr;margin-top:10px;gap:8px">
+                <li><span class="gst-bullet-dot"></span><span>Get auto-calculated 12-month data from <b>GSTR-1, GSTR-2B and GSTR-3B</b></span></li>
+                <li><span class="gst-bullet-dot"></span><span>Clear side-by-side comparison of <b>Accounting Books and Portal Data</b></span></li>
+                <li><span class="gst-bullet-dot"></span><span>Section-wise reports for Tables 4 to 18, Rate-Wise Summary, RCM &amp; ECRRS Ledgers</span></li>
+                <li><span class="gst-bullet-dot"></span><span>Auto-populated GSTR-9C Turnover (Table 5/7), Tax (Table 9) &amp; ITC (Table 12) Audit</span></li>
+              </ul>
+              <div class="row" style="margin-top:14px">
+                <button type="button" onclick="go('gstr9')">File / Open GSTR-9 &amp; 9C &gt;</button>
+                <button type="button" class="ghost" onclick="downloadGstr9Excel()">Download 7-Sheet Workbook (.xlsx)</button>
+              </div>
+            </div>
+            <div>
+              <div class="scroll" style="max-height:220px"><table id="expLedgerBalanceTable"></table></div>
             </div>
           </div>
         </div>
@@ -2533,6 +2696,7 @@ const NUM_FIELDS = new Set([
   'openingReclaimable', 'reversedOrHeld4B2', 'reclaimed4A5_4D1', 'permanentSec17_5_4B1', 'closingReclaimable',
   'twobAvailableItc', 'twobRejectedItc', 'outwardCreditNoteTax', 'inwardCreditNoteItc', 'negativeLiabilityCarryover',
   'booksAmount', 'gstr1Or2bAmount', 'gstr3bAmount', 'books_bills', 'books_taxable', 'books_itc', 'twob_bills', 'twob_taxable', 'twob_itc', 'itc_diff',
+  'total', 'demandAmt',
 ]);
 
 function tableHtml(cols, rows, emptyText) {
@@ -4710,7 +4874,7 @@ window.toggleTheme = function () {
 let LAST_GEN_OVERVIEW = null;
 
 function switchGenTab(tab) {
-  const tabs = ['dashboard', 'suppliers', 'ledgers', 'validator'];
+  const tabs = ['dashboard', 'conflicts', 'suppliers', 'itctracker', 'ewb', 'notices', 'validator'];
   for (const t of tabs) {
     const pane = el('genPane-' + t);
     if (pane) pane.hidden = t !== tab;
@@ -4723,14 +4887,166 @@ function switchGenTab(tab) {
     if (arr) arr.innerHTML = isAct ? '&rarr;' : '&#8599;';
   });
   const titles = {
-    dashboard: 'GST > EXECUTIVE DASHBOARD > 4-WAY RECONCILIATION',
-    suppliers: 'GST > RETURN > SUPPLIER GSTR-1 FILING STATUS & SELLER MATCH',
-    ledgers: 'GST > LEDGERS > RCM LIABILITY, ECRRS & 2B REJECTED ITC',
+    dashboard: 'GST > ALL-IN-ONE AI DASHBOARD > 12-MONTH CHARTS & 4-WAY RECON',
+    conflicts: 'GST > PURCHASE / INPUT SUPPLY > 12-MONTH CONFLICT SUMMARY',
+    suppliers: 'GST > 2A/2B RECONCILIATION > SUPPLIER-WISE RECO & DELAYING VENDORS',
+    itctracker: 'GST > GSTR-3B TABLE 4 > ELIGIBLE ITC TRACKER & AUTO-POPULATE',
+    ewb: 'GST > E-WAY BILL & E-INVOICE > MANAGEMENT INSIGHTS & MATCHING',
+    notices: 'GST > NOTICES & ORDERS > DRC-01B, DRC-01C, ASMT-10 & SEC 73 TRACKER',
     validator: 'GST > TOOLS > AUTO ERROR IDENTIFICATION & BULK GSTIN VALIDATOR',
   };
   setHtml('genTopCrumb', esc(titles[tab] || titles.dashboard));
   if (tab === 'validator' && !el('genValidatorTable').innerHTML) {
     runBulkGstinValidation(true);
+  }
+}
+
+function renderSalesVsPurchaseSvg(m12) {
+  if (!m12 || !m12.length) return '<div class="hint">No monthly data</div>';
+  const w = 480, h = 155, padL = 48, padR = 14, padT = 14, padB = 26;
+  const plotW = w - padL - padR, plotH = h - padT - padB;
+  let maxV = 1;
+  m12.forEach((m) => { maxV = Math.max(maxV, Number(m.salesValue || 0), Number(m.purchase2bValue || 0)); });
+  const xOf = (i) => padL + (i * plotW) / Math.max(1, m12.length - 1);
+  const yOf = (v) => padT + plotH - (Math.max(0, Number(v || 0)) / maxV) * plotH;
+
+  const salesPts = m12.map((m, i) => xOf(i).toFixed(1) + ',' + yOf(m.salesValue).toFixed(1)).join(' ');
+  const purPts = m12.map((m, i) => xOf(i).toFixed(1) + ',' + yOf(m.purchase2bValue).toFixed(1)).join(' ');
+  const labels = m12.map((m, i) =>
+    '<text x="' + xOf(i).toFixed(1) + '" y="' + (h - 7) + '" font-size="9" text-anchor="middle" fill="#64748b">' + esc((m.label || '').split(' ')[0]) + '</text>'
+  ).join('');
+  const dots1 = m12.map((m, i) => '<circle cx="' + xOf(i).toFixed(1) + '" cy="' + yOf(m.salesValue).toFixed(1) + '" r="3" fill="#1e40af"><title>' + esc(m.label) + ' Sales: Rs ' + inr(m.salesValue) + '</title></circle>').join('');
+  const dots2 = m12.map((m, i) => '<circle cx="' + xOf(i).toFixed(1) + '" cy="' + yOf(m.purchase2bValue).toFixed(1) + '" r="3" fill="#06b6d4"><title>' + esc(m.label) + ' 2B Purchase: Rs ' + inr(m.purchase2bValue) + '</title></circle>').join('');
+
+  return '<svg viewBox="0 0 ' + w + ' ' + h + '" style="width:100%;height:155px;display:block">' +
+    '<line x1="' + padL + '" y1="' + (padT + plotH) + '" x2="' + (w - padR) + '" y2="' + (padT + plotH) + '" stroke="#cbd5e1" stroke-width="1"/>' +
+    '<polyline fill="none" stroke="#1e40af" stroke-width="2.2" points="' + salesPts + '"/>' +
+    '<polyline fill="none" stroke="#06b6d4" stroke-width="2.2" points="' + purPts + '"/>' +
+    dots1 + dots2 + labels + '</svg>';
+}
+
+function renderNetLiabilitySvg(m12) {
+  if (!m12 || !m12.length) return '<div class="hint">No monthly data</div>';
+  const w = 480, h = 155, padL = 48, padR = 14, padT = 14, padB = 26;
+  const plotW = w - padL - padR, plotH = h - padT - padB;
+  const midY = padT + plotH * 0.62;
+  let maxAbs = 1;
+  m12.forEach((m) => { maxAbs = Math.max(maxAbs, Math.abs(Number(m.netTaxLiability || 0))); });
+  const step = plotW / m12.length;
+  const barW = Math.max(10, step * 0.52);
+
+  const bars = m12.map((m, i) => {
+    const v = Number(m.netTaxLiability || 0);
+    const bh = Math.min(plotH * 0.55, (Math.abs(v) / maxAbs) * (plotH * 0.52));
+    const x = padL + i * step + (step - barW) / 2;
+    const y = v >= 0 ? midY - bh : midY;
+    const col = v >= 0 ? '#2563eb' : '#06b6d4';
+    return '<rect x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + barW.toFixed(1) + '" height="' + Math.max(2, bh).toFixed(1) + '" rx="2" fill="' + col + '"><title>' + esc(m.label) + ' Net Tax: Rs ' + inr(v) + '</title></rect>' +
+      '<text x="' + (x + barW / 2).toFixed(1) + '" y="' + (h - 7) + '" font-size="9" text-anchor="middle" fill="#64748b">' + esc((m.label || '').split(' ')[0]) + '</text>';
+  }).join('');
+
+  return '<svg viewBox="0 0 ' + w + ' ' + h + '" style="width:100%;height:155px;display:block">' +
+    '<line x1="' + padL + '" y1="' + midY.toFixed(1) + '" x2="' + (w - padR) + '" y2="' + midY.toFixed(1) + '" stroke="#94a3b8" stroke-dasharray="3,3" stroke-width="1"/>' +
+    bars + '</svg>';
+}
+
+function switchRetPill(key) {
+  const btns = document.querySelectorAll('#expRetTabs .exp-ret-pill');
+  btns.forEach((b) => {
+    b.className = 'exp-ret-pill' + (b.getAttribute('data-retpill') === key ? ' active' : '');
+  });
+  const map = {
+    gstr9: {
+      title: 'GSTR-9 Annual Return & GSTR-9C Self-Certification Audit',
+      bullets: [
+        'Get auto-calculated 12-month data from <b>GSTR-1, GSTR-2B and GSTR-3B</b>',
+        'Clear side-by-side comparison of <b>Accounting Books and Portal Data</b>',
+        'Section-wise reports for Tables 4 to 18, Rate-Wise Summary, RCM & ECRRS Ledgers',
+        'Auto-populated GSTR-9C Turnover (Table 5/7), Tax (Table 9) & ITC (Table 12) Audit',
+      ],
+      btnText: 'File / Open GSTR-9 & 9C >',
+      view: 'gstr9',
+    },
+    gstr2b: {
+      title: 'GSTR-2A / 2B Bill-to-Bill Reconciliation with Purchase Register',
+      bullets: [
+        'Match every purchase invoice with GSTR-2B in seconds using intelligent normalisation',
+        'Auto-detect Probable 2B matches when supplier invoice numbers have typos',
+        'Track Vendor-wise upload pending, Missing in 2B, and Unbooked 2B credits',
+        'Export direct IMS Portal Upload JSON (Accept / Reject / Pending) & Excel workbook',
+      ],
+      btnText: 'Open 2B vs Purchase Reconciliation >',
+      view: 'purchase',
+    },
+    gstr3b: {
+      title: 'GSTR-3B Monthly Return & Table 4 Input Tax Credit Control',
+      bullets: [
+        'Auto-populate Table 4(A)(3) RCM ITC & Table 4(A)(5) All Other Eligible ITC from 2B match',
+        'Automatic Table 4(B)(1) Sec 17(5) Blocked & Table 4(B)(2) Temporary Hold reversals',
+        'Live Electronic Credit Ledger vs Output Tax Liability offset calculator',
+        'Prevents excess ITC claims and Rule 88D (DRC-01C) portal intimations',
+      ],
+      btnText: 'Open GSTR-3B Table 4 ITC Control >',
+      view: 'purchase',
+    },
+    gstr1: {
+      title: 'GSTR-1 & 1A Outward Supplies — Books vs Portal Reconciliation',
+      bullets: [
+        'Auto-classify B2B, B2CL, B2CS, CDNR, CDNUR, Exports (6A) & Nil/Exempt (Table 8)',
+        'Item-wise & Invoice-wise HSN Summary (Table 12) with B2B and B2C split',
+        'Reconcile Books Sales Register against Portal Filed GSTR-1 JSON/Excel bill-to-bill',
+        'One-click Portal GSTR-1 JSON generation ready for offline utility & EVC/DSC upload',
+      ],
+      btnText: 'Open GSTR-1 Outward Control >',
+      view: 'outward',
+    },
+  };
+  const info = map[key] || map.gstr9;
+  const lb = (LAST_GEN_OVERVIEW && LAST_GEN_OVERVIEW.ledgerBalance) || [];
+  setHtml('expRetPanelBody',
+    '<div class="split"><div>' +
+      '<h3 style="margin-top:0;font-size:17px;text-transform:none;color:var(--text)">' + esc(info.title) + '</h3>' +
+      '<ul class="gst-bullet-grid" style="grid-template-columns:1fr;margin-top:10px;gap:8px">' +
+        info.bullets.map((b) => '<li><span class="gst-bullet-dot"></span><span>' + b + '</span></li>').join('') +
+      '</ul>' +
+      '<div class="row" style="margin-top:14px">' +
+        '<button type="button" onclick="go(\'' + info.view + '\')">' + esc(info.btnText) + '</button>' +
+        '<button type="button" class="ghost" onclick="downloadGstr9Excel()">Download 7-Sheet Workbook (.xlsx)</button>' +
+      '</div>' +
+    '</div><div>' +
+      '<div class="scroll" style="max-height:220px"><table id="expLedgerBalanceTable">' +
+        tableHtml([['ledger', 'Ledger / Register'], ['total', 'Total (Rs)'], ['igst', 'IGST'], ['cgst', 'CGST'], ['sgst', 'SGST'], ['cess', 'Cess']], lb, 'Loading ledger balance...') +
+      '</table></div>' +
+    '</div></div>');
+}
+
+async function promptAddNotice() {
+  const desc = prompt('Enter Notice / Intimation Description (e.g. DRC-01C ITC Mismatch for May 2026):');
+  if (!desc) return;
+  const sec = prompt('Enter Section / Rule (e.g. Rule 88D, Sec 73, ASMT-10):', 'Rule 88D') || 'Rule 88D';
+  const amt = Number(prompt('Enter Demand / Variance Amount (Rs):', '0') || 0);
+  try {
+    await postJson('/api/notices', {
+      gstin: CTX.gstin,
+      description: desc,
+      section: sec,
+      demandAmt: amt,
+      status: 'Pending Review',
+    });
+    toast('Notice logged in Notice Management Register.', 'ok');
+    await loadGenOverview();
+  } catch (e) {
+    toast(errText(e), 'err');
+  }
+}
+
+async function markNoticeReplied(id) {
+  try {
+    await postJson('/api/notices', { id: id, gstin: CTX.gstin, status: 'Replied & Closed' });
+    toast('Notice marked as Replied & Closed.', 'ok');
+    await loadGenOverview();
+  } catch (e) {
+    toast(errText(e), 'err');
   }
 }
 
@@ -4752,6 +5068,29 @@ async function loadGenOverview() {
     setHtml('genFootCo', esc(co ? dispCompany(co.name) : 'SAKAR & SVN GROUP'));
     setHtml('genFootGstin', esc(CTX.gstin || 'ALL GSTINs'));
 
+    // 1. 12-Month Return Summary Strip (ExpressGST Screenshot 1)
+    const m12 = out.monthlyMatrix12 || [];
+    if (m12.length) {
+      const mHead = '<thead><tr><th>Return / Check</th>' + m12.map((m) => '<th style="text-align:center">' + esc(m.label) + '</th>').join('') + '</tr></thead>';
+      const r1Row = '<tr><td><b>GSTR-1</b></td>' + m12.map((m) => '<td style="text-align:center"><span class="pill ' + (m.gstr1Filed === 'Filed' ? 'good' : 'plain') + '" style="font-size:10px;padding:2px 6px">' + esc(m.gstr1Filed) + '</span></td>').join('') + '</tr>';
+      const r3bRow = '<tr><td><b>GSTR-3B</b></td>' + m12.map((m) => '<td style="text-align:center"><span class="pill ' + (m.gstr3bFiled === 'Filed' ? 'good' : 'plain') + '" style="font-size:10px;padding:2px 6px">' + esc(m.gstr3bFiled) + '</span></td>').join('') + '</tr>';
+      const recoRow = '<tr><td><b>2B vs Purchase</b></td>' + m12.map((m) => '<td style="text-align:center"><a onclick="setPeriod(\'' + esc(m.period) + '\');go(\'purchase\')" style="cursor:pointer;font-size:11px;font-weight:700">View</a></td>').join('') + '</tr>';
+      const impRow = '<tr><td><b>Books Data Imported?</b></td>' + m12.map((m) => '<td style="text-align:center;font-weight:900;color:' + (m.booksImported ? '#059669' : '#e11d48') + '">' + (m.booksImported ? '&#10003;' : '&#10007;') + '</td>').join('') + '</tr>';
+      setHtml('exp12MonthMatrix', mHead + '<tbody>' + r1Row + r3bRow + recoRow + impRow + '</tbody>');
+
+      setHtml('expSalesVsPurchaseChart', renderSalesVsPurchaseSvg(m12));
+      setHtml('expNetLiabilityChart', renderNetLiabilitySvg(m12));
+
+      // 2. 12-Month Conflict Summary Matrix (ExpressGST Screenshot 2)
+      const cHead = '<thead><tr><th>Conflict Type</th>' + m12.map((m) => '<th class="num">' + esc(m.label) + '</th>').join('') + '</tr></thead>';
+      const c1 = '<tr><td>In Books but not in 2B (Missing in 2B)</td>' + m12.map((m) => '<td class="num">' + cnt(m.missingIn2bCount) + '</td>').join('') + '</tr>';
+      const c2 = '<tr><td>In 2B but not in Books (Unbooked 2B)</td>' + m12.map((m) => '<td class="num">' + cnt(m.unbooked2bCount) + '</td>').join('') + '</tr>';
+      const c3 = '<tr><td>ITC Eligibility Conflict (Blocked Sec 17(5))</td>' + m12.map((m) => '<td class="num">' + cnt(m.blockedItcCount) + '</td>').join('') + '</tr>';
+      const c4 = '<tr><td>RCM Inward Supply Count</td>' + m12.map((m) => '<td class="num">' + cnt(m.rcmCount) + '</td>').join('') + '</tr>';
+      const cTot = '<tr class="total-row"><td><b>Total Conflict / Watch Items</b></td>' + m12.map((m) => '<td class="num"><b>' + cnt(m.totalConflicts) + '</b></td>').join('') + '</tr>';
+      setHtml('expConflictMatrix', cHead + '<tbody>' + c1 + c2 + c3 + c4 + cTot + '</tbody>');
+    }
+
     setHtml('genFourWayTable', tableHtml([
       ['head', 'Reconciliation Head'],
       ['booksAmount', 'Accounting Books (Rs)'],
@@ -4761,27 +5100,90 @@ async function loadGenOverview() {
       ['status', 'Status'],
     ], out.fourWayRows || [], 'No reconciliation data.'));
 
+    if (el('expLedgerBalanceTable')) {
+      setHtml('expLedgerBalanceTable', tableHtml([
+        ['ledger', 'Ledger / Register'],
+        ['total', 'Total (Rs)'],
+        ['igst', 'IGST'],
+        ['cgst', 'CGST'],
+        ['sgst', 'SGST'],
+        ['cess', 'Cess'],
+      ], out.ledgerBalance || [], 'No ledger balance data.'));
+    }
+
     setHtml('genSupplierTable', tableHtml([
       ['supplier_gstin', 'Supplier GSTIN'],
       ['supplier_name', 'Supplier Name'],
       ['books_bills', 'Books Bills'],
       ['books_taxable', 'Books Taxable'],
-      ['books_itc', 'Books ITC'],
+      ['books_itc', 'Books Tax'],
       ['twob_bills', '2B Bills'],
       ['twob_taxable', '2B Taxable'],
-      ['twob_itc', '2B ITC'],
-      ['itc_diff', 'ITC Diff (Books - 2B)'],
+      ['twob_itc', '2B Tax'],
+      ['itc_diff', 'Diff (Book - 2B Tax)'],
       ['filing_status', 'Supplier Filing Status'],
     ], out.supplierRows || [], 'No supplier rows for this filter.'));
 
-    setHtml('genLedgersPreviewTable', tableHtml([
-      ['head', 'Ledger / Statement'],
-      ['booksAmount', 'Books / Gross (Rs)'],
-      ['gstr1Or2bAmount', 'Portal / 2B (Rs)'],
-      ['gstr3bAmount', 'Net Claimed / Payable (Rs)'],
-      ['difference', 'Balance / Variance (Rs)'],
-      ['status', 'Status'],
-    ], out.fourWayRows || [], 'No ledger rows.'));
+    // 3. GSTR-3B Table 4 Eligible ITC Structured Tree (Screenshot 7)
+    setHtml('expTable4Tree', tableHtml([
+      ['section', 'Table 4 Sec'],
+      ['head', 'Eligible ITC Head (GSTR-3B Table 4)'],
+      ['igst', 'IGST (Rs)'],
+      ['cgst', 'CGST (Rs)'],
+      ['sgst', 'SGST (Rs)'],
+      ['cess', 'Cess (Rs)'],
+      ['total', 'Total ITC (Rs)'],
+    ], out.table4Tree || [], 'No Table 4 data.'));
+
+    // 4. E-Way Bill & E-Invoice Insights + Donut Chart (Screenshot 4)
+    const ed = out.eDocInsights || {};
+    setHtml('expEwbKpis', [
+      ['Outward B2B Invoices', cnt(ed.b2bOutward || 0)],
+      ['Outward B2C Invoices', cnt(ed.b2cOutward || 0)],
+      ['HSN R1 vs Books Buckets', cnt(ed.hsnBuckets || 0)],
+      ['Inward Purchase Bills', cnt(ed.totalInwardBills || 0)],
+      ['2B Matched Bills', cnt(ed.matchedCount || 0)],
+      ['Unbooked 2B Bills', cnt(ed.unbooked2bCount || 0)],
+    ].map((x) => '<div class="tile"><div class="k">' + esc(x[0]) + '</div><div class="v">' + x[1] + '</div></div>').join(''));
+
+    const totRec = Math.max(1, (ed.matchedCount || 0) + (ed.mismatchCount || 0) + (ed.missingIn2bCount || 0));
+    const mPct = Math.round(((ed.matchedCount || 0) / totRec) * 100);
+    const mmPct = Math.round(((ed.mismatchCount || 0) / totRec) * 100);
+    const msPct = Math.max(0, 100 - mPct - mmPct);
+
+    setHtml('expEwbBars',
+      '<div style="display:grid;gap:10px;font-size:12px">' +
+        '<div><div style="display:flex;justify-content:space-between"><span>Matched with GSTR-2B</span><b>' + cnt(ed.matchedCount || 0) + ' (' + mPct + '%)</b></div><div style="height:9px;background:var(--panel-3);border-radius:99px;overflow:hidden;margin-top:4px"><div style="height:100%;width:' + mPct + '%;background:#10b981"></div></div></div>' +
+        '<div><div style="display:flex;justify-content:space-between"><span>Amount / Tax Mismatch</span><b>' + cnt(ed.mismatchCount || 0) + ' (' + mmPct + '%)</b></div><div style="height:9px;background:var(--panel-3);border-radius:99px;overflow:hidden;margin-top:4px"><div style="height:100%;width:' + mmPct + '%;background:#f59e0b"></div></div></div>' +
+        '<div><div style="display:flex;justify-content:space-between"><span>Missing in GSTR-2B (Hold)</span><b>' + cnt(ed.missingIn2bCount || 0) + ' (' + msPct + '%)</b></div><div style="height:9px;background:var(--panel-3);border-radius:99px;overflow:hidden;margin-top:4px"><div style="height:100%;width:' + msPct + '%;background:#ef4444"></div></div></div>' +
+      '</div>');
+
+    setHtml('expReconDonut',
+      '<div style="display:flex;align-items:center;justify-content:space-around;gap:12px;flex-wrap:wrap">' +
+        '<svg width="120" height="120" viewBox="0 0 42 42">' +
+          '<circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#ef4444" stroke-width="6"></circle>' +
+          '<circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#10b981" stroke-width="6" stroke-dasharray="' + mPct + ' ' + (100 - mPct) + '" stroke-dashoffset="25"></circle>' +
+          '<text x="21" y="22.5" font-size="7" font-weight="800" text-anchor="middle" fill="currentColor">' + mPct + '%</text>' +
+        '</svg>' +
+        '<div style="font-size:12px;display:grid;gap:5px">' +
+          '<div><b style="color:#10b981">&#9632;</b> Matched: <b>' + mPct + '%</b></div>' +
+          '<div><b style="color:#f59e0b">&#9632;</b> Mismatch: <b>' + mmPct + '%</b></div>' +
+          '<div><b style="color:#ef4444">&#9632;</b> Missing in 2B: <b>' + msPct + '%</b></div>' +
+        '</div>' +
+      '</div>');
+
+    // 5. Notice Management Register (Screenshots 5 & 6)
+    const nRows = out.notices || [];
+    setHtml('expNoticesTable',
+      '<thead><tr><th>Company Name</th><th>GSTIN</th><th>Description</th><th>Type</th><th>Issued On</th><th>Due On</th><th>Case ID</th><th>Sec</th><th class="num">Demand Amt</th><th>Status</th></tr></thead><tbody>' +
+      nRows.map((n) => {
+        const isOk = /Replied|Matched|Nil|Compliant/i.test(n.status || '');
+        return '<tr><td>' + esc(n.company) + '</td><td><code>' + esc(n.gstin) + '</code></td><td>' + esc(n.description) + '</td>' +
+          '<td><b>' + esc(n.type) + '</b></td><td>' + esc(fmtDmy(n.issuedOn)) + '</td><td>' + esc(fmtDmy(n.dueOn)) + '</td>' +
+          '<td><code>' + esc(n.caseId) + '</code></td><td>' + esc(n.section) + '</td><td class="num">' + money(n.demandAmt) + '</td>' +
+          '<td><span class="pill ' + (isOk ? 'good' : 'bad') + '" style="cursor:pointer" onclick="markNoticeReplied(\'' + esc(n.id) + '\')">' + esc(n.status) + '</span></td></tr>';
+      }).join('') +
+      '</tbody>');
   } catch (e) {
     // Non-fatal on initial load
   }

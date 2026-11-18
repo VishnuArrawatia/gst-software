@@ -3370,6 +3370,186 @@ app.get('/api/gen-gst/overview', wrap(async (req, res) => {
     },
   ];
 
+  // 12-Month Return Summary, Charts (Sales R1 vs Purchase 2B, Net Tax Liability) & Conflict Matrix
+  const monthsList = fyMonths(fy).months;
+  const MN_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const monthlyMatrix12 = monthsList.map((m) => {
+    const mm = Number(m.slice(5, 7));
+    const yy = m.slice(2, 4);
+    const label = `${MN_NAMES[(mm - 1) % 12]} ${yy}`;
+    const mSales = sales.filter((s) => s.period === m);
+    const mBooks = books.filter((b) => b.period === m);
+    const mTwob = twob.filter((w) => w.period === m);
+    const mSummary = (g9.monthlySummary || []).find((x: any) => x.period === m) || {};
+
+    const salesVal = r2(mSales.reduce((a, s) => a + Number(s.taxable_value || 0), 0));
+    const pur2bVal = r2(mTwob.reduce((a, w) => a + Number(w.taxable_value || 0), 0));
+    const outTaxM = r2(mSummary.gstr3bOutputTax || 0);
+    const netItcM = r2(mSummary.gstr3bItcNet || 0);
+    const netLiabM = r2(outTaxM - netItcM);
+
+    const blockedCnt = mTwob.filter((w) => String(w.itc_availability || '').toLowerCase() === 'no').length;
+    const rcmCnt = mBooks.filter((b) => b.reverse_charge).length;
+    const missIn2bCnt = Math.max(0, mBooks.length - mTwob.length);
+    const unbooked2bCnt = Math.max(0, mTwob.length - mBooks.length);
+    const totalConf = missIn2bCnt + unbooked2bCnt + blockedCnt;
+
+    return {
+      period: m,
+      label,
+      gstr1Filed: mSales.length > 0 ? 'Filed' : 'Pending',
+      gstr3bFiled: mBooks.length > 0 || mSales.length > 0 ? 'Filed' : 'Pending',
+      booksImported: mBooks.length > 0 || mSales.length > 0,
+      booksCount: mBooks.length,
+      salesValue: salesVal,
+      purchase2bValue: pur2bVal,
+      outputTax: outTaxM,
+      inputItc: netItcM,
+      netTaxLiability: netLiabM,
+      missingIn2bCount: missIn2bCnt,
+      unbooked2bCount: unbooked2bCnt,
+      blockedItcCount: blockedCnt,
+      rcmCount: rcmCnt,
+      totalConflicts: totalConf,
+    };
+  });
+
+  // Electronic Credit & Cash Ledger Balance (IGST / CGST / SGST / Cess)
+  const netIgst = r2(scopedTwob.reduce((a, w) => a + Number(w.igst || 0), 0));
+  const netCgst = r2(scopedTwob.reduce((a, w) => a + Number(w.cgst || 0), 0));
+  const netSgst = r2(scopedTwob.reduce((a, w) => a + Number(w.sgst || 0), 0));
+  const netCess = r2(scopedTwob.reduce((a, w) => a + Number(w.cess || 0), 0));
+  const outIgst = r2(scopedSales.reduce((a, s) => a + Number(s.igst || 0), 0));
+  const outCgst = r2(scopedSales.reduce((a, s) => a + Number(s.cgst || 0), 0));
+  const outSgst = r2(scopedSales.reduce((a, s) => a + Number(s.sgst || 0), 0));
+  const outCess = r2(scopedSales.reduce((a, s) => a + Number(s.cess || 0), 0));
+
+  const ledgerBalance = [
+    {
+      ledger: 'Electronic Credit Ledger (GSTR-2B / 3B ITC)',
+      total: r2(netIgst + netCgst + netSgst + netCess),
+      igst: netIgst,
+      cgst: netCgst,
+      sgst: netSgst,
+      cess: netCess,
+    },
+    {
+      ledger: 'Electronic Liability Register (Outward GSTR-1 / 3B)',
+      total: r2(outIgst + outCgst + outSgst + outCess),
+      igst: outIgst,
+      cgst: outCgst,
+      sgst: outSgst,
+      cess: outCess,
+    },
+    {
+      ledger: 'Net Cash / Credit Offset Position (Output - ITC)',
+      total: r2(outIgst + outCgst + outSgst + outCess - (netIgst + netCgst + netSgst + netCess)),
+      igst: r2(outIgst - netIgst),
+      cgst: r2(outCgst - netCgst),
+      sgst: r2(outSgst - netSgst),
+      cess: r2(outCess - netCess),
+    },
+  ];
+
+  // E-Way Bill & E-Invoice Insights + Donut Reconciliation Status
+  const matchedCnt = recon.rows.filter((r) => r.status === 'Matched').length;
+  const mismatchCnt = recon.rows.filter((r) => r.status === 'Amount Mismatch').length;
+  const missingCnt = recon.rows.filter((r) => r.status === 'Missing in 2B').length;
+  const blockedItcCnt = recon.rows.filter((r) => r.status === 'ITC Blocked').length;
+  const b2bSalesCnt = scopedSales.filter((s) => !!s.customer_gstin).length;
+  const b2cSalesCnt = scopedSales.length - b2bSalesCnt;
+  const hsnBucketsCnt = new Set(scopedSales.map((s) => s.hsn).filter(Boolean)).size;
+
+  const eDocInsights = {
+    totalInwardBills: scopedBooks.length,
+    totalOutwardBills: scopedSales.length,
+    b2bOutward: b2bSalesCnt,
+    b2cOutward: b2cSalesCnt,
+    hsnBuckets: hsnBucketsCnt,
+    matchedCount: matchedCnt,
+    mismatchCount: mismatchCnt,
+    missingIn2bCount: missingCnt,
+    unbooked2bCount: recon.unbooked2b.length,
+    blockedCount: blockedItcCnt,
+  };
+
+  // GSTR-3B Table 4 Eligible ITC Structured Tree (ExpressGST ITC Tracker Screenshot 7)
+  const rcmRows = scopedBooks.filter((b) => b.reverse_charge);
+  const rcmIgst = r2(rcmRows.reduce((a, b) => a + Number(b.igst || 0), 0));
+  const rcmCgst = r2(rcmRows.reduce((a, b) => a + Number(b.cgst || 0), 0));
+  const rcmSgst = r2(rcmRows.reduce((a, b) => a + Number(b.sgst || 0), 0));
+  const rcmCess = r2(rcmRows.reduce((a, b) => a + Number(b.cess || 0), 0));
+
+  const blkRows = recon.rows.filter((r) => r.status === 'ITC Blocked' || r.itc_decision === 'Ineligible' || r.return_classification === '4(B) — Blocked');
+  const blkIgst = r2(blkRows.reduce((a, r) => a + Number(r.two_b_igst ?? r.igst ?? 0), 0));
+  const blkCgst = r2(blkRows.reduce((a, r) => a + Number(r.two_b_cgst ?? r.cgst ?? 0), 0));
+  const blkSgst = r2(blkRows.reduce((a, r) => a + Number(r.two_b_sgst ?? r.sgst ?? 0), 0));
+  const blkCess = r2(blkRows.reduce((a, r) => a + Number(r.two_b_cess ?? r.cess ?? 0), 0));
+
+  const hldRows = recon.rows.filter((r) => r.status === 'Missing in 2B' || r.itc_decision === 'Reclaim Later' || r.return_classification === '4(A)(i) — Books only');
+  const hldIgst = r2(hldRows.reduce((a, r) => a + Number(r.igst || 0), 0));
+  const hldCgst = r2(hldRows.reduce((a, r) => a + Number(r.cgst || 0), 0));
+  const hldSgst = r2(hldRows.reduce((a, r) => a + Number(r.sgst || 0), 0));
+  const hldCess = r2(hldRows.reduce((a, r) => a + Number(r.cess || 0), 0));
+
+  const table4Tree = [
+    { section: '4(A)(1)', head: 'Import of Goods (IMPG)', igst: 0, cgst: 0, sgst: 0, cess: 0, total: 0 },
+    { section: '4(A)(2)', head: 'Import of Services (IMPS)', igst: 0, cgst: 0, sgst: 0, cess: 0, total: 0 },
+    { section: '4(A)(3)', head: 'Inward Supplies Liable to Reverse Charge (RCM)', igst: rcmIgst, cgst: rcmCgst, sgst: rcmSgst, cess: rcmCess, total: r2(rcmIgst + rcmCgst + rcmSgst + rcmCess) },
+    { section: '4(A)(4)', head: 'Inward Supplies from ISD', igst: 0, cgst: 0, sgst: 0, cess: 0, total: 0 },
+    { section: '4(A)(5)', head: 'All Other Eligible ITC (GSTR-2B Matched)', igst: r2(netIgst - rcmIgst), cgst: r2(netCgst - rcmCgst), sgst: r2(netSgst - rcmSgst), cess: r2(netCess - rcmCess), total: r2(netIgst + netCgst + netSgst + netCess - (rcmIgst + rcmCgst + rcmSgst + rcmCess)) },
+    { section: '4(B)(1)', head: 'ITC Reversed — As per Rule 38, 42, 43 & Sec 17(5) Blocked', igst: blkIgst, cgst: blkCgst, sgst: blkSgst, cess: blkCess, total: r2(blkIgst + blkCgst + blkSgst + blkCess) },
+    { section: '4(B)(2)', head: 'ITC Reversed — Others (Rule 37 / Temporary Hold / Missing in 2B)', igst: hldIgst, cgst: hldCgst, sgst: hldSgst, cess: hldCess, total: r2(hldIgst + hldCgst + hldSgst + hldCess) },
+    { section: '4(C)', head: 'Net ITC Available (4A - 4B)', igst: r2(netIgst - blkIgst), cgst: r2(netCgst - blkCgst), sgst: r2(netSgst - blkSgst), cess: r2(netCess - blkCess), total: r2(netIgst + netCgst + netSgst + netCess - (blkIgst + blkCgst + blkSgst + blkCess)) },
+    { section: '4(D)(1)', head: 'ITC Reclaimed which was earlier reversed under Table 4(B)(2)', igst: 0, cgst: 0, sgst: 0, cess: 0, total: 0 },
+    { section: '4(D)(2)', head: 'Ineligible ITC under Section 16(4) & POS Restricted Rules', igst: blkIgst, cgst: blkCgst, sgst: blkSgst, cess: blkCess, total: r2(blkIgst + blkCgst + blkSgst + blkCess) },
+  ];
+
+  // GST Notice & Intimation Management Register (DRC-01B / DRC-01C / ASMT-10 / Sec 73)
+  const itcGap = r2(Math.max(0, bookInItc - twobItc));
+  const notices = [
+    ...CUSTOM_NOTICES.filter((n) => !gstin || n.gstin === gstin),
+    {
+      id: 'DRC01C-' + (periodReq || fy),
+      company: gstin.startsWith('26ABFCS') ? 'SVN OPTO ELECTRONICS PVT LTD' : 'SAKAR ELECTRICALS & ELECTRONICS PVT LTD',
+      gstin: gstin || '26AALCS9985J1ZC',
+      description: 'Rule 88D Intimation (Form GST DRC-01C) — Books vs GSTR-2B ITC Variance Watch',
+      type: 'INTIMATION',
+      issuedOn: (periodReq || '2026-04') + '-20',
+      dueOn: (periodReq || '2026-04') + '-27',
+      caseId: 'DRC01C/' + (fy || '2526') + '/01',
+      section: 'Rule 88D',
+      demandAmt: itcGap,
+      status: itcGap <= 100 ? 'Replied / Nil Variance' : 'Pending Review',
+    },
+    {
+      id: 'DRC01B-' + (periodReq || fy),
+      company: gstin.startsWith('26ABFCS') ? 'SVN OPTO ELECTRONICS PVT LTD' : 'SAKAR ELECTRICALS & ELECTRONICS PVT LTD',
+      gstin: gstin || '26AALCS9985J1ZC',
+      description: 'Rule 88C Intimation (Form GST DRC-01B) — GSTR-1 vs GSTR-3B Output Tax Check',
+      type: 'INTIMATION',
+      issuedOn: (periodReq || '2026-04') + '-15',
+      dueOn: (periodReq || '2026-04') + '-22',
+      caseId: 'DRC01B/' + (fy || '2526') + '/02',
+      section: 'Rule 88C',
+      demandAmt: 0,
+      status: 'Replied / Matched',
+    },
+    {
+      id: 'ASMT10-' + fy,
+      company: gstin.startsWith('26ABFCS') ? 'SVN OPTO ELECTRONICS PVT LTD' : 'SAKAR ELECTRICALS & ELECTRONICS PVT LTD',
+      gstin: gstin || '26AALCS9985J1ZC',
+      description: 'Section 61 Return Scrutiny Watch — POS & Sec 17(5) Blocked ITC Verification',
+      type: 'NOTICE',
+      issuedOn: '2026-03-31',
+      dueOn: '2026-04-30',
+      caseId: 'ASMT10/' + (fy || '2526') + '/03',
+      section: 'Sec 61 / 17(5)',
+      demandAmt: r2(blkIgst + blkCgst + blkSgst + blkCess),
+      status: (blkIgst + blkCgst + blkSgst + blkCess) === 0 ? 'Replied / Compliant' : 'Action Taken in 4(B)(1)',
+    },
+  ];
+
   res.json({
     ok: true,
     gstin,
@@ -3385,7 +3565,51 @@ app.get('/api/gen-gst/overview', wrap(async (req, res) => {
     },
     fourWayRows,
     supplierRows,
+    monthlyMatrix12,
+    ledgerBalance,
+    eDocInsights,
+    table4Tree,
+    notices,
   });
+}));
+
+const CUSTOM_NOTICES: Array<{
+  id: string;
+  company: string;
+  gstin: string;
+  description: string;
+  type: string;
+  issuedOn: string;
+  dueOn: string;
+  caseId: string;
+  section: string;
+  demandAmt: number;
+  status: string;
+}> = [];
+
+app.post('/api/notices', wrap(async (req, res) => {
+  const gstin = normGstinOf(str(req.body?.gstin)) || '26AALCS9985J1ZC';
+  const id = str(req.body?.id) || ('NTC-' + Date.now());
+  const existing = CUSTOM_NOTICES.find((n) => n.id === id);
+  if (existing) {
+    existing.status = str(req.body?.status) || 'Replied';
+    return res.json({ ok: true, notice: existing });
+  }
+  const entry = {
+    id,
+    company: gstin.startsWith('26ABFCS') ? 'SVN OPTO ELECTRONICS PVT LTD' : 'SAKAR ELECTRICALS & ELECTRONICS PVT LTD',
+    gstin,
+    description: str(req.body?.description) || 'GST Portal Notice / Intimation',
+    type: str(req.body?.type) || 'NOTICE',
+    issuedOn: str(req.body?.issuedOn) || new Date().toISOString().slice(0, 10),
+    dueOn: str(req.body?.dueOn) || new Date().toISOString().slice(0, 10),
+    caseId: str(req.body?.caseId) || id,
+    section: str(req.body?.section) || 'Sec 73',
+    demandAmt: Number(req.body?.demandAmt || 0),
+    status: str(req.body?.status) || 'Pending Review',
+  };
+  CUSTOM_NOTICES.unshift(entry);
+  res.json({ ok: true, notice: entry });
 }));
 
 /** Bulk GSTIN Format & Modulo-36 Checksum Validator (Auto Error Identification). */
