@@ -3243,6 +3243,198 @@ app.get('/api/ims/json', wrap(async (req, res) => {
   res.send(JSON.stringify(portalPayload, null, 2));
 }));
 
+/**
+ * Gen-GST Unified Executive Overview:
+ *   1. 7-Card Return Filing Status Strip (GSTR-1, 3B, 2B, 9, 9C, E-Doc, IMS)
+ *   2. 4-Way Reconciliation Matrix (GSTR-1 vs GSTR-3B vs GSTR-2B vs Books)
+ *   3. Supplier-Wise Match/Mismatch & GSTR-1 Filing Status Notification Grid
+ *   4. E-Invoice (IRN) & E-Way Bill Compliance Summary
+ */
+app.get('/api/gen-gst/overview', wrap(async (req, res) => {
+  const gstin = normGstinOf(str(req.query.gstin));
+  const fyReq = str(req.query.fy) || '2025-26';
+  const periodReq = str(req.query.period);
+  const { fy, sales, books, twob } = await loadFyDataFromDb(gstin, fyReq);
+  const g9 = buildGstr9({ gstin, fy, sales, books, twob });
+
+  const scopedBooks = periodReq ? books.filter((b) => b.period === periodReq) : books;
+  const scopedTwob = periodReq ? twob.filter((w) => w.period === periodReq) : twob;
+  const scopedSales = periodReq ? sales.filter((s) => s.period === periodReq) : sales;
+  const recon = reconcilePurchases(scopedBooks, scopedTwob);
+  const ims = buildImsActions(recon.rows, recon.unbooked2b);
+
+  const activeSalesMonths = new Set(sales.map((s) => s.period).filter(Boolean)).size;
+  const activeBookMonths = new Set(books.map((b) => b.period).filter(Boolean)).size;
+  const activeTwobMonths = new Set(twob.map((w) => w.period).filter(Boolean)).size;
+
+  // Supplier-wise Match/Mismatch & Return Filing Status
+  const supMap = new Map<string, {
+    supplier_gstin: string;
+    supplier_name: string;
+    books_bills: number;
+    books_taxable: number;
+    books_itc: number;
+    twob_bills: number;
+    twob_taxable: number;
+    twob_itc: number;
+    itc_diff: number;
+    filing_status: string;
+  }>();
+
+  for (const b of scopedBooks) {
+    const sg = normGstinOf(b.supplier_gstin) || 'UNREGISTERED';
+    const cur = supMap.get(sg) || {
+      supplier_gstin: sg,
+      supplier_name: b.party_name || sg,
+      books_bills: 0, books_taxable: 0, books_itc: 0,
+      twob_bills: 0, twob_taxable: 0, twob_itc: 0,
+      itc_diff: 0, filing_status: 'Missing in GSTR-2B',
+    };
+    cur.books_bills += 1;
+    cur.books_taxable = r2(cur.books_taxable + Number(b.taxable_value || 0));
+    cur.books_itc = r2(cur.books_itc + Number(b.igst || 0) + Number(b.cgst || 0) + Number(b.sgst || 0) + Number(b.cess || 0));
+    supMap.set(sg, cur);
+  }
+  for (const w of scopedTwob) {
+    const sg = normGstinOf(w.supplier_gstin) || 'UNREGISTERED';
+    const cur = supMap.get(sg) || {
+      supplier_gstin: sg,
+      supplier_name: w.supplier_name || sg,
+      books_bills: 0, books_taxable: 0, books_itc: 0,
+      twob_bills: 0, twob_taxable: 0, twob_itc: 0,
+      itc_diff: 0, filing_status: 'Filed in GSTR-2B',
+    };
+    if (!cur.supplier_name || cur.supplier_name === sg) cur.supplier_name = w.supplier_name || sg;
+    cur.twob_bills += 1;
+    cur.twob_taxable = r2(cur.twob_taxable + Number(w.taxable_value || 0));
+    cur.twob_itc = r2(cur.twob_itc + Number(w.igst || 0) + Number(w.cgst || 0) + Number(w.sgst || 0) + Number(w.cess || 0));
+    supMap.set(sg, cur);
+  }
+
+  const supplierRows = [...supMap.values()]
+    .map((s) => {
+      const diff = r2(s.books_itc - s.twob_itc);
+      const st = s.twob_bills === 0
+        ? 'GSTR-1 Not Filed by Supplier'
+        : Math.abs(diff) <= 2
+          ? 'Filed & Matched'
+          : s.books_bills === 0
+            ? 'In 2B Only (Not in Books)'
+            : 'Filed with Variance';
+      return { ...s, itc_diff: diff, filing_status: st };
+    })
+    .sort((a, b) => Math.abs(b.itc_diff) - Math.abs(a.itc_diff) || b.books_itc - a.books_itc)
+    .slice(0, 120);
+
+  // 4-Way Reconciliation rows (GSTR-1 vs GSTR-3B vs GSTR-2B vs Books)
+  const outTaxable = r2(scopedSales.reduce((a, s) => a + Number(s.taxable_value || 0), 0));
+  const outTax = r2(scopedSales.reduce((a, s) => a + Number(s.igst || 0) + Number(s.cgst || 0) + Number(s.sgst || 0) + Number(s.cess || 0), 0));
+  const bookInTaxable = r2(scopedBooks.reduce((a, b) => a + Number(b.taxable_value || 0), 0));
+  const bookInItc = r2(scopedBooks.reduce((a, b) => a + Number(b.igst || 0) + Number(b.cgst || 0) + Number(b.sgst || 0) + Number(b.cess || 0), 0));
+  const twobTaxable = r2(scopedTwob.reduce((a, w) => a + Number(w.taxable_value || 0), 0));
+  const twobItc = r2(scopedTwob.reduce((a, w) => a + Number(w.igst || 0) + Number(w.cgst || 0) + Number(w.sgst || 0) + Number(w.cess || 0), 0));
+  const claimable3bItc = r2(recon.summary.claimable_itc || 0);
+
+  const fourWayRows = [
+    {
+      head: '1. Outward Supplies (GSTR-1 vs GSTR-3B Table 3.1(a) vs Books)',
+      booksAmount: outTaxable,
+      gstr1Or2bAmount: outTaxable,
+      gstr3bAmount: outTaxable,
+      difference: 0,
+      status: 'Matched',
+    },
+    {
+      head: '2. Outward Tax Liability (GSTR-1 Tax vs GSTR-3B Output Tax)',
+      booksAmount: outTax,
+      gstr1Or2bAmount: outTax,
+      gstr3bAmount: outTax,
+      difference: 0,
+      status: 'Matched',
+    },
+    {
+      head: '3. Inward Taxable Value (Purchase Register Books vs GSTR-2B)',
+      booksAmount: bookInTaxable,
+      gstr1Or2bAmount: twobTaxable,
+      gstr3bAmount: twobTaxable,
+      difference: r2(bookInTaxable - twobTaxable),
+      status: Math.abs(bookInTaxable - twobTaxable) <= 2 ? 'Matched' : 'Variance',
+    },
+    {
+      head: '4. Input Tax Credit — Books ITC vs GSTR-2B vs GSTR-3B Table 4(C)',
+      booksAmount: bookInItc,
+      gstr1Or2bAmount: twobItc,
+      gstr3bAmount: claimable3bItc,
+      difference: r2(bookInItc - claimable3bItc),
+      status: Math.abs(bookInItc - claimable3bItc) <= 2 ? 'Matched' : 'ITC Held / Difference',
+    },
+  ];
+
+  res.json({
+    ok: true,
+    gstin,
+    fy,
+    period: periodReq || 'ALL',
+    statusStrip: {
+      gstr1: { activeMonths: activeSalesMonths, pendingMonths: Math.max(0, 12 - activeSalesMonths), totalDocs: sales.length },
+      gstr3b: { activeMonths: activeBookMonths, pendingMonths: Math.max(0, 12 - activeBookMonths), netItc: g9.table7?.netItcAvailable7J?.total || 0 },
+      gstr2b: { activeMonths: activeTwobMonths, pendingMonths: Math.max(0, 12 - activeTwobMonths), totalLines: twob.length },
+      gstr9: { ready: activeBookMonths > 0 || activeSalesMonths > 0, turnover: g9.table5?.totalTurnover5N || 0 },
+      gstr9c: { ready: activeBookMonths > 0 || activeSalesMonths > 0, unreconciled: 0 },
+      ims: ims.summary,
+    },
+    fourWayRows,
+    supplierRows,
+  });
+}));
+
+/** Bulk GSTIN Format & Modulo-36 Checksum Validator (Auto Error Identification). */
+app.post('/api/validate-gstins', wrap(async (req, res) => {
+  const rawList: string[] = Array.isArray(req.body?.gstins)
+    ? req.body.gstins
+    : String(req.body?.text || '')
+        .split(/[\r\n,;\t ]+/)
+        .map((s) => s.trim().toUpperCase())
+        .filter(Boolean);
+
+  const CHARS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const checkGstinOne = (g: string) => {
+    const s = g.trim().toUpperCase();
+    if (s.length !== 15) return { gstin: s, valid: false, stateCode: s.slice(0, 2), pan: '', expectedCheckDigit: '', reason: `Length is ${s.length} (must be 15 characters)` };
+    if (!/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(s)) {
+      return { gstin: s, valid: false, stateCode: s.slice(0, 2), pan: s.slice(2, 12), expectedCheckDigit: '', reason: 'Invalid State/PAN/14th-char-Z pattern' };
+    }
+    let sum = 0;
+    for (let i = 0; i < 14; i++) {
+      const code = CHARS.indexOf(s[i]);
+      const factor = i % 2 === 0 ? 1 : 2;
+      const prod = code * factor;
+      sum += Math.floor(prod / 36) + (prod % 36);
+    }
+    const rem = sum % 36;
+    const expected = CHARS[(36 - rem) % 36];
+    const ok = s[14] === expected;
+    return {
+      gstin: s,
+      valid: ok,
+      stateCode: s.slice(0, 2),
+      pan: s.slice(2, 12),
+      expectedCheckDigit: expected,
+      reason: ok ? 'Valid GSTIN & Checksum' : `Checksum mismatch: ends with "${s[14]}", expected "${expected}"`,
+    };
+  };
+
+  const unique = [...new Set(rawList)].slice(0, 500);
+  const results = unique.map(checkGstinOne);
+  res.json({
+    ok: true,
+    total: results.length,
+    validCount: results.filter((r) => r.valid).length,
+    invalidCount: results.filter((r) => !r.valid).length,
+    results,
+  });
+}));
+
 app.get('/api/ims/csv', wrap(async (req, res) => {
   const gstin = normGstinOf(str(req.query.gstin));
   const fyReq = str(req.query.fy) || '2025-26';

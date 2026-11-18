@@ -770,6 +770,139 @@ tr.clickable { cursor: default; }
 @media (max-width: 1020px) { .gst-hero-wrap { grid-template-columns: 1fr; } .gst-bullet-grid { grid-template-columns: 1fr; } }
 @media (max-width: 720px) { .gst-feature-grid { grid-template-columns: repeat(2, 1fr); } }
 
+/* ---- Gen-GST Interactive Command Workspace (Screenshots 2-5 Style) ---- */
+.gen-showcase-shell {
+  background: linear-gradient(180deg, #061336 0%, #091c4a 100%);
+  border: 1px solid #1e3a8a; border-radius: 20px;
+  padding: 26px 26px 28px; margin-bottom: 22px; color: #f8fafc;
+  box-shadow: 0 22px 48px -20px rgba(6, 19, 54, 0.55);
+}
+.gen-showcase-title {
+  text-align: center; font-size: 24px; font-weight: 800; color: #ffffff;
+  margin-bottom: 22px; letter-spacing: -0.02em;
+}
+.gen-showcase-title span { color: #3b82f6; }
+.gen-workspace-grid {
+  display: grid; grid-template-columns: 245px 1fr; gap: 22px; align-items: start;
+}
+.gen-left-tabs { display: flex; flex-direction: column; gap: 13px; }
+.gen-left-tab {
+  position: relative;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  background: #ffffff; color: #1d4ed8;
+  border: 1px solid #dbeafe; border-radius: 10px;
+  padding: 13px 16px; font-size: 13.5px; font-weight: 800;
+  cursor: pointer; text-align: left;
+  box-shadow: 0 6px 0 #1e40af, 0 12px 20px rgba(0, 0, 0, 0.28);
+  transition: all 0.16s ease;
+}
+.gen-left-tab:hover {
+  transform: translateY(-2px); color: #0f172a;
+  box-shadow: 0 8px 0 #2563eb, 0 14px 24px rgba(0, 0, 0, 0.35);
+}
+.gen-left-tab.active {
+  background: #ffffff; color: #0f172a; border-color: #3b82f6;
+  box-shadow: 0 6px 0 #3b82f6, 0 0 0 2px #60a5fa;
+}
+.gen-left-tab .arr {
+  font-size: 16px; font-weight: 900; color: #0f172a;
+}
+
+.gen-screen-frame {
+  background: #ffffff; color: #0f172a;
+  border: 2px solid #334155; border-radius: 14px; overflow: hidden;
+  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.45);
+}
+[data-theme="dark"] .gen-screen-frame {
+  background: #0f172a; color: #f1f5f9; border-color: #334155;
+}
+.gen-screen-topbar {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  background: #1e293b; color: #ffffff; padding: 10px 16px; font-size: 12px;
+}
+.gen-status-strip {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); gap: 8px;
+  padding: 12px 14px; background: #e0f2fe; border-bottom: 1px solid #bae6fd;
+}
+[data-theme="dark"] .gen-status-strip {
+  background: #131c31; border-bottom-color: #1e293b;
+}
+.gen-ret-box {
+  background: #ffffff; border: 1px solid #93c5fd; border-radius: 8px; overflow: hidden;
+  text-align: center; font-size: 11px; cursor: pointer; transition: transform 0.14s ease;
+}
+[data-theme="dark"] .gen-ret-box { background: #0f172a; border-color: #3b82f6; }
+.gen-ret-box:hover { transform: translateY(-2px); }
+.gen-ret-head {
+  background: #2563eb; color: #ffffff; font-weight: 800; padding: 5px 6px; font-size: 11px;
+}
+.gen-ret-body {
+  display: flex; justify-content: space-around; padding: 5px 6px; font-weight: 700; color: #0f172a;
+}
+[data-theme="dark"] .gen-ret-body { color: #e2e8f0; }
+.gen-ret-body .f { color: #059669; }
+.gen-ret-body .p { color: #d97706; }
+
+.gen-body-split {
+  display: grid; grid-template-columns: 1fr 240px; gap: 0;
+}
+.gen-main-pane { padding: 14px 16px; min-width: 0; }
+.gen-quick-pane {
+  border-left: 1px solid var(--line); background: var(--panel-3); padding: 12px 14px;
+}
+.gen-quick-head {
+  background: #2563eb; color: #fff; font-weight: 800; font-size: 12px;
+  padding: 6px 10px; border-radius: 6px; margin-bottom: 10px;
+}
+.gen-quick-list { list-style: none; padding: 0; margin: 0 0 12px; display: grid; gap: 6px; }
+.gen-quick-list li a {
+  display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600;
+  color: var(--text-2); padding: 4px 6px; border-radius: 6px; cursor: pointer;
+}
+.gen-quick-list li a:hover { background: var(--accent-soft); color: #2563eb; text-decoration: none; }
+
+.gen-bottom-dock {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 10px 14px; background: var(--panel-3); border-top: 1px solid var(--line);
+}
+.gen-dock-btn {
+  background: #1e3a8a; color: #ffffff; border: 0; border-radius: 999px;
+  padding: 6px 13px; font-size: 11.5px; font-weight: 700; cursor: pointer;
+  box-shadow: none;
+}
+.gen-dock-btn:hover { background: #2563eb; }
+.gen-footer-bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  background: #1e293b; color: #cbd5e1; padding: 7px 16px; font-size: 11.5px; font-weight: 600;
+}
+
+/* ---- Deep Navy Two-Column Feature Directory (Screenshot 1 Style) ---- */
+.gen-navy-directory {
+  display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 18px;
+  background: #061336; border: 1px solid #1e3a8a; border-radius: 18px;
+  padding: 22px; margin-bottom: 22px; color: #f1f5f9;
+}
+.gen-navy-col { display: flex; flex-direction: column; gap: 14px; }
+.gen-navy-card {
+  background: #465785; border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 10px; padding: 16px 18px; color: #ffffff;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+}
+.gen-navy-card h3 {
+  margin: 0 0 10px; font-size: 15px; font-weight: 800; color: #ffffff;
+  text-transform: none; letter-spacing: -0.01em;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+}
+.gen-navy-card ul {
+  margin: 0; padding-left: 18px; display: grid; gap: 7px; font-size: 12.5px; line-height: 1.5; color: #f1f5f9;
+}
+@media (max-width: 1100px) {
+  .gen-workspace-grid { grid-template-columns: 1fr; }
+  .gen-left-tabs { flex-direction: row; flex-wrap: wrap; }
+  .gen-body-split { grid-template-columns: 1fr; }
+  .gen-navy-directory { grid-template-columns: 1fr; }
+}
+
 /* ------------------------------------------------------------ responsive */
 @media (max-width: 1400px) { .crumb { display: none; } }
 #ctxPeriod { min-width: 118px; }
@@ -1052,6 +1185,241 @@ tr.clickable { cursor: default; }
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
             </div>
             <div class="gst-feat-title">Reports &amp; Database Backup</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============== SIMPLIFIED USER INTERFACE OF GST SOFTWARE (Screenshots 2-5) ============== -->
+      <div class="gen-showcase-shell">
+        <div class="gen-showcase-title">
+          Simplified <span>User Interface</span> of GST Control ERP &mdash; Vishnu Intelligence Services
+        </div>
+
+        <div class="gen-workspace-grid">
+          <!-- Left Floating White Arrow Tabs -->
+          <div class="gen-left-tabs" id="genLeftTabs">
+            <button type="button" class="gen-left-tab active" data-gentab="dashboard" onclick="switchGenTab('dashboard')">
+              <span>GST Executive Dashboard</span><span class="arr">&rarr;</span>
+            </button>
+            <button type="button" class="gen-left-tab" data-gentab="suppliers" onclick="switchGenTab('suppliers')">
+              <span>Supplier Return Status</span><span class="arr">&#8599;</span>
+            </button>
+            <button type="button" class="gen-left-tab" data-gentab="ledgers" onclick="switchGenTab('ledgers')">
+              <span>GST Various Ledgers</span><span class="arr">&#8599;</span>
+            </button>
+            <button type="button" class="gen-left-tab" data-gentab="validator" onclick="switchGenTab('validator')">
+              <span>Auto Error &amp; GSTIN Check</span><span class="arr">&#8599;</span>
+            </button>
+            <button type="button" class="gen-left-tab" data-gentab="einvoice" onclick="go('purchase')">
+              <span>GST E-Invoice &amp; E-WayBill</span><span class="arr">&#8599;</span>
+            </button>
+            <button type="button" class="gen-left-tab" data-gentab="gstr1form" onclick="go('outward')">
+              <span>GSTR-1 &amp; 1A Outward Form</span><span class="arr">&#8599;</span>
+            </button>
+            <button type="button" class="gen-left-tab" data-gentab="itcliab" onclick="go('gstr9')">
+              <span>GSTR-9, 9C &amp; ITC Liability</span><span class="arr">&#8599;</span>
+            </button>
+          </div>
+
+          <!-- Right Interactive Workspace Frame -->
+          <div class="gen-screen-frame">
+            <div class="gen-screen-topbar">
+              <div style="display:flex;align-items:center;gap:10px">
+                <span style="font-weight:900;color:#38bdf8;letter-spacing:0.04em">GST CONTROL ERP</span>
+                <span style="opacity:0.75">|</span>
+                <span id="genTopCrumb">GST &gt; EXECUTIVE DASHBOARD &gt; 4-WAY RECONCILIATION</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <button type="button" class="sm" style="background:#f97316;padding:4px 10px;font-size:11px" onclick="toggleTheme()">Theme Change</button>
+                <button type="button" class="sm" style="background:#2563eb;padding:4px 10px;font-size:11px" onclick="loadGenOverview()">Refresh Live Data</button>
+              </div>
+            </div>
+
+            <!-- 7-Return Status Strip across the top of the workspace -->
+            <div class="gen-status-strip" id="genStatusStrip">
+              <div class="gen-ret-box" onclick="go('outward')">
+                <div class="gen-ret-head">GSTR-01 (Monthly)</div>
+                <div class="gen-ret-body"><span class="f">Active <b id="gs1Act">0</b></span><span class="p">Pend <b id="gs1Pen">12</b></span></div>
+              </div>
+              <div class="gen-ret-box" onclick="go('purchase')">
+                <div class="gen-ret-head">GSTR-03B (Monthly)</div>
+                <div class="gen-ret-body"><span class="f">Active <b id="gs3bAct">0</b></span><span class="p">Pend <b id="gs3bPen">12</b></span></div>
+              </div>
+              <div class="gen-ret-box" onclick="go('purchase')">
+                <div class="gen-ret-head">GSTR-2B (Inward)</div>
+                <div class="gen-ret-body"><span class="f">Months <b id="gs2bAct">0</b></span><span class="p">Pend <b id="gs2bPen">12</b></span></div>
+              </div>
+              <div class="gen-ret-box" onclick="go('pl')">
+                <div class="gen-ret-head">P&amp;L vs GSTR-1</div>
+                <div class="gen-ret-body"><span class="f">Audit Ready</span></div>
+              </div>
+              <div class="gen-ret-box" onclick="go('gstr9')">
+                <div class="gen-ret-head">GSTR-9 (Annual)</div>
+                <div class="gen-ret-body"><span class="f" id="gs9St">Compiled</span></div>
+              </div>
+              <div class="gen-ret-box" onclick="go('gstr9')">
+                <div class="gen-ret-head">GSTR-9C (Audit)</div>
+                <div class="gen-ret-body"><span class="f" id="gs9cSt">Self-Cert</span></div>
+              </div>
+              <div class="gen-ret-box" onclick="go('gstr9')">
+                <div class="gen-ret-head">IMS Portal Desk</div>
+                <div class="gen-ret-body"><span class="f">Acc <b id="gsImsAcc">0</b></span><span class="p">Pend <b id="gsImsPen">0</b></span></div>
+              </div>
+            </div>
+
+            <div class="gen-body-split">
+              <!-- Center Active Tab Content -->
+              <div class="gen-main-pane">
+                <!-- Pane 1: 4-Way Reconciliation (1 vs 3B vs 2B vs Books) -->
+                <div id="genPane-dashboard">
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px">
+                    <b style="font-size:13px;color:var(--text)">4-Way Return &amp; ITC Reconciliation (Books vs GSTR-1/2B vs GSTR-3B)</b>
+                    <span class="pill good" style="font-size:11px">Live PostgreSQL Figures</span>
+                  </div>
+                  <div class="scroll" style="max-height:260px"><table id="genFourWayTable"></table></div>
+                </div>
+
+                <!-- Pane 2: Supplier Return Filing Status & Seller-Wise Match/Mismatch -->
+                <div id="genPane-suppliers" hidden>
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px">
+                    <b style="font-size:13px;color:var(--text)">Supplier Return Filing Status &amp; Seller-Wise Match / Mismatch Notification</b>
+                    <span class="pill info" style="font-size:11px">GSTR-2B vs Purchase Register</span>
+                  </div>
+                  <div class="scroll" style="max-height:260px"><table id="genSupplierTable"></table></div>
+                </div>
+
+                <!-- Pane 3: Various Ledgers Preview -->
+                <div id="genPane-ledgers" hidden>
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px">
+                    <b style="font-size:13px;color:var(--text)">GST Various Ledgers — RCM Liability vs ITC, ECRRS Credit Reversal &amp; 2B Rejected</b>
+                    <button type="button" class="sm" onclick="go('gstr9')">Open Full Annual Ledgers &rarr;</button>
+                  </div>
+                  <div class="scroll" style="max-height:260px"><table id="genLedgersPreviewTable"></table></div>
+                </div>
+
+                <!-- Pane 4: Bulk GSTIN & Checksum Validator -->
+                <div id="genPane-validator" hidden>
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px">
+                    <b style="font-size:13px;color:var(--text)">Auto Error Identification — Bulk GSTIN &amp; Modulo-36 Checksum Validator</b>
+                    <button type="button" class="sm" onclick="runBulkGstinValidation(true)">Validate Current Period Suppliers</button>
+                  </div>
+                  <div class="row" style="margin-bottom:8px">
+                    <input type="text" id="bulkGstinInput" placeholder="Paste GSTINs separated by comma or space (e.g. 26AALCS9985J1ZC, 27AAFCC9473R1ZP)" style="flex:1" />
+                    <button type="button" class="sm" onclick="runBulkGstinValidation(false)">Validate GSTINs</button>
+                  </div>
+                  <div class="scroll" style="max-height:210px"><table id="genValidatorTable"></table></div>
+                </div>
+              </div>
+
+              <!-- Right Quick Links Sidebar (Exact Gen GST Style) -->
+              <div class="gen-quick-pane">
+                <div class="gen-quick-head">Quick Links &mdash; Reconciliation</div>
+                <ul class="gen-quick-list">
+                  <li><a onclick="go('outward')">&#10148; GSTR-01 vs Books Sales</a></li>
+                  <li><a onclick="go('purchase')">&#10148; Input Credit Ledger vs GSTR-2B</a></li>
+                  <li><a onclick="go('purchase')">&#10148; GSTR-3B Table 4 vs GSTR-2B</a></li>
+                  <li><a onclick="go('pl')">&#10148; P&amp;L Turnover vs GSTR-01</a></li>
+                  <li><a onclick="switchGenTab('suppliers')">&#10148; Supplier Filing Status</a></li>
+                </ul>
+                <div class="gen-quick-head">Quick Links &mdash; Reports</div>
+                <ul class="gen-quick-list" style="margin-bottom:0">
+                  <li><a onclick="go('hsn')">&#10148; GSTR-01 HSN Table 12 Report</a></li>
+                  <li><a onclick="go('purchase')">&#10148; GSTR-03B Table 4 ITC Report</a></li>
+                  <li><a onclick="go('gstr9')">&#10148; GSTR-9 &amp; 9C Audit Report</a></li>
+                  <li><a onclick="download('/api/report/complete.xlsx','GST_Reconciliation.xlsx')">&#10148; Complete 12-Sheet Workbook</a></li>
+                </ul>
+              </div>
+            </div>
+
+            <!-- Bottom Action Dock (Screenshot 3 Navy Pills) -->
+            <div class="gen-bottom-dock">
+              <button type="button" class="gen-dock-btn" onclick="go('sales')">Import Sales / T/O</button>
+              <button type="button" class="gen-dock-btn" onclick="go('hsn')">HSN Summary</button>
+              <button type="button" class="gen-dock-btn" onclick="switchGenTab('suppliers')">Supplier Return Status</button>
+              <button type="button" class="gen-dock-btn" onclick="shareWhatsAppSummary('gstr9')">WhatsApp / Share</button>
+              <button type="button" class="gen-dock-btn" onclick="go('outward')">GSTR-1 Recon</button>
+              <button type="button" class="gen-dock-btn" onclick="go('portal')">Import Portal JSON</button>
+              <button type="button" class="gen-dock-btn" onclick="go('purchase')">Compare With GSTR-3B</button>
+              <button type="button" class="gen-dock-btn" onclick="downloadGstr9Excel()">Download GSTR-9/9C (.xlsx)</button>
+            </div>
+
+            <!-- Bottom Status Footer Bar -->
+            <div class="gen-footer-bar">
+              <span>Year: <b id="genFootFy">2025-26</b></span>
+              <span>Month: <b id="genFootMo">All</b></span>
+              <span>Company: <b id="genFootCo">SAKAR &amp; SVN GROUP</b></span>
+              <span>GSTIN: <b id="genFootGstin">26AALCS9985J1ZC</b></span>
+              <span>Brand: <b>Vishnu Intelligence Services</b></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============== DEEP NAVY TWO-COLUMN FEATURE DIRECTORY (Screenshot 1) ============== -->
+      <div class="gen-navy-directory">
+        <div class="gen-navy-col">
+          <div class="gen-navy-card">
+            <h3>
+              <span>e-Filing GSTR Forms (GSTR-1, 1A, 3B, 9 &amp; 9C)</span>
+              <button type="button" class="sm" onclick="go('outward')">Open e-Filing &rarr;</button>
+            </h3>
+            <ul>
+              <li><b>GSTR-1 &amp; 1A:</b> One-click generation of portal JSON from Books Sales Register, amendment support (B2BA/CDNRA), portal pre-filled JSON/Excel import, and invoice-level dashboard.</li>
+              <li><b>Turnover Report:</b> Automatically derived from GSTR-1, GSTR-3B, and Trial Balance / P&amp;L manual input with head-wise differences.</li>
+              <li><b>GSTR-3B:</b> Automatic Table 3.1(a)/(d) RCM &amp; Table 4 Input Tax Credit offset calculation with eligible, blocked Sec 17(5), and carry-forward buckets.</li>
+              <li><b>GSTR-9 Annual Return:</b> Single-click compilation from GSTR-1, 3B &amp; Purchase Register; matched return-wise, invoice-wise, month-wise &amp; rate-wise (0% to 40%).</li>
+              <li><b>GSTR-9C Audit Form:</b> Complete self-certification reconciliation statement with Auditor Master, UDIN, 7-Sheet Excel export &amp; Portal JSON validation.</li>
+            </ul>
+          </div>
+          <div class="gen-navy-card">
+            <h3>
+              <span>Return Filing Status &amp; IMS Portal Action</span>
+              <button type="button" class="sm" onclick="switchGenTab('suppliers')">Check Status &rarr;</button>
+            </h3>
+            <ul>
+              <li>Get supplier-wise GSTR-1 filing status &amp; GSTR-2B reflection to know whether vendor GSTR-1 is filed and when ITC credit is claimable.</li>
+              <li><b>IMS (Invoice Management System):</b> Direct Accept / Reject / Pending portal JSON &amp; CSV export.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="gen-navy-col">
+          <div class="gen-navy-card">
+            <h3>
+              <span>Furnish HSN Code (Table 12 &amp; Table 17/18)</span>
+              <button type="button" class="sm" onclick="go('hsn')">Open HSN &rarr;</button>
+            </h3>
+            <ul>
+              <li>Generates B2B &amp; B2C HSN summary with UQC &amp; Quantity from SAP/Tally/Excel or Copy-Paste register and compares side-by-side against Portal Table 12.</li>
+            </ul>
+          </div>
+          <div class="gen-navy-card">
+            <h3>
+              <span>Match Mismatch Report Notification</span>
+              <button type="button" class="sm" onclick="switchGenTab('suppliers')">Seller-Wise Match &rarr;</button>
+            </h3>
+            <ul>
+              <li>Compares complete tax data with every seller (Supplier GSTIN-wise) across accounting books, GSTR-2B JSON/Excel, and GSTR-3B claimable ITC.</li>
+            </ul>
+          </div>
+          <div class="gen-navy-card">
+            <h3>
+              <span>Auto Error Identification &amp; Bulk GSTIN Validator</span>
+              <button type="button" class="sm" onclick="switchGenTab('validator')">Validate GSTINs &rarr;</button>
+            </h3>
+            <ul>
+              <li>Validates GSTIN numbers in bulk (15-char State Code, PAN &amp; Modulo-36 Checksum digit) plus pre-validates GSTR-1/9/9C Portal JSON files.</li>
+            </ul>
+          </div>
+          <div class="gen-navy-card">
+            <h3>
+              <span>4-Way Reconciliation, Purchase &amp; Sales Reports</span>
+              <button type="button" class="sm" onclick="go('purchase')">Open Recon &rarr;</button>
+            </h3>
+            <ul>
+              <li><b>4-Way Reconciliation:</b> GSTR-3B vs Input Credit Register, GSTR-2B vs Books, GSTR-3B vs GSTR-2B, and GSTR-3B vs GSTR-1 with amendment effect.</li>
+              <li><b>Purchase &amp; Sales Reports:</b> Monthly, Quarterly &amp; Annual supplier/customer GSTIN-wise and rate-wise reports with 1-click Excel &amp; WhatsApp export.</li>
+            </ul>
           </div>
         </div>
       </div>
@@ -2164,6 +2532,7 @@ const NUM_FIELDS = new Set([
   'rcmLiability31d', 'rcmItc4A3', 'variance',
   'openingReclaimable', 'reversedOrHeld4B2', 'reclaimed4A5_4D1', 'permanentSec17_5_4B1', 'closingReclaimable',
   'twobAvailableItc', 'twobRejectedItc', 'outwardCreditNoteTax', 'inwardCreditNoteItc', 'negativeLiabilityCarryover',
+  'booksAmount', 'gstr1Or2bAmount', 'gstr3bAmount', 'books_bills', 'books_taxable', 'books_itc', 'twob_bills', 'twob_taxable', 'twob_itc', 'itc_diff',
 ]);
 
 function tableHtml(cols, rows, emptyText) {
@@ -2500,6 +2869,7 @@ function refreshContext(reloadMonths) {
 // Dashboard — the month strip and the monthly run
 // ---------------------------------------------------------------------------
 async function loadHome() {
+  void loadGenOverview();
   const strip = el('monthStrip');
   if (strip) strip.innerHTML = '<tbody><tr><td class="hint">loading\u2026</td></tr></tbody>';
   let out = { ready: false, rows: [] };
@@ -4336,6 +4706,111 @@ window.toggleTheme = function () {
   try { localStorage.setItem('gst_erp_theme', next); } catch (_) {}
   updateThemeBtn();
 };
+
+let LAST_GEN_OVERVIEW = null;
+
+function switchGenTab(tab) {
+  const tabs = ['dashboard', 'suppliers', 'ledgers', 'validator'];
+  for (const t of tabs) {
+    const pane = el('genPane-' + t);
+    if (pane) pane.hidden = t !== tab;
+  }
+  const btns = document.querySelectorAll('#genLeftTabs .gen-left-tab');
+  btns.forEach((b) => {
+    const isAct = b.getAttribute('data-gentab') === tab;
+    b.className = 'gen-left-tab' + (isAct ? ' active' : '');
+    const arr = b.querySelector('.arr');
+    if (arr) arr.innerHTML = isAct ? '&rarr;' : '&#8599;';
+  });
+  const titles = {
+    dashboard: 'GST > EXECUTIVE DASHBOARD > 4-WAY RECONCILIATION',
+    suppliers: 'GST > RETURN > SUPPLIER GSTR-1 FILING STATUS & SELLER MATCH',
+    ledgers: 'GST > LEDGERS > RCM LIABILITY, ECRRS & 2B REJECTED ITC',
+    validator: 'GST > TOOLS > AUTO ERROR IDENTIFICATION & BULK GSTIN VALIDATOR',
+  };
+  setHtml('genTopCrumb', esc(titles[tab] || titles.dashboard));
+  if (tab === 'validator' && !el('genValidatorTable').innerHTML) {
+    runBulkGstinValidation(true);
+  }
+}
+
+async function loadGenOverview() {
+  try {
+    const qs = 'gstin=' + enc(CTX.gstin || '') + '&fy=' + enc(CTX.fy || '2025-26') + '&period=' + enc(CTX.period || '');
+    const out = await api('/api/gen-gst/overview?' + qs);
+    LAST_GEN_OVERVIEW = out;
+
+    const st = out.statusStrip || {};
+    if (st.gstr1) { setHtml('gs1Act', cnt(st.gstr1.activeMonths)); setHtml('gs1Pen', cnt(st.gstr1.pendingMonths)); }
+    if (st.gstr3b) { setHtml('gs3bAct', cnt(st.gstr3b.activeMonths)); setHtml('gs3bPen', cnt(st.gstr3b.pendingMonths)); }
+    if (st.gstr2b) { setHtml('gs2bAct', cnt(st.gstr2b.activeMonths)); setHtml('gs2bPen', cnt(st.gstr2b.pendingMonths)); }
+    if (st.ims) { setHtml('gsImsAcc', cnt(st.ims.accept_count || 0)); setHtml('gsImsPen', cnt(st.ims.pending_count || 0)); }
+
+    setHtml('genFootFy', esc(CTX.fy || '2025-26'));
+    setHtml('genFootMo', esc(CTX.period ? monthLabel(CTX.period) : 'All Months'));
+    const co = (CTX.companies || []).find((x) => String(x.id) === String(CTX.company));
+    setHtml('genFootCo', esc(co ? dispCompany(co.name) : 'SAKAR & SVN GROUP'));
+    setHtml('genFootGstin', esc(CTX.gstin || 'ALL GSTINs'));
+
+    setHtml('genFourWayTable', tableHtml([
+      ['head', 'Reconciliation Head'],
+      ['booksAmount', 'Accounting Books (Rs)'],
+      ['gstr1Or2bAmount', 'Portal GSTR-1 / 2B (Rs)'],
+      ['gstr3bAmount', 'GSTR-3B Return (Rs)'],
+      ['difference', 'Difference (Rs)'],
+      ['status', 'Status'],
+    ], out.fourWayRows || [], 'No reconciliation data.'));
+
+    setHtml('genSupplierTable', tableHtml([
+      ['supplier_gstin', 'Supplier GSTIN'],
+      ['supplier_name', 'Supplier Name'],
+      ['books_bills', 'Books Bills'],
+      ['books_taxable', 'Books Taxable'],
+      ['books_itc', 'Books ITC'],
+      ['twob_bills', '2B Bills'],
+      ['twob_taxable', '2B Taxable'],
+      ['twob_itc', '2B ITC'],
+      ['itc_diff', 'ITC Diff (Books - 2B)'],
+      ['filing_status', 'Supplier Filing Status'],
+    ], out.supplierRows || [], 'No supplier rows for this filter.'));
+
+    setHtml('genLedgersPreviewTable', tableHtml([
+      ['head', 'Ledger / Statement'],
+      ['booksAmount', 'Books / Gross (Rs)'],
+      ['gstr1Or2bAmount', 'Portal / 2B (Rs)'],
+      ['gstr3bAmount', 'Net Claimed / Payable (Rs)'],
+      ['difference', 'Balance / Variance (Rs)'],
+      ['status', 'Status'],
+    ], out.fourWayRows || [], 'No ledger rows.'));
+  } catch (e) {
+    // Non-fatal on initial load
+  }
+}
+
+async function runBulkGstinValidation(fromSuppliers) {
+  let list = [];
+  if (fromSuppliers && LAST_GEN_OVERVIEW && Array.isArray(LAST_GEN_OVERVIEW.supplierRows)) {
+    list = LAST_GEN_OVERVIEW.supplierRows.map((r) => r.supplier_gstin).filter((g) => g && g !== 'UNREGISTERED');
+    if (CTX.gstin) list.unshift(CTX.gstin);
+  } else {
+    const raw = (el('bulkGstinInput') && el('bulkGstinInput').value) || '';
+    list = raw.split(/[\r\n,;\t ]+/).map((s) => s.trim()).filter(Boolean);
+  }
+  if (!list.length) list = ['26AALCS9985J1ZC', '24AALCS9985J1ZG', '26ABFCS9511H1Z7', '27AAFCC9473R1ZP'];
+  try {
+    const res = await postJson('/api/validate-gstins', { gstins: list });
+    setHtml('genValidatorTable',
+      '<thead><tr><th>GSTIN</th><th>State</th><th>PAN</th><th>Expected Check Digit</th><th>Validation Status</th></tr></thead><tbody>' +
+      (res.results || []).map((r) =>
+        '<tr><td><code>' + esc(r.gstin) + '</code></td><td>' + esc(r.stateCode) + '</td><td>' + esc(r.pan) + '</td>' +
+        '<td><b>' + esc(r.expectedCheckDigit || '—') + '</b></td>' +
+        '<td><span class="pill ' + (r.valid ? 'good' : 'bad') + '">' + esc(r.reason) + '</span></td></tr>'
+      ).join('') +
+      '</tbody>');
+  } catch (e) {
+    toast(errText(e), 'err');
+  }
+}
 
 updateThemeBtn();
 boot();
