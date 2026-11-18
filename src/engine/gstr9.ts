@@ -443,10 +443,12 @@ export function buildGstr9(input: BuildGstr9Input): Gstr9Model {
         ineligible8F = addItcMoney(ineligible8F, { igst: ig, cgst: cg, sgst: sg, cess: ce });
       }
 
+      const hasCls = Boolean(cls && cls !== 'Pending Review');
+      const hasDec = Boolean(dec && dec !== 'Pending Review');
       const isClaimed =
         cls === '4(A) — Claimed' ||
-        (!cls && dec === 'Claim') ||
-        (!cls && (!dec || dec === 'Pending Review') && (r.status === 'Matched' || r.status === 'Amount Mismatch'));
+        (!hasCls && dec === 'Claim') ||
+        (!hasCls && !hasDec && (r.status === 'Matched' || r.status === 'Amount Mismatch'));
       if (!isClaimed || (r.itc_decision_month && spilloverSet.has(r.itc_decision_month))) continue;
 
       if (r.reverse_charge) {

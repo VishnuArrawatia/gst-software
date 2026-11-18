@@ -3899,6 +3899,54 @@ section('34. Category 1 fixes — 40% slab, 2B JSON edge cases, 3B ITC decisions
       posCnSales.rows[0]?.igst,
       posCnSales.rows[0]?.invoice_value,
     ], [-5000, -900, -5900]);
+
+    // 10. GSTR-9 Table 6B / 7J when PostgreSQL purchase_lines have default 'Pending Review' return_classification
+    const g9PendingCls = buildGstr9({
+      gstin: '26AALCS9985J1ZC',
+      fy: '2025-26',
+      sales: [],
+      books: [{
+        id: 'db#1',
+        our_gstin: '26AALCS9985J1ZC',
+        party_name: 'Vendor Default Cls',
+        supplier_gstin: '24AAACA1234A1Z5',
+        invoice_no: 'INV-DB-1',
+        invoice_date: '2025-04-10',
+        period: '2025-04',
+        taxable_value: 100000,
+        igst: 18000,
+        cgst: 0,
+        sgst: 0,
+        cess: 0,
+        itc_decision: 'Pending Review',
+        return_classification: 'Pending Review',
+      }],
+      twob: [{
+        id: '2b#1',
+        our_gstin: '26AALCS9985J1ZC',
+        supplier_gstin: '24AAACA1234A1Z5',
+        supplier_name: 'Vendor Default Cls',
+        invoice_no: 'INV-DB-1',
+        invoice_type: 'Regular',
+        invoice_date: '2025-04-10',
+        invoice_value: 118000,
+        place_of_supply: '26',
+        reverse_charge: false,
+        taxable_value: 100000,
+        igst: 18000,
+        cgst: 0,
+        sgst: 0,
+        cess: 0,
+        period: '2025-04',
+        portal_fp: '2025-04',
+        itc_availability: 'Yes',
+      }],
+    });
+    eq('GSTR-9 Table 6B & 7J include matched rows with default Pending Review classification', [
+      g9PendingCls.table6.inwardInputs6B.total,
+      g9PendingCls.table7.netItcAvailable7J.total,
+      g9PendingCls.table6.difference6J.total,
+    ], [18000, 18000, 0]);
   }
 }
 

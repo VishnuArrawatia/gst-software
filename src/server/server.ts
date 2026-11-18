@@ -2853,9 +2853,10 @@ async function loadFyDataFromDb(gstin: string, fyInput: string) {
   return withClient(async (c) => {
     const pRes = await c.query(
       `SELECT id, our_gstin, unit_name, party_name, book_supplier_gstin, book_invoice_no,
-              book_invoice_date, period, document_type, book_taxable_value, book_igst,
+              book_invoice_date, period, book_document_type AS document_type, book_taxable_value, book_igst,
               book_cgst, book_sgst, book_cess, recon_supplier_gstin, recon_invoice_no,
-              recon_invoice_date, itc_decision, itc_decision_month, return_classification
+              recon_invoice_date, itc_decision, itc_decision_month, return_classification,
+              matched_2b_key, has_e_invoice, e_invoice_no, has_e_way_bill, e_way_bill_no
          FROM purchase_lines
         WHERE ($1 = '' OR our_gstin = $1)
           AND period = ANY($2::text[])
@@ -2863,9 +2864,10 @@ async function loadFyDataFromDb(gstin: string, fyInput: string) {
       [gstin, allPeriods],
     );
     const wRes = await c.query(
-      `SELECT id, our_gstin, supplier_gstin, supplier_name, invoice_no, invoice_type,
-              invoice_date, invoice_value, place_of_supply, reverse_charge, taxable_value,
-              igst, cgst, sgst, cess, twob_month, portal_fp, itc_availability, reason
+      `SELECT id, line_key, our_gstin, supplier_gstin, supplier_name, invoice_no,
+              document_type AS invoice_type, invoice_date, invoice_value, place_of_supply,
+              reverse_charge, taxable_value, igst, cgst, sgst, cess, twob_month, portal_fp,
+              itc_availability, reason
          FROM gstr2b_lines
         WHERE ($1 = '' OR our_gstin = $1)
           AND twob_month = ANY($2::text[])
@@ -2873,14 +2875,20 @@ async function loadFyDataFromDb(gstin: string, fyInput: string) {
       [gstin, allPeriods],
     );
     const sRes = await c.query(
-      `SELECT id, our_gstin, unit_name, customer_name, customer_gstin, invoice_no,
-              invoice_date, period, invoice_type, place_of_supply, reverse_charge,
-              taxable_value, igst, cgst, sgst, cess, invoice_value, hsn, note_ref_no, note_ref_date
-         FROM sales_invoices
-        WHERE ($1 = '' OR our_gstin = $1)
-          AND period = ANY($2::text[])
-        ORDER BY id`,
+      `SELECT s.id, g.gstin_number AS our_gstin, s.customer_name,
+              s.customer_gstin_norm AS customer_gstin, s.invoice_number_raw AS invoice_no,
+              s.invoice_date, s.period, s.invoice_type, s.place_of_supply, s.reverse_charge,
+              s.taxable_value, s.igst, s.cgst, s.sgst, s.cess, s.invoice_value, s.hsn,
+              s.note_ref_number AS note_ref_no, s.note_ref_date
+         FROM sales_invoices s
+         JOIN gstins g ON g.id = s.gstin_id
+        WHERE ($1 = '' OR g.gstin_number = $1)
+          AND s.period = ANY($2::text[])
+        ORDER BY s.id`,
       [gstin, allPeriods],
+    );
+    const rcm2bKeys = new Set<string>(
+      wRes.rows.filter((r: any) => Boolean(r.reverse_charge)).map((r: any) => String(r.line_key || '')),
     );
     const books = pRes.rows.map((r: any) => ({
       id: `db#${r.id}`,
@@ -2897,6 +2905,11 @@ async function loadFyDataFromDb(gstin: string, fyInput: string) {
       cgst: Number(r.book_cgst),
       sgst: Number(r.book_sgst),
       cess: Number(r.book_cess),
+      reverse_charge: Boolean(r.matched_2b_key && rcm2bKeys.has(String(r.matched_2b_key))),
+      has_e_invoice: r.has_e_invoice ?? undefined,
+      e_invoice_no: r.e_invoice_no ?? undefined,
+      has_e_way_bill: r.has_e_way_bill ?? undefined,
+      e_way_bill_no: r.e_way_bill_no ?? undefined,
       recon_supplier_gstin: r.recon_supplier_gstin ?? undefined,
       recon_invoice_no: r.recon_invoice_no ?? undefined,
       recon_invoice_date: isoDate(r.recon_invoice_date) || undefined,
@@ -2953,12 +2966,16 @@ async function loadFyDataFromDb(gstin: string, fyInput: string) {
 
 function buildAnnualLedgerGrids(
   fy: string,
-  sales: any[],
-  books: any[],
-  twob: any[],
+  allSales: any[],
+  allBooks: any[],
+  allTwob: any[],
   g9: any,
 ) {
   const months = fyMonths(fy).months;
+  const fyMonthSet = new Set(months);
+  const sales = allSales.filter((s) => fyMonthSet.has(s.period));
+  const books = allBooks.filter((b) => fyMonthSet.has(b.period));
+  const twob = allTwob.filter((w) => fyMonthSet.has(w.period));
 
   // 1. Rate-wise annual summary (0%, 5%, 12%, 18%, 28%, 40%)
   const slabs = [0, 5, 12, 18, 28, 40];
@@ -3104,7 +3121,7 @@ function buildAnnualLedgerGrids(
   const checks = [
     { check: 'GSTIN Format (15-char State + PAN + Checksum)', ok: /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(g9.gstin || ''), detail: g9.gstin || 'ALL' },
     { check: 'Return Period (fp = 03YYYY)', ok: /^03\d{4}$/.test(g9.fp || ''), detail: g9.fp },
-    { check: 'Table 4N Output Tax vs Table 9 Tax Payable Match', ok: Math.abs((g9.table4?.totalTaxable4N?.tax || 0) + (g9.table4?.inwardRcm4G?.tax || 0) - ((g9.table9?.igst?.taxPayable || 0) + (g9.table9?.cgst?.taxPayable || 0) + (g9.table9?.sgst?.taxPayable || 0) + (g9.table9?.cess?.taxPayable || 0))) <= 1, detail: 'Matched within Rs 1' },
+    { check: 'Table 4N Output Tax vs Table 9 Tax Payable Match', ok: Math.abs((g9.table4?.totalTaxable4N?.tax || 0) - (g9.table9?.taxPayable?.total || 0)) <= 1, detail: 'Matched within Rs 1' },
     { check: 'Table 17 Outward HSN Summary Populated', ok: (g9.table17OutwardHsn || []).length > 0, detail: `${(g9.table17OutwardHsn || []).length} HSN bucket(s)` },
   ];
 
@@ -3116,10 +3133,11 @@ app.get('/api/gstr9', wrap(async (req, res) => {
   const fyReq = str(req.query.fy) || '2025-26';
   const periodReq = str(req.query.period);
   const { fy, sales, books, twob } = await loadFyDataFromDb(gstin, fyReq);
+  const fyMonthSet = new Set(fyMonths(fy).months);
   const g9 = buildGstr9({ gstin, fy, sales, books, twob });
   const g9c = buildGstr9c(g9, { sales });
-  const imsBooks = periodReq ? books.filter((b) => b.period === periodReq) : books;
-  const imsTwob = periodReq ? twob.filter((w) => w.period === periodReq) : twob;
+  const imsBooks = periodReq ? books.filter((b) => b.period === periodReq) : books.filter((b) => fyMonthSet.has(b.period));
+  const imsTwob = periodReq ? twob.filter((w) => w.period === periodReq) : twob.filter((w) => fyMonthSet.has(w.period));
   const recon = reconcilePurchases(imsBooks, imsTwob);
   const ims = buildImsActions(recon.rows, recon.unbooked2b);
   const ledgers = buildAnnualLedgerGrids(fy, sales, books, twob, g9);
@@ -3200,11 +3218,15 @@ app.get('/api/ims/json', wrap(async (req, res) => {
   const fyReq = str(req.query.fy) || '2025-26';
   const periodReq = str(req.query.period);
   const { fy, books, twob } = await loadFyDataFromDb(gstin, fyReq);
-  const imsBooks = periodReq ? books.filter((b) => b.period === periodReq) : books;
-  const imsTwob = periodReq ? twob.filter((w) => w.period === periodReq) : twob;
+  const fyMonthSet = new Set(fyMonths(fy).months);
+  const imsBooks = periodReq ? books.filter((b) => b.period === periodReq) : books.filter((b) => fyMonthSet.has(b.period));
+  const imsTwob = periodReq ? twob.filter((w) => w.period === periodReq) : twob.filter((w) => fyMonthSet.has(w.period));
   const recon = reconcilePurchases(imsBooks, imsTwob);
   const ims = buildImsActions(recon.rows, recon.unbooked2b);
-  const actionCode = (a: string) => (a === 'ACCEPT' ? 'A' : a === 'REJECT' ? 'R' : 'P');
+  const actionCode = (a: string) => {
+    const u = String(a || '').toUpperCase();
+    return u === 'ACCEPT' ? 'A' : u === 'REJECT' ? 'R' : 'P';
+  };
   const portalPayload = {
     gstin: gstin || 'ALL',
     fp: periodReq ? `${periodReq.slice(5, 7)}${periodReq.slice(0, 4)}` : fy,
@@ -3256,16 +3278,20 @@ app.get('/api/gen-gst/overview', wrap(async (req, res) => {
   const periodReq = str(req.query.period);
   const { fy, sales, books, twob } = await loadFyDataFromDb(gstin, fyReq);
   const g9 = buildGstr9({ gstin, fy, sales, books, twob });
+  const fyMonthSet = new Set(fyMonths(fy).months);
+  const fySales = sales.filter((s) => fyMonthSet.has(s.period));
+  const fyBooks = books.filter((b) => fyMonthSet.has(b.period));
+  const fyTwob = twob.filter((w) => fyMonthSet.has(w.period));
 
-  const scopedBooks = periodReq ? books.filter((b) => b.period === periodReq) : books;
-  const scopedTwob = periodReq ? twob.filter((w) => w.period === periodReq) : twob;
-  const scopedSales = periodReq ? sales.filter((s) => s.period === periodReq) : sales;
+  const scopedBooks = periodReq ? fyBooks.filter((b) => b.period === periodReq) : fyBooks;
+  const scopedTwob = periodReq ? fyTwob.filter((w) => w.period === periodReq) : fyTwob;
+  const scopedSales = periodReq ? fySales.filter((s) => s.period === periodReq) : fySales;
   const recon = reconcilePurchases(scopedBooks, scopedTwob);
   const ims = buildImsActions(recon.rows, recon.unbooked2b);
 
-  const activeSalesMonths = new Set(sales.map((s) => s.period).filter(Boolean)).size;
-  const activeBookMonths = new Set(books.map((b) => b.period).filter(Boolean)).size;
-  const activeTwobMonths = new Set(twob.map((w) => w.period).filter(Boolean)).size;
+  const activeSalesMonths = new Set(fySales.map((s) => s.period).filter(Boolean)).size;
+  const activeBookMonths = new Set(fyBooks.map((b) => b.period).filter(Boolean)).size;
+  const activeTwobMonths = new Set(fyTwob.map((w) => w.period).filter(Boolean)).size;
 
   // Supplier-wise Match/Mismatch & Return Filing Status
   const supMap = new Map<string, {
@@ -3458,7 +3484,10 @@ app.get('/api/gen-gst/overview', wrap(async (req, res) => {
   const blockedItcCnt = recon.rows.filter((r) => r.status === 'ITC Blocked').length;
   const b2bSalesCnt = scopedSales.filter((s) => !!s.customer_gstin).length;
   const b2cSalesCnt = scopedSales.length - b2bSalesCnt;
-  const hsnBucketsCnt = new Set(scopedSales.map((s) => s.hsn).filter(Boolean)).size;
+  const hsnBucketsCnt = Math.max(
+    new Set(scopedSales.map((s) => s.hsn).filter(Boolean)).size,
+    (g9.table17OutwardHsn || []).length,
+  );
 
   const eDocInsights = {
     totalInwardBills: scopedBooks.length,
@@ -3664,8 +3693,9 @@ app.get('/api/ims/csv', wrap(async (req, res) => {
   const fyReq = str(req.query.fy) || '2025-26';
   const periodReq = str(req.query.period);
   const { fy, books, twob } = await loadFyDataFromDb(gstin, fyReq);
-  const imsBooks = periodReq ? books.filter((b) => b.period === periodReq) : books;
-  const imsTwob = periodReq ? twob.filter((w) => w.period === periodReq) : twob;
+  const fyMonthSet = new Set(fyMonths(fy).months);
+  const imsBooks = periodReq ? books.filter((b) => b.period === periodReq) : books.filter((b) => fyMonthSet.has(b.period));
+  const imsTwob = periodReq ? twob.filter((w) => w.period === periodReq) : twob.filter((w) => fyMonthSet.has(w.period));
   const recon = reconcilePurchases(imsBooks, imsTwob);
   const ims = buildImsActions(recon.rows, recon.unbooked2b);
   const head = [
