@@ -2951,6 +2951,166 @@ async function loadFyDataFromDb(gstin: string, fyInput: string) {
   });
 }
 
+function buildAnnualLedgerGrids(
+  fy: string,
+  sales: any[],
+  books: any[],
+  twob: any[],
+  g9: any,
+) {
+  const months = fyMonths(fy).months;
+
+  // 1. Rate-wise annual summary (0%, 5%, 12%, 18%, 28%, 40%)
+  const slabs = [0, 5, 12, 18, 28, 40];
+  const rateMap = new Map<number, {
+    rate: string;
+    outwardTaxable: number;
+    outwardTax: number;
+    booksInwardTaxable: number;
+    booksItc: number;
+    twobTaxable: number;
+    twobItc: number;
+  }>();
+  for (const r of slabs) {
+    rateMap.set(r, {
+      rate: `${r}%`,
+      outwardTaxable: 0,
+      outwardTax: 0,
+      booksInwardTaxable: 0,
+      booksItc: 0,
+      twobTaxable: 0,
+      twobItc: 0,
+    });
+  }
+  const snapSlab = (taxable: number, tax: number): number => {
+    if (!taxable || Math.abs(tax) < 0.01) return 0;
+    const rawPct = Math.abs((tax / taxable) * 100);
+    let best = 18;
+    let bestDist = 999;
+    for (const s of slabs) {
+      const d = Math.abs(rawPct - s);
+      if (d < bestDist) { bestDist = d; best = s; }
+    }
+    return best;
+  };
+  for (const s of sales) {
+    const tax = Number(s.igst || 0) + Number(s.cgst || 0) + Number(s.sgst || 0);
+    const slab = snapSlab(Number(s.taxable_value || 0), tax);
+    const bucket = rateMap.get(slab)!;
+    bucket.outwardTaxable = r2(bucket.outwardTaxable + Number(s.taxable_value || 0));
+    bucket.outwardTax = r2(bucket.outwardTax + tax + Number(s.cess || 0));
+  }
+  for (const b of books) {
+    const tax = Number(b.igst || 0) + Number(b.cgst || 0) + Number(b.sgst || 0);
+    const slab = snapSlab(Number(b.taxable_value || 0), tax);
+    const bucket = rateMap.get(slab)!;
+    bucket.booksInwardTaxable = r2(bucket.booksInwardTaxable + Number(b.taxable_value || 0));
+    bucket.booksItc = r2(bucket.booksItc + tax + Number(b.cess || 0));
+  }
+  for (const w of twob) {
+    const tax = Number(w.igst || 0) + Number(w.cgst || 0) + Number(w.sgst || 0);
+    const slab = snapSlab(Number(w.taxable_value || 0), tax);
+    const bucket = rateMap.get(slab)!;
+    bucket.twobTaxable = r2(bucket.twobTaxable + Number(w.taxable_value || 0));
+    bucket.twobItc = r2(bucket.twobItc + tax + Number(w.cess || 0));
+  }
+  const rateWiseSummary = [...rateMap.values()].filter(
+    (x) => x.outwardTaxable !== 0 || x.booksInwardTaxable !== 0 || x.twobTaxable !== 0 || x.rate === '18%' || x.rate === '5%',
+  );
+
+  // 2. RCM Liability vs RCM ITC Ledger Statement + 3. ECRRS Ledger + 4. 2B ITC Rejected & Negative Liability Grid
+  const rcmLedgerRows: any[] = [];
+  const ecrrsRows: any[] = [];
+  const itcRejectedAndNegativeRows: any[] = [];
+  let runningReclaimable = 0;
+
+  for (const m of months) {
+    const mSales = sales.filter((s) => s.period === m);
+    const mBooks = books.filter((b) => b.period === m);
+    const mTwob = twob.filter((w) => w.period === m);
+    const mSummary = (g9.monthlySummary || []).find((x: any) => x.period === m) || {};
+
+    const rcmLiab = r2(mSummary.rcmTax || 0);
+    const rcmItcClaimed = r2(
+      mBooks
+        .filter((b) => b.reverse_charge && b.itc_decision !== 'Ineligible' && b.itc_decision !== 'Do Not Claim')
+        .reduce((acc, b) => acc + Number(b.igst || 0) + Number(b.cgst || 0) + Number(b.sgst || 0) + Number(b.cess || 0), 0),
+    );
+    rcmLedgerRows.push({
+      period: m,
+      rcmLiability31d: rcmLiab,
+      rcmItc4A3: rcmItcClaimed,
+      variance: r2(rcmLiab - rcmItcClaimed),
+      status: Math.abs(rcmLiab - rcmItcClaimed) <= 1 ? 'Matched' : 'Variance',
+    });
+
+    const openingBal = runningReclaimable;
+    const heldThisMonth = r2(
+      mBooks
+        .filter((b) => b.itc_decision === 'Reclaim Later' || b.itc_decision === 'Query Vendor' || b.return_classification === '4(A)(i) — Books only' || b.return_classification === 'Not in 3B — Carried')
+        .reduce((acc, b) => acc + Number(b.igst || 0) + Number(b.cgst || 0) + Number(b.sgst || 0) + Number(b.cess || 0), 0),
+    );
+    const blocked17_5 = r2(
+      mBooks
+        .filter((b) => b.itc_decision === 'Ineligible' || b.itc_decision === 'Reversed' || b.return_classification === '4(B) — Blocked')
+        .reduce((acc, b) => acc + Number(b.igst || 0) + Number(b.cgst || 0) + Number(b.sgst || 0) + Number(b.cess || 0), 0),
+    );
+    const reclaimedThisMonth = r2(
+      books
+        .filter((b) => b.period !== m && b.itc_decision === 'Claim' && b.itc_decision_month === m)
+        .reduce((acc, b) => acc + Number(b.igst || 0) + Number(b.cgst || 0) + Number(b.sgst || 0) + Number(b.cess || 0), 0),
+    );
+    runningReclaimable = r2(Math.max(0, openingBal + heldThisMonth - reclaimedThisMonth));
+    ecrrsRows.push({
+      period: m,
+      openingReclaimable: openingBal,
+      reversedOrHeld4B2: heldThisMonth,
+      reclaimed4A5_4D1: reclaimedThisMonth,
+      permanentSec17_5_4B1: blocked17_5,
+      closingReclaimable: runningReclaimable,
+    });
+
+    const twobAvailItc = r2(
+      mTwob
+        .filter((w) => String(w.itc_availability || 'Yes').toLowerCase() !== 'no')
+        .reduce((acc, w) => acc + Number(w.igst || 0) + Number(w.cgst || 0) + Number(w.sgst || 0) + Number(w.cess || 0), 0),
+    );
+    const twobRejectedItc = r2(
+      mTwob
+        .filter((w) => String(w.itc_availability || '').toLowerCase() === 'no')
+        .reduce((acc, w) => acc + Number(w.igst || 0) + Number(w.cgst || 0) + Number(w.sgst || 0) + Number(w.cess || 0), 0),
+    );
+    const outwardCnTax = r2(
+      mSales
+        .filter((s) => s.invoice_type === 'CDNR' || Number(s.taxable_value || 0) < 0)
+        .reduce((acc, s) => acc + Number(s.igst || 0) + Number(s.cgst || 0) + Number(s.sgst || 0) + Number(s.cess || 0), 0),
+    );
+    const inwardCnItc = r2(
+      mBooks
+        .filter((b) => Number(b.taxable_value || 0) < 0)
+        .reduce((acc, b) => acc + Number(b.igst || 0) + Number(b.cgst || 0) + Number(b.sgst || 0) + Number(b.cess || 0), 0),
+    );
+    const netOutTax = r2(mSummary.gstr1Tax || 0);
+    itcRejectedAndNegativeRows.push({
+      period: m,
+      twobAvailableItc: twobAvailItc,
+      twobRejectedItc,
+      outwardCreditNoteTax: outwardCnTax,
+      inwardCreditNoteItc: inwardCnItc,
+      negativeLiabilityCarryover: netOutTax < 0 ? r2(Math.abs(netOutTax)) : 0,
+    });
+  }
+
+  const checks = [
+    { check: 'GSTIN Format (15-char State + PAN + Checksum)', ok: /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(g9.gstin || ''), detail: g9.gstin || 'ALL' },
+    { check: 'Return Period (fp = 03YYYY)', ok: /^03\d{4}$/.test(g9.fp || ''), detail: g9.fp },
+    { check: 'Table 4N Output Tax vs Table 9 Tax Payable Match', ok: Math.abs((g9.table4?.totalTaxable4N?.tax || 0) + (g9.table4?.inwardRcm4G?.tax || 0) - ((g9.table9?.igst?.taxPayable || 0) + (g9.table9?.cgst?.taxPayable || 0) + (g9.table9?.sgst?.taxPayable || 0) + (g9.table9?.cess?.taxPayable || 0))) <= 1, detail: 'Matched within Rs 1' },
+    { check: 'Table 17 Outward HSN Summary Populated', ok: (g9.table17OutwardHsn || []).length > 0, detail: `${(g9.table17OutwardHsn || []).length} HSN bucket(s)` },
+  ];
+
+  return { rateWiseSummary, rcmLedgerRows, ecrrsRows, itcRejectedAndNegativeRows, jsonValidation: checks };
+}
+
 app.get('/api/gstr9', wrap(async (req, res) => {
   const gstin = normGstinOf(str(req.query.gstin));
   const fyReq = str(req.query.fy) || '2025-26';
@@ -2962,6 +3122,7 @@ app.get('/api/gstr9', wrap(async (req, res) => {
   const imsTwob = periodReq ? twob.filter((w) => w.period === periodReq) : twob;
   const recon = reconcilePurchases(imsBooks, imsTwob);
   const ims = buildImsActions(recon.rows, recon.unbooked2b);
+  const ledgers = buildAnnualLedgerGrids(fy, sales, books, twob, g9);
   res.json({
     ok: true,
     gstin,
@@ -2972,6 +3133,7 @@ app.get('/api/gstr9', wrap(async (req, res) => {
     gstr9cRows: gstr9cWorkingRows(g9c),
     imsSummary: ims.summary,
     imsRows: ims.rows.slice(0, 250),
+    ...ledgers,
   });
 }));
 
@@ -2984,6 +3146,101 @@ app.get('/api/gstr9/json', wrap(async (req, res) => {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="${gstin || 'ALL'}_${fy}_GSTR9.json"`);
   res.send(json);
+}));
+
+app.get('/api/gstr9c/json', wrap(async (req, res) => {
+  const gstin = normGstinOf(str(req.query.gstin));
+  const fyReq = str(req.query.fy) || '2025-26';
+  const { fy, sales, books, twob } = await loadFyDataFromDb(gstin, fyReq);
+  const g9 = buildGstr9({ gstin, fy, sales, books, twob });
+  const g9c = buildGstr9c(g9, { sales });
+  const payload = {
+    gstin: g9c.gstin,
+    fp: g9c.fp,
+    fy: g9c.fy,
+    table5_turnover_recon: g9c.turnoverRecon,
+    table9_tax_liability_recon: g9c.taxLiabilityRecon,
+    table12_itc_recon: g9c.itcRecon,
+    self_certification: {
+      auditor_firm: str(req.query.firm) || 'VISHNU INTELLIGENCE SERVICES',
+      membership_no: str(req.query.mem) || '',
+      udin: str(req.query.udin) || '',
+      place: str(req.query.place) || 'SILVASSA / AHMEDABAD',
+      certified_at: new Date().toISOString().slice(0, 10),
+    },
+  };
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${gstin || 'ALL'}_${fy}_GSTR9C.json"`);
+  res.send(JSON.stringify(payload, null, 2));
+}));
+
+app.get('/api/gstr9/excel', wrap(async (req, res) => {
+  const gstin = normGstinOf(str(req.query.gstin));
+  const fyReq = str(req.query.fy) || '2025-26';
+  const { fy, sales, books, twob } = await loadFyDataFromDb(gstin, fyReq);
+  const g9 = buildGstr9({ gstin, fy, sales, books, twob });
+  const g9c = buildGstr9c(g9, { sales });
+  const ledgers = buildAnnualLedgerGrids(fy, sales, books, twob, g9);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(gstr9WorkingRows(g9)), 'GSTR-9 Annual Form');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(gstr9cWorkingRows(g9c)), 'GSTR-9C Audit Recon');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(g9.monthlySummary || []), '12-Month Matrix');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(ledgers.rateWiseSummary), 'Rate-Wise Summary');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(ledgers.rcmLedgerRows), 'RCM Liability vs ITC');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(ledgers.ecrrsRows), 'ECRRS Credit Reversal');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(ledgers.itcRejectedAndNegativeRows), '2B Rejected & Neg Liab');
+  const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="${gstin || 'ALL'}_${fy}_GSTR9_9C_Audit_Workbook.xlsx"`);
+  res.send(buf);
+}));
+
+app.get('/api/ims/json', wrap(async (req, res) => {
+  const gstin = normGstinOf(str(req.query.gstin));
+  const fyReq = str(req.query.fy) || '2025-26';
+  const periodReq = str(req.query.period);
+  const { fy, books, twob } = await loadFyDataFromDb(gstin, fyReq);
+  const imsBooks = periodReq ? books.filter((b) => b.period === periodReq) : books;
+  const imsTwob = periodReq ? twob.filter((w) => w.period === periodReq) : twob;
+  const recon = reconcilePurchases(imsBooks, imsTwob);
+  const ims = buildImsActions(recon.rows, recon.unbooked2b);
+  const actionCode = (a: string) => (a === 'ACCEPT' ? 'A' : a === 'REJECT' ? 'R' : 'P');
+  const portalPayload = {
+    gstin: gstin || 'ALL',
+    fp: periodReq ? `${periodReq.slice(5, 7)}${periodReq.slice(0, 4)}` : fy,
+    summary: ims.summary,
+    b2b: ims.rows
+      .filter((r) => r.document_type !== 'Credit Note' && r.document_type !== 'CDNR')
+      .map((r) => ({
+        stin: r.supplier_gstin,
+        inum: r.invoice_no,
+        idt: r.invoice_date,
+        txval: r.taxable_value,
+        iamt: r.igst,
+        camt: r.cgst,
+        samt: r.sgst,
+        csamt: r.cess,
+        action: actionCode(r.ims_action),
+        remark: r.ims_remark,
+      })),
+    cdnr: ims.rows
+      .filter((r) => r.document_type === 'Credit Note' || r.document_type === 'CDNR')
+      .map((r) => ({
+        stin: r.supplier_gstin,
+        nt_num: r.invoice_no,
+        nt_dt: r.invoice_date,
+        txval: r.taxable_value,
+        iamt: r.igst,
+        camt: r.cgst,
+        samt: r.sgst,
+        csamt: r.cess,
+        action: actionCode(r.ims_action),
+        remark: r.ims_remark,
+      })),
+  };
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="IMS_Portal_Upload_${gstin || 'ALL'}_${periodReq || fy}.json"`);
+  res.send(JSON.stringify(portalPayload, null, 2));
 }));
 
 app.get('/api/ims/csv', wrap(async (req, res) => {

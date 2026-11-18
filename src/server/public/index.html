@@ -1402,6 +1402,7 @@ tr.clickable { cursor: default; }
         <div class="row" style="margin-top:10px">
           <button onclick="autoDecideItc()">Auto-Apply 3B ITC Decisions (Bill-to-Bill)</button>
           <button class="ghost" onclick="downloadTwobRecon(false)">Download 2B vs Books Bill-to-Bill Sheet (.xlsx)</button>
+          <button class="ghost" onclick="shareWhatsAppSummary('purchase')">📲 Send ITC Summary via WhatsApp</button>
         </div>
         <div class="tiles" id="gstr3bItcTiles" style="margin-top:12px"></div>
       </div>
@@ -1466,23 +1467,88 @@ tr.clickable { cursor: default; }
 
     <!-- ============================= GSTR-9 & 9C ANNUAL ==================== -->
     <section class="view" id="viewGstr9" hidden>
-      <div class="card">
-        <h2>GSTR-9 Annual Return &amp; GSTR-9C Audit Reconciliation (12-Month Compiler)</h2>
-        <div class="hint">
-          Poore Financial Year (Apr–Mar + next FY Apr–Oct spillover) ka automatic GSTR-1 &rarr; GSTR-2B/IMS &rarr; GSTR-3B &rarr; GSTR-9 &amp; GSTR-9C compilation.
+      <!-- Two-Column GSTR 9 & 9C-Audit Return Filing Showcase Card (From User Screenshot) -->
+      <div class="gst-suite-box" style="margin-bottom:18px">
+        <div style="text-align:center;margin-bottom:18px">
+          <h2 style="font-size:23px;font-weight:800;color:var(--text)">
+            GSTR 9 &amp; <span style="color:#2563eb">9C-Audit Return Filing</span>
+          </h2>
         </div>
-        <div class="row" style="margin-top:12px">
+        <div class="split">
+          <div class="card" style="margin-bottom:0;background:var(--panel)">
+            <h3 style="margin-top:0;font-size:16px;text-transform:none;color:var(--text)">Update GSTR-9 Annual Form</h3>
+            <ul class="gst-bullet-grid" style="grid-template-columns:1fr;margin-top:12px;gap:8px">
+              <li><span class="gst-bullet-dot"></span><span>Prepare GSTR-9 from GSTR-1, 3B &amp; Purchase Register (ITC Register)</span></li>
+              <li><span class="gst-bullet-dot"></span><span>Reconcile tax data from the portal, accounting books &amp; returns for matching</span></li>
+              <li><span class="gst-bullet-dot"></span><span>Match data return-wise, invoice-wise, month-wise &amp; rate-wise (0% to 40%)</span></li>
+              <li><span class="gst-bullet-dot"></span><span>Reconcile data at the initial entry level with spillover (Table 10–13)</span></li>
+              <li><span class="gst-bullet-dot"></span><span>Data Import from returns, Excel, Portal JSON etc.</span></li>
+              <li><span class="gst-bullet-dot"></span><span>Export data into 7-Sheet Excel Workbook &amp; Portal JSON file</span></li>
+              <li><span class="gst-bullet-dot"></span><span>Built-in Portal JSON Schema Validation before EVC/DSC filing</span></li>
+            </ul>
+          </div>
+          <div class="card" style="margin-bottom:0;background:var(--panel)">
+            <h3 style="margin-top:0;font-size:16px;text-transform:none;color:var(--text)">GSTR-9C Reconciliation Statement</h3>
+            <ul class="gst-bullet-grid" style="grid-template-columns:1fr;margin-top:12px;gap:8px">
+              <li><span class="gst-bullet-dot"></span><span>Prepare GSTR-9C from GSTR-1, 3B, Purchase Register (ITC) &amp; filed GSTR-9</span></li>
+              <li><span class="gst-bullet-dot"></span><span>Maintaining Auditor / CA Master &amp; Self-Certification details</span></li>
+              <li><span class="gst-bullet-dot"></span><span>RCM Liability vs RCM ITC Statement &amp; Electronic Credit Reversal (ECRRS)</span></li>
+              <li><span class="gst-bullet-dot"></span><span>GSTR-2B ITC Rejected Summary &amp; Negative Liability Credit-Note Ledger</span></li>
+              <li><span class="gst-bullet-dot"></span><span>IMS Inward Direct Portal Upload JSON (Accept / Reject / Pending)</span></li>
+              <li><span class="gst-bullet-dot"></span><span>Data Export into Excel Workbook &amp; GSTR-9C Portal JSON file</span></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>GSTR-9 Annual Return &amp; GSTR-9C Audit Compiler + Auditor Master</h2>
+        <div class="row" style="margin-top:10px">
+          <div><label for="g9cFirm">Auditor / CA Firm Name</label><input type="text" id="g9cFirm" value="VISHNU INTELLIGENCE SERVICES" /></div>
+          <div><label for="g9cMem">Membership No / FRN</label><input type="text" id="g9cMem" placeholder="e.g. 123456 / 101234W" /></div>
+          <div><label for="g9cUdin">UDIN (For 9C Certification)</label><input type="text" id="g9cUdin" placeholder="18-digit UDIN" /></div>
+          <div><label for="g9cPlace">Place</label><input type="text" id="g9cPlace" value="SILVASSA / AHMEDABAD" /></div>
+        </div>
+        <div class="row" style="margin-top:14px">
           <button onclick="loadGstr9()">Compile / Refresh GSTR-9 &amp; 9C</button>
+          <button onclick="downloadGstr9Excel()">📊 Download 7-Sheet GSTR-9 &amp; 9C Excel (.xlsx)</button>
           <button class="ghost" onclick="downloadGstr9Json()">Download GSTR-9 Portal JSON</button>
-          <button class="ghost" onclick="downloadImsCsv()">Download IMS Action Sheet (.csv)</button>
+          <button class="ghost" onclick="downloadGstr9cJson()">Download GSTR-9C Portal JSON</button>
+          <button class="ghost" onclick="downloadImsJson()">Download IMS Portal JSON (.json)</button>
+          <button class="ghost" onclick="downloadImsCsv()">Download IMS Action CSV (.csv)</button>
+          <button class="ghost" onclick="shareWhatsAppSummary('gstr9')">📲 Send via WhatsApp</button>
           <span class="hint" id="gstr9Msg" style="flex:1;min-width:200px"></span>
         </div>
-        <div class="tiles" id="gstr9Tiles" style="margin-top:12px"></div>
+        <div class="tiles" id="gstr9Tiles" style="margin-top:14px"></div>
+        <div id="gstr9ValidationBox" style="margin-top:12px"></div>
       </div>
+
       <div class="card">
         <h2>12-Month Master Control Matrix (GSTR-1 vs GSTR-3B vs GSTR-2B vs Books)</h2>
         <div class="scroll"><table id="gstr9MonthlyTable"></table></div>
       </div>
+
+      <div class="card">
+        <h2>Rate-Wise Annual Summary (0% / 5% / 12% / 18% / 28% / 40% — Outward vs Books ITC vs 2B ITC)</h2>
+        <div class="scroll"><table id="gstr9RateTable"></table></div>
+      </div>
+
+      <div class="split">
+        <div class="card">
+          <h2>RCM Liability vs RCM ITC Ledger Statement (Table 3.1(d) vs 4(A)(3))</h2>
+          <div class="scroll"><table id="gstr9RcmTable"></table></div>
+        </div>
+        <div class="card">
+          <h2>GSTR-2B ITC Rejected Summary &amp; Credit-Note Negative Liability Ledger</h2>
+          <div class="scroll"><table id="gstr9RejectedTable"></table></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Electronic Credit Reversal &amp; Reclaimed Statement (ECRRS Ledger — Table 4(B)(2) &amp; 4(D)(1))</h2>
+        <div class="scroll"><table id="gstr9EcrrsTable"></table></div>
+      </div>
+
       <div class="card">
         <h2>GSTR-9 Form Summary (Parts II to V — Tables 4, 5, 6, 7, 8, 9, 13)</h2>
         <div class="scroll"><table id="gstr9Table"></table></div>
@@ -1492,7 +1558,7 @@ tr.clickable { cursor: default; }
         <div class="scroll"><table id="gstr9cTable"></table></div>
       </div>
       <div class="card">
-        <h2>IMS (Invoice Management System) Action Summary — Accept / Reject / Pending</h2>
+        <h2>IMS (Invoice Management System) Action Summary — Accept / Reject / Pending (Portal Upload Ready)</h2>
         <div class="tiles" id="imsTiles"></div>
         <div class="scroll" style="margin-top:12px"><table id="imsTable"></table></div>
       </div>
@@ -1501,12 +1567,14 @@ tr.clickable { cursor: default; }
     <!-- =============================== REPORTS ============================= -->
     <section class="view" id="viewReports" hidden>
       <div class="card">
-        <h2>Reports</h2>
+        <h2>Reports &amp; Working Exports</h2>
         <div class="row">
           <button class="ghost" onclick="download('/api/report/complete.xlsx','GST_Reconciliation.xlsx')">Download Complete Reconciliation (.xlsx)</button>
           <button class="ghost" onclick="downloadTwobRecon(false)">2B vs Books reco sheet (.xlsx)</button>
+          <button class="ghost" onclick="downloadGstr9Excel()">GSTR-9 &amp; 9C Audit Workbook (.xlsx)</button>
           <button class="ghost" onclick="download('/api/guide/pdf?lang=en','GST_Control_ERP_User_Manual_English.pdf')">User Manual - English (.pdf)</button>
           <button class="ghost" onclick="download('/api/guide/pdf','GST_Control_ERP_Step_by_Step_Guide_With_Screenshots.pdf')">User Guide - Hinglish (.pdf)</button>
+          <button class="ghost" onclick="shareWhatsAppSummary('reports')">📲 Send Report Summary via WhatsApp</button>
           <button class="ghost" onclick="loadReports()">Refresh list</button>
           <span class="hint" id="reportsMsg" style="flex:1;min-width:200px"></span>
         </div>
@@ -2092,6 +2160,10 @@ const NUM_FIELDS = new Set([
   'missing', 'mismatch', 'blocked', 'duplicate', 'pendingDecision', 'followUp', 'twobFiles',
   'twobRecords', 'itemRows', 'count', 'documents', 'matchedHeads', 'pendingHeads', 'unmappedHeads',
   'totalTax', 'total_itc', 'gstr1Taxable', 'gstr1Tax', 'gstr3bOutwardTaxable', 'gstr3bOutputTax', 'booksItc', 'twobItc', 'gstr3bItcNet', 'rcmTax', 'cashPaid',
+  'outwardTaxable', 'outwardTax', 'booksInwardTaxable', 'twobTaxable',
+  'rcmLiability31d', 'rcmItc4A3', 'variance',
+  'openingReclaimable', 'reversedOrHeld4B2', 'reclaimed4A5_4D1', 'permanentSec17_5_4B1', 'closingReclaimable',
+  'twobAvailableItc', 'twobRejectedItc', 'outwardCreditNoteTax', 'inwardCreditNoteItc', 'negativeLiabilityCarryover',
 ]);
 
 function tableHtml(cols, rows, emptyText) {
@@ -4063,9 +4135,31 @@ async function boot() {
   showGate('');
 }
 
+let LAST_GSTR9 = null;
+
 function downloadGstr9Json() {
   const qs = 'gstin=' + enc(CTX.gstin || '') + '&fy=' + enc(CTX.fy || '2025-26');
   download('/api/gstr9/json?' + qs, (CTX.gstin || 'ALL') + '_' + (CTX.fy || '2025-26') + '_GSTR9.json');
+}
+
+function downloadGstr9cJson() {
+  const firm = (el('g9cFirm') && el('g9cFirm').value) || 'VISHNU INTELLIGENCE SERVICES';
+  const mem = (el('g9cMem') && el('g9cMem').value) || '';
+  const udin = (el('g9cUdin') && el('g9cUdin').value) || '';
+  const place = (el('g9cPlace') && el('g9cPlace').value) || 'SILVASSA';
+  const qs = 'gstin=' + enc(CTX.gstin || '') + '&fy=' + enc(CTX.fy || '2025-26') +
+    '&firm=' + enc(firm) + '&mem=' + enc(mem) + '&udin=' + enc(udin) + '&place=' + enc(place);
+  download('/api/gstr9c/json?' + qs, (CTX.gstin || 'ALL') + '_' + (CTX.fy || '2025-26') + '_GSTR9C.json');
+}
+
+function downloadGstr9Excel() {
+  const qs = 'gstin=' + enc(CTX.gstin || '') + '&fy=' + enc(CTX.fy || '2025-26');
+  download('/api/gstr9/excel?' + qs, (CTX.gstin || 'ALL') + '_' + (CTX.fy || '2025-26') + '_GSTR9_9C_Audit_Workbook.xlsx');
+}
+
+function downloadImsJson() {
+  const qs = 'gstin=' + enc(CTX.gstin || '') + '&fy=' + enc(CTX.fy || '2025-26') + '&period=' + enc(CTX.period || '');
+  download('/api/ims/json?' + qs, 'IMS_Portal_Upload_' + (CTX.gstin || 'ALL') + '_' + (CTX.period || CTX.fy || '2025-26') + '.json');
 }
 
 function downloadImsCsv() {
@@ -4073,11 +4167,45 @@ function downloadImsCsv() {
   download('/api/ims/csv?' + qs, 'IMS_Actions_' + (CTX.gstin || 'ALL') + '_' + (CTX.period || CTX.fy || '2025-26') + '.csv');
 }
 
+function shareWhatsAppSummary(scope) {
+  const lines = [
+    '*GST CONTROL ERP — VISHNU INTELLIGENCE SERVICES*',
+    'GSTIN: ' + (CTX.gstin || 'ALL') + ' | FY: ' + (CTX.fy || '2025-26') + (CTX.period ? ' | Month: ' + monthLabel(CTX.period) : ''),
+  ];
+  if (scope === 'purchase' && RECON && RECON.data) {
+    const s = RECON.data.summary || {};
+    const by = s.byStatus || {};
+    const g3b = RECON.data.gstr3bItc || {};
+    lines.push(
+      '• Books Bills: ' + cnt(s.lines || 0) + ' | Matched: ' + cnt(by['Matched'] || 0) + ' | Missing in 2B: ' + cnt(by['Missing in 2B'] || 0),
+      '• 4(A) Gross Eligible ITC: Rs ' + inr(g3b.table4A_totalAvailable || 0),
+      '• 4(B) Blocked/Sec 17(5): Rs ' + inr(g3b.table4B_reversedBlocked || 0),
+      '• 4(C) Net ITC in GSTR-3B: Rs ' + inr(g3b.table4C_netItcAvailed || 0),
+      '• Hold (Books Only): Rs ' + inr(g3b.pending4ai_booksOnly || 0),
+    );
+  } else if (LAST_GSTR9 && LAST_GSTR9.gstr9) {
+    const g9 = LAST_GSTR9.gstr9;
+    const t4 = (g9.table4 && g9.table4.totalTaxable4N) || {};
+    const t5 = g9.table5 || {};
+    const t7 = (g9.table7 && g9.table7.netItcAvailable7J) || {};
+    lines.push(
+      '• FY Total Turnover (5N): Rs ' + inr(t5.totalTurnover5N || 0),
+      '• Taxable Turnover (4N): Rs ' + inr(t4.taxable || 0),
+      '• Annual Output Tax (4N): Rs ' + inr(t4.tax || 0),
+      '• Net ITC Availed (7J): Rs ' + inr(t7.total || 0),
+    );
+  }
+  lines.push('Portal Link: ' + window.location.origin);
+  const text = lines.join('\n');
+  window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank', 'noopener');
+}
+
 async function loadGstr9() {
-  setHtml('gstr9Msg', 'Compiling GSTR-9, GSTR-9C & IMS from 12 months data\u2026');
+  setHtml('gstr9Msg', 'Compiling GSTR-9, GSTR-9C, Rate-Wise, RCM, ECRRS & IMS from 12 months data\u2026');
   try {
     const qs = 'gstin=' + enc(CTX.gstin || '') + '&fy=' + enc(CTX.fy || '2025-26') + '&period=' + enc(CTX.period || '');
     const r = await api('/api/gstr9?' + qs);
+    LAST_GSTR9 = r;
     const g9 = r.gstr9 || {};
     const t4 = (g9.table4 && g9.table4.totalTaxable4N) || {};
     const t5 = g9.table5 || {};
@@ -4091,6 +4219,15 @@ async function loadGstr9() {
       ['2B vs 3B Diff (8D)', money(t8.total || 0)],
     ].map((x) => '<div class="tile"><div class="k">' + esc(x[0]) + '</div><div class="v">' + x[1] + '</div></div>').join(''));
 
+    const checks = r.jsonValidation || [];
+    if (checks.length) {
+      setHtml('gstr9ValidationBox',
+        '<div class="row" style="gap:8px;flex-wrap:wrap">' +
+        checks.map((c) => '<span class="pill ' + (c.ok ? 'good' : 'warn') + '">' +
+          (c.ok ? '✓ ' : '⚠ ') + esc(c.check) + ' (' + esc(c.detail || '') + ')</span>').join('') +
+        '</div>');
+    }
+
     setHtml('gstr9MonthlyTable', tableHtml([
       ['period', 'Period'],
       ['gstr1Taxable', 'GSTR-1 Taxable'],
@@ -4103,6 +4240,42 @@ async function loadGstr9() {
       ['rcmTax', 'RCM Tax'],
       ['cashPaid', 'Cash Paid'],
     ], g9.monthlySummary || [], 'No monthly data found for this FY.'));
+
+    setHtml('gstr9RateTable', tableHtml([
+      ['rate', 'GST Rate Slab'],
+      ['outwardTaxable', 'Outward Taxable (GSTR-1)'],
+      ['outwardTax', 'Outward Tax (GSTR-1)'],
+      ['booksInwardTaxable', 'Inward Taxable (Books)'],
+      ['booksItc', 'Inward ITC (Books)'],
+      ['twobTaxable', 'GSTR-2B Taxable'],
+      ['twobItc', 'GSTR-2B ITC'],
+    ], r.rateWiseSummary || [], 'No rate-wise data.'));
+
+    setHtml('gstr9RcmTable', tableHtml([
+      ['period', 'Period'],
+      ['rcmLiability31d', '3.1(d) RCM Tax Liability'],
+      ['rcmItc4A3', '4(A)(3) RCM ITC Claimed'],
+      ['variance', 'Variance'],
+      ['status', 'Status'],
+    ], r.rcmLedgerRows || [], 'No RCM rows.'));
+
+    setHtml('gstr9RejectedTable', tableHtml([
+      ['period', 'Period'],
+      ['twobAvailableItc', '2B Eligible ITC'],
+      ['twobRejectedItc', '2B Rejected / Ineligible ITC'],
+      ['outwardCreditNoteTax', 'Outward CN Tax'],
+      ['inwardCreditNoteItc', 'Inward CN ITC'],
+      ['negativeLiabilityCarryover', 'Negative Liability Carryover'],
+    ], r.itcRejectedAndNegativeRows || [], 'No 2B rejected / negative liability rows.'));
+
+    setHtml('gstr9EcrrsTable', tableHtml([
+      ['period', 'Period'],
+      ['openingReclaimable', 'Opening Reclaimable Balance'],
+      ['reversedOrHeld4B2', 'Current Month Held / Reversed (4B2)'],
+      ['reclaimed4A5_4D1', 'Reclaimed in Current Month (4A5/4D1)'],
+      ['permanentSec17_5_4B1', 'Permanent Sec 17(5) Blocked (4B1)'],
+      ['closingReclaimable', 'Closing Reclaimable Balance'],
+    ], r.ecrrsRows || [], 'No ECRRS rows.'));
 
     setHtml('gstr9Table', tableHtml([
       ['part', 'Part'],
