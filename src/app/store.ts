@@ -869,9 +869,9 @@ export async function lineHistory(id: number): Promise<Record<string, any>[]> {
 }
 
 /** Load the stored lines + 2B lines for one GSTIN/period back into the engine. */
-export async function loadBundleForReconcile(gstin: string, period: string) {
+export async function loadBundleForReconcile(gstin: string, period: string, cachedTwob?: Gstr2bRecord[]) {
   const books: PurchaseBill[] = [];
-  const twob: Gstr2bRecord[] = [];
+  const twob: Gstr2bRecord[] = cachedTwob ? [...cachedTwob] : [];
 
   const b = await withClient((c) =>
     c.query(
@@ -915,34 +915,36 @@ export async function loadBundleForReconcile(gstin: string, period: string) {
   // The 2B lines come from every month the portal has published, because an
   // invoice booked in March can match in the April 2B. Restricting to the book
   // period is how "Missing in 2B" would become a permanent lie.
-  const t = await withClient((c) =>
-    c.query(`SELECT * FROM gstr2b_lines WHERE our_gstin = $1 ORDER BY twob_month, id`, [normGstin(gstin)]),
-  );
-  for (const r of t.rows) {
-    twob.push({
-      id: r.line_key,
-      our_gstin: r.our_gstin,
-      supplier_gstin: r.supplier_gstin,
-      supplier_name: r.supplier_name ?? '',
-      invoice_no: r.invoice_no,
-      invoice_type: r.document_type ?? 'Regular',
-      invoice_date: r.invoice_date instanceof Date ? iso(r.invoice_date) : r.invoice_date ?? '',
-      invoice_value: Number(r.invoice_value),
-      place_of_supply: r.place_of_supply ?? '',
-      reverse_charge: !!r.reverse_charge,
-      taxable_value: Number(r.taxable_value),
-      igst: Number(r.igst),
-      cgst: Number(r.cgst),
-      sgst: Number(r.sgst),
-      cess: Number(r.cess),
-      period: r.twob_month,
-      portal_fp: r.portal_fp ?? r.twob_month,
-      filing_date: r.filing_date ? iso(r.filing_date) : undefined,
-      itc_availability: r.itc_availability ?? 'Yes',
-      reason: r.reason ?? undefined,
-      source_file: r.source_file ?? undefined,
-      source_row: r.source_row ?? undefined,
-    });
+  if (!cachedTwob) {
+    const t = await withClient((c) =>
+      c.query(`SELECT * FROM gstr2b_lines WHERE our_gstin = $1 ORDER BY twob_month, id`, [normGstin(gstin)]),
+    );
+    for (const r of t.rows) {
+      twob.push({
+        id: r.line_key,
+        our_gstin: r.our_gstin,
+        supplier_gstin: r.supplier_gstin,
+        supplier_name: r.supplier_name ?? '',
+        invoice_no: r.invoice_no,
+        invoice_type: r.document_type ?? 'Regular',
+        invoice_date: r.invoice_date instanceof Date ? iso(r.invoice_date) : r.invoice_date ?? '',
+        invoice_value: Number(r.invoice_value),
+        place_of_supply: r.place_of_supply ?? '',
+        reverse_charge: !!r.reverse_charge,
+        taxable_value: Number(r.taxable_value),
+        igst: Number(r.igst),
+        cgst: Number(r.cgst),
+        sgst: Number(r.sgst),
+        cess: Number(r.cess),
+        period: r.twob_month,
+        portal_fp: r.portal_fp ?? r.twob_month,
+        filing_date: r.filing_date ? iso(r.filing_date) : undefined,
+        itc_availability: r.itc_availability ?? 'Yes',
+        reason: r.reason ?? undefined,
+        source_file: r.source_file ?? undefined,
+        source_row: r.source_row ?? undefined,
+      });
+    }
   }
   return { books, twob };
 }
@@ -985,7 +987,7 @@ export interface ReReconcileResult {
 export async function reReconcile(
   gstin: string,
   period: string,
-  opts: { changedBy: string; reason?: string } = { changedBy: 'unknown' },
+  opts: { changedBy: string; reason?: string; cachedTwob?: Gstr2bRecord[] } = { changedBy: 'unknown' },
 ): Promise<ReReconcileResult> {
   const out: ReReconcileResult = {
     ok: false, gstin: normGstin(gstin), period, lines: 0, twobLines: 0,
@@ -998,7 +1000,7 @@ export async function reReconcile(
       return out;
     }
 
-    const { books, twob } = await loadBundleForReconcile(gstin, period);
+    const { books, twob } = await loadBundleForReconcile(gstin, period, opts.cachedTwob);
     out.lines = books.length;
     out.twobLines = twob.length;
     if (!books.length) {
@@ -1029,30 +1031,85 @@ export async function reReconcile(
       );
       const priorById = new Map(prior.rows.map((r) => [String(r.id), r]));
       let moved = 0;
+
+      const ids: number[] = [];
+      const statuses: string[] = [];
+      const mKeys: Array<string | null> = [];
+      const mMonths: Array<string | null> = [];
+      const tGstins: Array<string | null> = [];
+      const tInvs: Array<string | null> = [];
+      const tDates: Array<string | null> = [];
+      const tTaxables: Array<number | null> = [];
+      const tItcs: Array<number | null> = [];
+      const tAvails: Array<string | null> = [];
+      const reasons: Array<string | null> = [];
+      const itcAmts: Array<number | null> = [];
+      const taxDiffs: Array<number | null> = [];
+      const itcDiffs: Array<number | null> = [];
+      const actions: Array<string | null> = [];
+
       for (const r of result.rows) {
         const id = byKey.get(`${r.source_file ?? ''}|${r.source_row}`);
         if (!id) continue;
         const was = priorById.get(String(id));
         if (was && (was.st !== r.status || was.k !== (r.matched_2b_id ?? ''))) moved++;
+        ids.push(Number(id));
+        statuses.push(r.status);
+        mKeys.push(r.matched_2b_id ?? null);
+        mMonths.push(r.matched_2b_month ?? null);
+        tGstins.push(r.matched_2b_id ? normGstin(r.supplier_gstin) : null);
+        tInvs.push(r.matched_2b_id ? r.invoice_no : null);
+        tDates.push(r.matched_2b_id ? r.invoice_date || null : null);
+        tTaxables.push(r.two_b_taxable ?? null);
+        tItcs.push(r.two_b_itc ?? null);
+        tAvails.push(r.itc_availability ?? null);
+        reasons.push(r.reason ?? null);
+        itcAmts.push(r.itc ?? null);
+        taxDiffs.push(r.taxable_difference ?? null);
+        itcDiffs.push(r.itc_difference ?? null);
+        actions.push([r.action, r.match_hint].filter(Boolean).join(' | ') || null);
+      }
+
+      if (ids.length) {
         await c.query(
-          `UPDATE purchase_lines SET
-             match_status = $2, match_method = 're-reconcile',
-             matched_2b_key = $3, matched_2b_month = $4,
-             twob_supplier_gstin = $5, twob_invoice_no = $6, twob_invoice_date = $7,
-             twob_taxable_value = $8, twob_itc = $9, itc_availability = $10,
-             mismatch_reason = $11, itc_amount = $12,
-             taxable_difference = $13, itc_difference = $14,
-             suggested_action = $15, reconciled_at = now(), updated_at = now()
-           WHERE id = $1`,
-          [id, r.status, r.matched_2b_id ?? null, r.matched_2b_month ?? null,
-           r.matched_2b_id ? normGstin(r.supplier_gstin) : null,
-           r.matched_2b_id ? r.invoice_no : null,
-           r.matched_2b_id ? r.invoice_date || null : null,
-           r.two_b_taxable ?? null, r.two_b_itc ?? null, r.itc_availability ?? null,
-           r.reason ?? null, r.itc,
-           r.taxable_difference ?? null, r.itc_difference ?? null, [r.action, r.match_hint].filter(Boolean).join(' | ') || null],
+          `UPDATE purchase_lines AS p SET
+             match_status = v.match_status,
+             match_method = 're-reconcile',
+             matched_2b_key = v.matched_2b_key,
+             matched_2b_month = v.matched_2b_month,
+             twob_supplier_gstin = v.twob_supplier_gstin,
+             twob_invoice_no = v.twob_invoice_no,
+             twob_invoice_date = NULLIF(v.twob_invoice_date, '')::date,
+             twob_taxable_value = v.twob_taxable_value,
+             twob_itc = v.twob_itc,
+             itc_availability = v.itc_availability,
+             mismatch_reason = v.mismatch_reason,
+             itc_amount = v.itc_amount,
+             taxable_difference = v.taxable_difference,
+             itc_difference = v.itc_difference,
+             suggested_action = v.suggested_action,
+             reconciled_at = now(),
+             updated_at = now()
+           FROM (
+             SELECT * FROM unnest(
+               $1::bigint[], $2::text[], $3::text[], $4::text[], $5::text[],
+               $6::text[], $7::text[], $8::numeric[], $9::numeric[], $10::text[],
+               $11::text[], $12::numeric[], $13::numeric[], $14::numeric[], $15::text[]
+             )
+           ) AS v(
+             id, match_status, matched_2b_key, matched_2b_month, twob_supplier_gstin,
+             twob_invoice_no, twob_invoice_date, twob_taxable_value, twob_itc, itc_availability,
+             mismatch_reason, itc_amount, taxable_difference, itc_difference, suggested_action
+           )
+           WHERE p.id = v.id`,
+          [
+            ids, statuses, mKeys, mMonths, tGstins,
+            tInvs, tDates, tTaxables, tItcs, tAvails,
+            reasons, itcAmts, taxDiffs, itcDiffs, actions,
+          ],
         );
       }
+
       await c.query(
         `INSERT INTO audit_trail
            (changed_by, action, our_gstin, financial_year, period, reason, details)
@@ -2105,13 +2162,22 @@ export async function importPastedPurchase(
   });
 
   out.ok = true;
-  // Reconcile every month the batch touched. A failure in one month must not
-  // hide the others, so each result is recorded and reported separately.
+  // Reconcile every month the batch touched. Cache GSTR-2B per GSTIN so a
+  // 12-month or 22-month register loads 2B once per GSTIN instead of 22 times.
   const targets = out.keys.length ? out.keys : [out.key];
+  const twobCache = new Map<string, Gstr2bRecord[]>();
   for (const k of targets) {
+    const gKey = normGstin(k.gstin);
+    let cachedTwob = twobCache.get(gKey);
+    if (!cachedTwob) {
+      const bundle = await loadBundleForReconcile(gKey, k.period);
+      cachedTwob = bundle.twob;
+      twobCache.set(gKey, cachedTwob);
+    }
     const res = await reReconcile(k.gstin, k.period, {
       changedBy: opts.by,
       reason: 'Purchase register imported — reconciled immediately',
+      cachedTwob,
     });
     out.reReconcileAll.push(res);
     if (!res.ok) {

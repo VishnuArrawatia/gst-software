@@ -1892,8 +1892,9 @@ tr.clickable { cursor: default; }
           <input type="file" id="purchaseFile" hidden accept=".xlsx,.xlsm,.xlsb,.xls,.csv" />
         </div>
         <div class="row" style="margin-top:12px">
-          <button onclick="purchasePreview()">Preview file</button>
-          <button class="ghost" id="purchaseImportBtn" onclick="purchaseImport()" disabled>Confirm import</button>
+          <button onclick="purchaseImport()">Upload &amp; Reconcile Purchase Register</button>
+          <button class="ghost" onclick="purchasePreview()">Preview file</button>
+          <button class="ghost" id="purchaseImportBtn" onclick="purchaseImport()">Confirm import &amp; reconcile</button>
           <span class="hint" id="purchaseMsg" style="flex:1;min-width:200px"></span>
         </div>
       </div>
@@ -1909,11 +1910,13 @@ tr.clickable { cursor: default; }
           reconciles against Books. Re-uploading the same file is safe — lines update without duplicates.
         </div>
         <div class="row" style="margin-top:12px">
-          <div><label for="twobFile">GSTR-2B file (.json/.csv/.xlsx)</label><input type="file" id="twobFile" accept=".json,.csv,.xlsx,.xlsm,.xlsb,.xls" /></div>
+          <div><label for="twobFile">GSTR-2B file (.json/.csv/.xlsx)</label><input type="file" id="twobFile" accept=".json,.csv,.xlsx,.xlsm,.xlsb,.xls" onchange="preview2b()" /></div>
           <button onclick="upload2b(true)">Upload + reconcile</button>
+          <button class="ghost" onclick="preview2b()">Preview 2B file</button>
           <button class="ghost" onclick="upload2b(false)">Upload only</button>
           <span class="hint" id="twobMsg" style="flex:1;min-width:200px"></span>
         </div>
+        <div id="twobPreviewBox" style="margin-top:12px;display:none"></div>
       </div>
 
       <!-- ============ INVOICE-LEVEL RECONCILIATION (books vs 2B) ========= -->
@@ -3898,7 +3901,7 @@ async function purchasePreview() {
   showId('purchasePreviewCard');
   setHtml('purchasePreview', '<div class="hint">parsing\u2026</div>');
   try {
-    const out = await postFile('/api/purchase-file/preview?name=' + enc(f.name), f);
+    const out = await postFile('/api/purchase-file/preview?name=' + enc(f.name) + '&fallbackGstin=' + enc(CTX.gstin || ''), f);
     CTX.purchaseFileName = f.name;
     if (el('purchaseImportBtn')) el('purchaseImportBtn').disabled = false;
 
@@ -3980,77 +3983,110 @@ async function purchasePreview() {
 async function purchaseImport() {
   const f = el('purchaseFile') && el('purchaseFile').files && el('purchaseFile').files[0];
   if (!f) return toast('Please choose a purchase register file first.', 'err');
-  note('purchaseMsg', 'hint', 'importing\u2026');
+  note('purchaseMsg', 'hint', 'Importing & Reconciling ' + f.name + ' with GSTR-2B\u2026');
   try {
-    const out = await postFile('/api/purchase-file/import?name=' + enc(f.name), f);
-    // A register may carry several months, so the message lists every month the
-    // import touched and how many lines landed in each. Naming only
-    // `out.key` made a multi-month file look like it imported one month and
-    // dropped the rest.
+    const out = await postFile('/api/purchase-file/import?name=' + enc(f.name) + '&fallbackGstin=' + enc(CTX.gstin || ''), f);
     const keys = Array.isArray(out.keys) ? out.keys : [];
     const months = keys.length > 1
       ? keys.map((k) => esc(k.period) + ' (' + cnt(k.lines) + ')').join(', ')
       : esc((out.key && out.key.period) || (keys[0] && keys[0].period));
     const gstins = [...new Set(keys.map((k) => k.gstin).filter(Boolean))];
-    note('purchaseMsg', 'ok', 'Import ho gaya: ' + cnt(out.lines) + ' line, ' +
-      (keys.length > 1 ? cnt(keys.length) + ' month ' : 'month ') + months +
+    const totalMatched = (out.reReconcileAll || []).reduce((acc, r) => acc + (Number(r && r.matched) || 0), 0);
+    note('purchaseMsg', 'ok', 'Import & Reconcile ho gaya: ' + cnt(out.lines) + ' bills (' + cnt(totalMatched) + ' Matched with 2B), ' +
+      (keys.length > 1 ? cnt(keys.length) + ' months ' : 'month ') + months +
       (gstins.length ? ', GSTIN ' + gstins.map(esc).join(' / ') : '') + '.');
+    toast('Purchase Register import & reconcile ho gaya: ' + cnt(out.lines) + ' bills (' + cnt(totalMatched) + ' Matched)!', 'ok');
     if (Array.isArray(out.blocked) && out.blocked.length) {
       note('purchaseMsg', 'warn', 'Imported, but these months could not be reconciled: ' +
         out.blocked.map((b) => esc(b.period) + ' ' + esc(b.gstin)).join(', ') + ' \u2014 ' + esc(out.blocked[0].reason));
     }
-    // The import reconciles the month it imported, so the table below is now
-    // out of date. Re-read it rather than leaving a stale matched/missing count
-    // on screen next to a message that says the register was imported.
+    // If current header GSTIN/month was not in the imported batch, switch header to the imported GSTIN/month
+    if (keys.length) {
+      const hasCurrent = keys.some((k) => (!CTX.gstin || k.gstin === CTX.gstin) && k.period === CTX.period);
+      if (!hasCurrent) {
+        const pick = keys[keys.length - 1];
+        if (pick.gstin) CTX.gstin = pick.gstin;
+        if (pick.period) {
+          CTX.period = pick.period;
+          CTX.fy = fyOfPeriod(pick.period) || CTX.fy;
+        }
+      }
+    }
     await loadContext();
-    if (RECON.loaded) await loadRecon();
+    await loadRecon();
+    const reconCard = el('gstr3bItcTiles') || el('reconTable');
+    if (reconCard && reconCard.scrollIntoView) reconCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (e) {
     showInline('purchaseMsg', 'err', errText(e));
+    toast(errText(e), 'err');
+  }
+}
+
+async function preview2b() {
+  const f = el('twobFile') && el('twobFile').files && el('twobFile').files[0];
+  if (!f) return toast('Please choose a GSTR-2B (.json / .xlsx / .csv) file first.', 'err');
+  const box = el('twobPreviewBox');
+  if (box) { box.style.display = 'block'; box.innerHTML = '<div class="hint">Parsing GSTR-2B file ' + esc(f.name) + '\u2026</div>'; }
+  try {
+    const dataUrl = await fileToDataUrl(f);
+    const out = await postJson('/api/twob-file/preview', { name: f.name, data: dataUrl });
+    if (box) {
+      box.innerHTML =
+        '<div class="tiles" style="margin-bottom:10px">' +
+          '<div class="tile good"><div class="k">Format</div><div class="v" style="font-size:14px">' + esc(out.format) + '</div></div>' +
+          '<div class="tile"><div class="k">2B Bills</div><div class="v">' + cnt(out.rowCount) + '</div></div>' +
+          '<div class="tile"><div class="k">Taxable Value</div><div class="v" style="font-size:15px">' + money(out.totalTaxable) + '</div></div>' +
+          '<div class="tile good"><div class="k">Total 2B ITC</div><div class="v" style="font-size:15px">' + money(out.totalTax) + '</div></div>' +
+          '<div class="tile"><div class="k">GSTIN in File</div><div class="v" style="font-size:14px">' + esc(out.detectedGstin || CTX.gstin || 'Auto') + '</div></div>' +
+          '<div class="tile accent"><div class="k">2B Month(s)</div><div class="v" style="font-size:14px">' + esc((out.detectedPeriods || []).map(monthLabel).join(', ') || monthLabel(CTX.period)) + '</div></div>' +
+        '</div>';
+    }
+    note('twobMsg', 'ok', f.name + ' parsed (' + cnt(out.rowCount) + ' bills) \u2014 ab "Upload + reconcile" dabayein.');
+  } catch (e) {
+    if (box) box.innerHTML = '<div class="msg err">' + esc(errText(e)) + '</div>';
+    showInline('twobMsg', 'err', errText(e));
   }
 }
 
 // ---------------------------------------------------------------------------
 // GSTR-2B upload
 // ---------------------------------------------------------------------------
-/**
- * Upload the portal's GSTR-2B — JSON, CSV or Excel.
- *
- * `andReconcile` is what makes this a workflow rather than a file drop: the 2B
- * only reaches the database through a run, so the same button that accepted the
- * file starts that run and re-reads the reconciliation when it finishes. The
- * file still lands in the scratch folder either way, so "Upload only" stays
- * available for the operator who wants to stage several files first.
- */
 async function upload2b(andReconcile) {
   const f = el('twobFile') && el('twobFile').files && el('twobFile').files[0];
   if (!f) return toast('Please choose a GSTR-2B file first.', 'err');
-  note('twobMsg', 'hint', 'uploading ' + f.name + '\u2026');
+  note('twobMsg', 'hint', 'Importing & Reconciling ' + f.name + '\u2026');
   try {
-    if (andReconcile && CTX.gstin && CTX.period) {
-      const dataUrl = await fileToDataUrl(f);
-      const imp = await postJson('/api/twob-file/import', {
-        gstin: CTX.gstin,
-        period: CTX.period,
-        name: f.name,
-        data: dataUrl,
-      });
-      note('twobMsg', 'ok', f.name + ' import ho gaya (' + cnt(imp.imported2b) + ' 2B bills) aur Books ke saath Bill-to-Bill reconcile ho gaya!');
-      await loadContext();
-      await loadRecon();
-      return imp;
+    const dataUrl = await fileToDataUrl(f);
+    const imp = await postJson('/api/twob-file/import', {
+      gstin: CTX.gstin || '',
+      period: CTX.period || '',
+      name: f.name,
+      data: dataUrl,
+    });
+    if (imp.detectedGstin && imp.detectedGstin !== CTX.gstin) {
+      CTX.gstin = imp.detectedGstin;
     }
-    const out = await postFile('/api/upload?name=' + enc(f.name), f);
-    const kb = Math.round((out.size || 0) / 1024);
-    if (!andReconcile) {
-      note('twobMsg', 'ok', out.name + ' upload ho gaya (' + kb + ' KB). Ab "Upload + reconcile" ya Dashboard se run chalao.');
-      return out;
+    const targetPeriod = imp.activePeriod || (imp.detectedPeriods && imp.detectedPeriods[0]) || CTX.period;
+    if (targetPeriod && targetPeriod !== CTX.period) {
+      CTX.period = targetPeriod;
+      CTX.fy = fyOfPeriod(targetPeriod) || CTX.fy;
     }
-    note('twobMsg', 'hint', out.name + ' (' + kb + ' KB) upload ho gaya \u2014 2B import aur reconciliation chal rahi hai\u2026');
-    await runUploadedFolder();
-    if (RECON.loaded) await loadRecon();
-    return out;
+    const r = imp.recon || {};
+    const matchedTxt = r.lines
+      ? ' \u2014 Books lines: ' + cnt(r.lines) + ', Matched: ' + cnt(r.matched)
+      : ' \u2014 (Is month ka Purchase Register abhi Books me nahi hai; niche "In GSTR-2B, missing in Books" me saare 2B bills dikh rahe hain)';
+    note('twobMsg', 'ok', f.name + ' import ho gaya (' + cnt(imp.imported2b) + ' 2B bills, period ' + esc(monthLabel(targetPeriod)) + ')' + matchedTxt);
+    toast('GSTR-2B import & reconcile ho gaya (' + cnt(imp.imported2b) + ' bills)!', 'ok');
+    await loadContext();
+    await loadRecon();
+    if (andReconcile) {
+      const reconCard = el('gstr3bItcTiles') || el('reconTable');
+      if (reconCard && reconCard.scrollIntoView) reconCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    return imp;
   } catch (e) {
     showInline('twobMsg', 'err', errText(e));
+    toast(errText(e), 'err');
     return undefined;
   }
 }
@@ -4221,9 +4257,12 @@ function renderRecon() {
 
   let body;
   if (!RECON.rows.length) {
+    const twoBCnt = Number((RECON.data && RECON.data.twoBTotal) || 0);
     const why = (RECON.data && RECON.data.total)
       ? 'No rows match this filter.'
-      : 'No purchase lines for this GSTIN and month. Pehle register upload karo, phir 2B, phir "Upload + reconcile".';
+      : twoBCnt > 0
+        ? '\u2705 GSTR-2B ke ' + cnt(twoBCnt) + ' bills is month (' + monthLabel(CTX.period) + ') me import ho chuke hain (niche "In GSTR-2B, missing in Books" table me dekhein). Is month ka Purchase Register abhi Books me upload nahi hua hai \u2014 upar Purchase Register upload karein ya top header se wo Month select karein jiska Purchase Register aapne upload kiya hai.'
+        : 'No purchase lines for this GSTIN and month. Pehle register upload karo, phir 2B, phir "Upload + reconcile".';
     body = '<tbody><tr><td colspan="' + RECON_COLS.length + '" class="hint">' + esc(why) + '</td></tr></tbody>';
   } else {
     body = '<tbody>' + RECON.rows.map((r) => {

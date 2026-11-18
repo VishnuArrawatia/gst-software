@@ -35,6 +35,7 @@ import {
   lineHistory,
   listLines,
   listLocks,
+  loadBundleForReconcile,
   lockMonth,
   listUsers,
   monthControl,
@@ -848,7 +849,7 @@ app.post('/api/recon/purchase/auto-decide', requirePerm('itc', 'decide'), wrap(a
 
   const { rows: lines } = await listLines({ gstin, period, limit: 10000, offset: 0 });
   const actor = actorOf(req);
-  let updated = 0;
+  const edits: any[] = [];
 
   for (const r of lines as any[]) {
     if (r.itc_decision && r.itc_decision !== 'Pending Review' && r.itc_decision !== 'PENDING') continue;
@@ -881,24 +882,22 @@ app.post('/api/recon/purchase/auto-decide', requirePerm('itc', 'decide'), wrap(a
     }
 
     if (decision) {
-      await setItcDecision(
-        r.id,
-        {
+      edits.push({
+        lineId: r.id,
+        itc: {
           decision,
           decisionMonth: decisionMonth || undefined,
           reason: 'Auto-decided via Bill-to-Bill GSTR-3B ITC rules',
         },
-        { changedBy: actor },
-      );
-      if (table3b && table3b !== r.return_classification) {
-        await setReturnClassification(r.id, table3b, {
-          changedBy: actor,
-          reason: 'Auto-classified for GSTR-3B Table 4',
-        });
-      }
-      updated++;
+        classification: table3b && table3b !== r.return_classification ? table3b : undefined,
+      });
     }
   }
+
+  const bulk = edits.length
+    ? await applyEdits(edits, { by: actor, reason: 'Auto-decided via Bill-to-Bill GSTR-3B ITC rules' })
+    : { changedLines: 0 };
+  const updated = bulk.changedLines ?? edits.length;
 
   await audit(req.user, {
     action: 'RECON_ITC_AUTO_DECIDE', module: 'Reconciliation',
@@ -926,14 +925,19 @@ app.post('/api/twob-file/preview', requirePerm('data', 'import_purchase'), wrap(
       const picked = pickDataSheet(sheets, ['invoice_no', 'supplier_gstin', 'taxable_value', 'itc_availability'], { profile: 'twob' });
       rows = parseGstr2b(picked.rows, name).rows;
     }
-    const tax = rows.reduce((s, r) => s + (r.igst || 0) + (r.cgst || 0) + (r.sgst || 0), 0);
+    const tax = rows.reduce((s, r) => s + (r.igst || 0) + (r.cgst || 0) + (r.sgst || 0) + (r.cess || 0), 0);
     const taxable = rows.reduce((s, r) => s + (r.taxable_value || 0), 0);
+    const detectedGstins = [...new Set(rows.map((r) => normGstinOf(r.our_gstin)).filter(Boolean))];
+    const detectedPeriods = [...new Set(rows.map((r) => String(r.portal_fp || r.period || '').slice(0, 7)).filter(Boolean))].sort();
     res.json({
       file: name,
       format: isJson ? 'GSTR-2B Portal JSON' : 'GSTR-2B Excel/CSV',
       rowCount: rows.length,
       totalTaxable: Math.round(taxable * 100) / 100,
       totalTax: Math.round(tax * 100) / 100,
+      detectedGstin: detectedGstins[0] || '',
+      detectedGstins,
+      detectedPeriods,
       sample: rows.slice(0, 25),
     });
   } catch (e: any) {
@@ -945,16 +949,11 @@ app.post('/api/twob-file/preview', requirePerm('data', 'import_purchase'), wrap(
 app.post('/api/twob-file/import', requirePerm('data', 'import_purchase'), wrap(async (req, res) => {
   const ready = await dbReady();
   if (!ready.ok) return res.status(503).json({ error: ready.reason });
-  const gstin = normGstinOf(req.body?.gstin);
-  const period = str(req.body?.period);
-  const name = str(req.body?.name) || 'GSTR2B.xlsx';
+  const reqGstin = normGstinOf(req.body?.gstin);
+  const reqPeriod = str(req.body?.period);
+  const name = path.basename(str(req.body?.name) || 'GSTR2B.xlsx');
   const buf = parseDataUrl(req.body?.data);
-  if (!gstin || !period) return res.status(400).json({ error: 'gstin aur period zaroori hain.' });
   if (!buf) return res.status(400).json({ error: 'File payload khali hai.' });
-  if (!(await checkGstinAccess(req, res, gstin))) return;
-
-  const lock = await isLocked(gstin, period);
-  if (lock.locked) return res.status(423).json({ error: `Period ${period} locked hai.` });
 
   try {
     let rows: any[] = [];
@@ -970,43 +969,110 @@ app.post('/api/twob-file/import', requirePerm('data', 'import_purchase'), wrap(a
     }
     if (!rows.length) return res.status(400).json({ error: `${name} me koi GSTR-2B bill nahi mila.` });
 
-    const stamped = rows.map((r: any, idx: number) => ({
-      ...r,
-      our_gstin: normGstinOf(r.our_gstin) || gstin,
-      period: r.period || period,
-      portal_fp: r.portal_fp || r.period || period,
-      source_file: name,
-      source_row: r.source_row ?? idx + 1,
+    const fileGstin = normGstinOf(rows.find((r: any) => normGstinOf(r.our_gstin))?.our_gstin) || reqGstin;
+    const filePeriod = String(rows.find((r: any) => r.portal_fp || r.period)?.portal_fp || rows.find((r: any) => r.period)?.period || reqPeriod).slice(0, 7);
+    if (!fileGstin || !filePeriod) return res.status(400).json({ error: 'gstin aur period zaroori hain.' });
+    if (!(await checkGstinAccess(req, res, fileGstin))) return;
+
+    const lock = await isLocked(fileGstin, filePeriod);
+    if (lock.locked) return res.status(423).json({ error: `Period ${filePeriod} locked hai.` });
+
+    // Also save the raw file into UPLOAD_DIR so folder-based runs see it too
+    try {
+      fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+      fs.writeFileSync(path.join(UPLOAD_DIR, name), buf);
+    } catch { /* non-fatal */ }
+
+    const stamped = rows.map((r: any, idx: number) => {
+      const g = normGstinOf(r.our_gstin) || fileGstin;
+      const p = String(r.portal_fp || r.period || filePeriod).slice(0, 7);
+      return {
+        ...r,
+        our_gstin: g,
+        period: p,
+        portal_fp: p,
+        source_file: name,
+        source_row: r.source_row ?? idx + 1,
+      };
+    });
+
+    // Group by (our_gstin, period) so every month in the 2B file is registered in gstr2b_files
+    const pairMap = new Map<string, { gstin: string; period: string; count: number; blocked: number }>();
+    for (const r of stamped) {
+      const k = `${r.our_gstin}|${r.period}`;
+      const cur = pairMap.get(k) || { gstin: r.our_gstin, period: r.period, count: 0, blocked: 0 };
+      cur.count++;
+      if (String(r.itc_availability || '').toLowerCase() === 'no') cur.blocked++;
+      pairMap.set(k, cur);
+    }
+    const fileHash = sha256(buf);
+    const twoBFiles = [...pairMap.values()].map((p) => ({
+      file_name: name,
+      sha256: fileHash,
+      file_size: buf.length,
+      our_gstin: p.gstin,
+      twob_month: p.period,
+      portal_fp: p.period,
+      record_count: p.count,
+      blocked_count: p.blocked,
+      source_format: (isJson ? 'json' : 'xlsx') as 'json' | 'xlsx',
     }));
-    const blockedCount = stamped.filter((r: any) => String(r.itc_availability || '').toLowerCase() === 'no').length;
+
     const saved = await persistRun({
       books: [],
       twob: stamped,
       sales: [],
       reconByBundle: new Map(),
-      twoBFiles: [
-        {
-          file_name: name,
-          sha256: sha256(buf),
-          file_size: buf.length,
-          our_gstin: gstin,
-          twob_month: period,
-          portal_fp: period,
-          record_count: stamped.length,
-          blocked_count: blockedCount,
-          source_format: isJson ? 'json' : 'xlsx',
-        },
-      ],
+      twoBFiles,
       uploadedBy: actorOf(req),
     });
     if (!saved.ok) return res.status(400).json({ error: saved.reason || 'GSTR-2B save nahi ho saka.' });
 
-    const recon = await reReconcile(gstin, period, { changedBy: actorOf(req), reason: `GSTR-2B import: ${name}` });
+    // Re-reconcile every period touched by the 2B file + the currently viewed period + any period of this GSTIN with Missing in 2B rows
+    const periodsToReconcile = new Set<string>([...pairMap.values()].map((p) => p.period));
+    if (reqPeriod) periodsToReconcile.add(reqPeriod);
+    try {
+      const openPeriods = await withClient((c) =>
+        c.query(
+          `SELECT DISTINCT period FROM purchase_lines WHERE our_gstin = $1 AND match_status = 'Missing in 2B'`,
+          [fileGstin],
+        ),
+      );
+      for (const row of openPeriods.rows) if (row.period) periodsToReconcile.add(String(row.period));
+    } catch { /* ignore */ }
+
+    const reconAll: any[] = [];
+    let cachedTwob: any[] | undefined;
+    for (const p of periodsToReconcile) {
+      if (!cachedTwob) {
+        const bdl = await loadBundleForReconcile(fileGstin, p);
+        cachedTwob = bdl.twob;
+      }
+      const r = await reReconcile(fileGstin, p, { changedBy: actorOf(req), reason: `GSTR-2B import: ${name}`, cachedTwob });
+      reconAll.push(r);
+    }
+    const primaryRecon =
+      reconAll.find((r) => r.period === filePeriod && r.ok) ||
+      reconAll.find((r) => r.period === filePeriod) ||
+      reconAll.find((r) => r.period === reqPeriod && r.ok) ||
+      reconAll.find((r) => r.ok) ||
+      reconAll[0];
+
+    const detectedPeriods = [...new Set([...pairMap.values()].map((p) => p.period))].sort();
     await audit(req.user, {
       action: 'GSTR2B_FILE_IMPORT', module: 'Reconciliation',
-      details: { gstin, period, file: name, imported2b: stamped.length, recon },
+      details: { gstin: fileGstin, period: filePeriod, detectedPeriods, file: name, imported2b: stamped.length, recon: primaryRecon },
     });
-    res.json({ ok: true, file: name, imported2b: stamped.length, recon });
+    res.json({
+      ok: true,
+      file: name,
+      imported2b: stamped.length,
+      detectedGstin: fileGstin,
+      detectedPeriods,
+      activePeriod: filePeriod || primaryRecon?.period,
+      recon: primaryRecon,
+      reconAll,
+    });
   } catch (e: any) {
     res.status(400).json({ error: `${name} import nahi ho saka: ${e.message}` });
   }
@@ -1639,6 +1705,12 @@ app.post('/api/purchase-file/preview', express.raw({ type: '*/*', limit: '200mb'
   }
   const detected = sniffKind(rows);
   const parsed = parsePurchaseRegister(rows, 'purchase-file');
+  const fallbackGstin = normGstinOf(str(req.query.fallbackGstin));
+  if (fallbackGstin) {
+    for (const b of parsed.rows) {
+      if (!normGstinOf(b.our_gstin)) b.our_gstin = fallbackGstin;
+    }
+  }
 
   // ---- document-type summary --------------------------------------------
   // Shown BEFORE the import button, because this is the one file where a wrong
@@ -1754,6 +1826,12 @@ app.post('/api/purchase-file/import', requirePerm('data', 'import_purchase'), ex
   }
 
   const parsed = parsePurchaseRegister(rows, 'purchase-file');
+  const fallbackGstin = normGstinOf(str(req.query.fallbackGstin));
+  if (fallbackGstin) {
+    for (const b of parsed.rows) {
+      if (!normGstinOf(b.our_gstin)) b.our_gstin = fallbackGstin;
+    }
+  }
   if (!parsed.rows.length) {
     return res.status(400).json({
       error: 'Koi row samajh nahi aayi. Check ki header row me "Supplier GSTIN", "Invoice No" aur "Taxable Value" hain.',
@@ -1769,6 +1847,12 @@ app.post('/api/purchase-file/import', requirePerm('data', 'import_purchase'), ex
         'warna company ya unit tak attribute nahi ho paayega.',
     });
   }
+
+  // Also stage the file in UPLOAD_DIR so folder-based monthly runs see it too
+  try {
+    fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+    fs.writeFileSync(path.join(UPLOAD_DIR, name), Buffer.isBuffer(req.body) ? req.body : Buffer.from(req.body));
+  } catch { /* non-fatal */ }
 
   // One file = one source, so re-uploading the same file updates those lines
   // instead of doubling them.

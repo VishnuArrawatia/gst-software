@@ -29,7 +29,7 @@ import { buildGstr1, gstr1HsnSheetRows, gstr1PortalJson, gstr1SheetRows } from '
 import { buildItcControl, lapseRisk } from '../engine/control';
 import { buildImsActions } from '../engine/ims';
 import { buildGstr9, buildGstr9c, gstr9PortalJson, gstr9WorkingRows, gstr9cWorkingRows } from '../engine/gstr9';
-import { dbReady, itcWorking, persistRun, reconMapOf, sha256, type TwoBFileInput } from './store';
+import { dbReady, itcWorking, persistRun, reconMapOf, reReconcile, sha256, type TwoBFileInput } from './store';
 import {
   fyOf,
   labelOf,
@@ -130,14 +130,24 @@ const inr = (n: number) =>
 
 function readSheetRows(file: string): { rows: unknown[][]; sheetName: string; sheets: string[] } {
   const wb = XLSX.readFile(file);
-  const sheetName = wb.SheetNames[0];
-  const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], {
-    header: 1,
-    raw: true,
-    defval: null,
-    blankrows: false,
-  }) as unknown[][];
-  return { rows, sheetName, sheets: wb.SheetNames };
+  let chosenName = wb.SheetNames[0];
+  let chosenRows: unknown[][] = [];
+  for (const name of wb.SheetNames) {
+    const r = XLSX.utils.sheet_to_json(wb.Sheets[name], {
+      header: 1,
+      raw: true,
+      defval: null,
+      blankrows: false,
+    }) as unknown[][];
+    if (!chosenRows.length) {
+      chosenName = name;
+      chosenRows = r;
+    }
+    if (r.length > 1 && sniffKind(r) !== 'unknown') {
+      return { rows: r, sheetName: name, sheets: wb.SheetNames };
+    }
+  }
+  return { rows: chosenRows, sheetName: chosenName, sheets: wb.SheetNames };
 }
 
 /**
@@ -752,6 +762,18 @@ export async function runMonthly(opts: RunOptions): Promise<MonthlyRun> {
             `rows store nahi hui: ${persisted.salesUnknownGstin.slice(0, 5).join(', ')}` +
             (persisted.salesUnknownGstin.length > 5 ? ' …' : ''),
         );
+      }
+      if (twob.length > 0) {
+        const twobPairs = new Set<string>();
+        for (const t of twob) {
+          const g = normGstin(t.our_gstin);
+          const p = (t.portal_fp || t.period || '').slice(0, 7);
+          if (g && p) twobPairs.add(`${g}|${p}`);
+        }
+        for (const pair of twobPairs) {
+          const [g, p] = pair.split('|');
+          await reReconcile(g, p, { changedBy: 'cli', reason: 'Monthly pipeline GSTR-2B sync' }).catch(() => {});
+        }
       }
       try {
         const working = await itcWorking({ limit: 50000 });
