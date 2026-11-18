@@ -3380,7 +3380,7 @@ app.get('/api/gen-gst/overview', wrap(async (req, res) => {
     const mSales = sales.filter((s) => s.period === m);
     const mBooks = books.filter((b) => b.period === m);
     const mTwob = twob.filter((w) => w.period === m);
-    const mSummary = (g9.monthlySummary || []).find((x: any) => x.period === m) || {};
+    const mSummary: any = (g9.monthlySummary || []).find((x: any) => x.period === m) || {};
 
     const salesVal = r2(mSales.reduce((a, s) => a + Number(s.taxable_value || 0), 0));
     const pur2bVal = r2(mTwob.reduce((a, w) => a + Number(w.taxable_value || 0), 0));
@@ -3389,7 +3389,7 @@ app.get('/api/gen-gst/overview', wrap(async (req, res) => {
     const netLiabM = r2(outTaxM - netItcM);
 
     const blockedCnt = mTwob.filter((w) => String(w.itc_availability || '').toLowerCase() === 'no').length;
-    const rcmCnt = mBooks.filter((b) => b.reverse_charge).length;
+    const rcmCnt = mBooks.filter((b: any) => b.reverse_charge).length;
     const missIn2bCnt = Math.max(0, mBooks.length - mTwob.length);
     const unbooked2bCnt = Math.max(0, mTwob.length - mBooks.length);
     const totalConf = missIn2bCnt + unbooked2bCnt + blockedCnt;
@@ -3474,7 +3474,7 @@ app.get('/api/gen-gst/overview', wrap(async (req, res) => {
   };
 
   // GSTR-3B Table 4 Eligible ITC Structured Tree (ExpressGST ITC Tracker Screenshot 7)
-  const rcmRows = scopedBooks.filter((b) => b.reverse_charge);
+  const rcmRows = scopedBooks.filter((b: any) => b.reverse_charge);
   const rcmIgst = r2(rcmRows.reduce((a, b) => a + Number(b.igst || 0), 0));
   const rcmCgst = r2(rcmRows.reduce((a, b) => a + Number(b.cgst || 0), 0));
   const rcmSgst = r2(rcmRows.reduce((a, b) => a + Number(b.sgst || 0), 0));
