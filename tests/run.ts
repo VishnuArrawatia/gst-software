@@ -3947,6 +3947,68 @@ section('34. Category 1 fixes — 40% slab, 2B JSON edge cases, 3B ITC decisions
       g9PendingCls.table7.netItcAvailable7J.total,
       g9PendingCls.table6.difference6J.total,
     ], [18000, 18000, 0]);
+
+    // 11. Master Invoice-to-Invoice Recon Fixes (Date shift, Cross-FY, Polarity Duplicates, DN/CDNR, Options)
+    eq('SheetJS local 23:59:50 Date normalizes forward to 2026-04-06', normDate(new Date(2026, 3, 5, 23, 59, 50)), '2026-04-06');
+    eq('Excel serial 46118 normalizes to 2026-04-06 UTC', excelSerialToIso(46118), '2026-04-06');
+
+    const crossFyRec = reconcilePurchases(
+      [BILL({ period: '2026-04', invoice_no: '31', invoice_date: '2026-04-09', taxable_value: 231043.6, igst: 41587.84 })],
+      [
+        TWO({ id: 'old-2025', period: '2025-04', portal_fp: '2025-04', invoice_no: '31', invoice_date: '2025-04-10', taxable_value: 26325.2, igst: 4738.54 }),
+        TWO({ id: 'cur-2026', period: '2026-04', portal_fp: '2026-04', invoice_no: '31', invoice_date: '2026-04-10', taxable_value: 231043.6, igst: 41587.84 }),
+      ],
+    );
+    eq('Cross-FY: 2026-04 invoice picks 2026-04 exact match instead of 2025-04', [
+      crossFyRec.rows[0]?.status,
+      crossFyRec.rows[0]?.matched_2b_id,
+      crossFyRec.rows[0]?.two_b_invoice_no,
+      crossFyRec.rows[0]?.two_b_invoice_date,
+    ], ['Matched', 'cur-2026', '31', '2026-04-10']);
+
+    const crossFyGuard = reconcilePurchases(
+      [BILL({ period: '2026-04', invoice_no: '99', invoice_date: '2026-04-10', taxable_value: 50000, igst: 9000 })],
+      [TWO({ id: 'old-99', period: '2025-04', portal_fp: '2025-04', invoice_no: '99', invoice_date: '2025-04-10', taxable_value: 10000, igst: 1800 })],
+    );
+    eq('Cross-FY guard rejects 365-day-apart amount mismatch', crossFyGuard.rows[0]?.status, 'Missing in 2B');
+
+    const claimedGuard = reconcilePurchases(
+      [BILL({ period: '2026-04', invoice_no: '31', invoice_date: '2026-04-09', taxable_value: 26325.2, igst: 4738.54 })],
+      [TWO({ id: 'already-used', period: '2026-01', portal_fp: '2026-01', invoice_no: '31', invoice_date: '2026-01-10', taxable_value: 26325.2, igst: 4738.54 })],
+      { claimedElsewhere: new Set(['already-used']) },
+    );
+    eq('claimedElsewhere prevents reusing a 2B bill already claimed in another month', claimedGuard.rows[0]?.status, 'Missing in 2B');
+
+    const polRecon = reconcilePurchases(
+      [
+        BILL({ source_row: 1, period: '2026-04', invoice_no: '38/26-27', document_type: 'Tax Invoice', invoice_date: '2026-04-17', taxable_value: 19172.4, igst: 958.62 }),
+        BILL({ source_row: 2, period: '2026-04', invoice_no: '38/26-27', document_type: 'Debit Note', invoice_date: '2026-04-17', taxable_value: -5670, igst: -283.5 }),
+        BILL({ source_row: 3, period: '2026-04', invoice_no: '202627PND0000333', document_type: 'Tax Invoice', invoice_date: '2026-04-19', taxable_value: 37500.5, igst: 6750.09 }),
+      ],
+      [
+        TWO({ id: '2b-inv', period: '2026-04', portal_fp: '2026-04', invoice_no: '38/26-27', invoice_type: 'R', invoice_date: '2026-04-17', taxable_value: 19172.4, igst: 958.62 }),
+        TWO({ id: '2b-cn', period: '2026-04', portal_fp: '2026-04', invoice_no: '38/26-27', invoice_type: 'CDNR', invoice_date: '2026-04-17', taxable_value: -5670, igst: -283.5 }),
+        TWO({ id: '2b-dn', period: '2026-04', portal_fp: '2026-04', invoice_no: '202627PND0000333', invoice_type: 'DN', invoice_date: '2026-04-19', taxable_value: 37500.5, igst: 6750.09 }),
+      ],
+    );
+    eq('Polarity-aware matching eliminates false duplicate between Tax Invoice & negative Debit Note and matches positive 2B DN', [
+      polRecon.summary.duplicate,
+      polRecon.summary.matched,
+    ], [0, 3]);
+
+    const optWinExact = reconcilePurchases(
+      [BILL({ invoice_no: 'OPT-1', invoice_date: '2026-04-10', taxable_value: 10000, igst: 1800 })],
+      [TWO({ invoice_no: 'OPT-1', invoice_date: '2026-04-13', taxable_value: 10004, igst: 1804 })],
+      { tolerance: 5, dateWindow: 'exact' },
+    );
+    eq('Strict dateWindow=exact flags 3-day gap as mismatch even within tax tolerance', optWinExact.rows[0]?.status, 'Amount Mismatch');
+
+    const optWinAny = reconcilePurchases(
+      [BILL({ invoice_no: 'OPT-1', invoice_date: '2026-04-10', taxable_value: 10000, igst: 1800 })],
+      [TWO({ invoice_no: 'OPT-1', invoice_date: '2026-04-13', taxable_value: 10004, igst: 1804 })],
+      { tolerance: 5, dateWindow: 'any' },
+    );
+    eq('Tolerance=5 & dateWindow=any matches bill cleanly', optWinAny.rows[0]?.status, 'Matched');
   }
 }
 

@@ -2106,7 +2106,8 @@ tr.clickable { cursor: default; }
           </div>
           <div>
             <label for="cfgDateMatching">Invoice date matching</label>
-            <select id="cfgDateMatching" style="min-width:140px">
+            <select id="cfgDateMatching" style="min-width:190px">
+              <option value="any" selected>Any date (Prefer closest)</option>
               <option value="exact">Exact date</option>
               <option value="2days">&plusmn;2 days window</option>
               <option value="5days">&plusmn;5 days window</option>
@@ -2288,9 +2289,21 @@ tr.clickable { cursor: default; }
         <h2>In GSTR-2B, missing in Books</h2>
         <div class="hint">
           Filed by the supplier, not yet recorded in our Books. Needs invoice booking —
-          or reversal if it is a credit note. This represents the true ITC gap.
+          or reversal if it is a credit note. Click <b>🔗 Match to Book</b> if the supplier used a different invoice number or GSTIN.
         </div>
-        <div class="scroll" style="margin-top:12px"><table id="reconTwoBTable"></table></div>
+        <div class="row" style="margin-top:10px;gap:8px;align-items:center;flex-wrap:wrap">
+          <input type="search" id="twobFilterQ" placeholder="Filter 2B by invoice no, supplier GSTIN or vendor name..."
+                 style="flex:1;min-width:220px" oninput="renderReconTwoBTable()" />
+          <select id="twobFilterType" onchange="renderReconTwoBTable()" style="min-width:160px">
+            <option value="">All 2B Doc Types</option>
+            <option value="INV">Tax Invoices (R/B2B)</option>
+            <option value="CN">Credit Notes (CDNR)</option>
+            <option value="DN">Debit Notes (DN)</option>
+            <option value="IMPG">Imports (IMPG)</option>
+          </select>
+          <span class="hint" id="twobFilterCount"></span>
+        </div>
+        <div class="scroll" style="margin-top:10px"><table id="reconTwoBTable"></table></div>
       </div>
 
       <div class="card" id="reconHistoryCard" style="display:none">
@@ -2629,6 +2642,34 @@ tr.clickable { cursor: default; }
         <li><b>Table 4(D)(1):</b> Mandatory disclosure of ITC reclaimed which was earlier reversed under Table 4(B)(2).</li>
       </ul>
     </div>
+  </div>
+</div>
+
+<!-- ===================== MANUAL INVOICE-TO-INVOICE MATCH MODAL ===================== -->
+<div class="gst-modal-backdrop" id="modalManualMatch" style="display:none">
+  <div class="gst-modal-card" style="max-width:980px;width:96%">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px">
+      <div>
+        <h2 style="margin:0;font-size:19px;color:var(--text)" id="mmTitle">🔗 Match Invoice-to-Invoice (Books ↔ GSTR-2B)</h2>
+        <div class="hint" id="mmSub" style="margin-top:4px">Books-only reconciliation mapping — original Books columns &amp; GSTR-2B remain 100% immutable.</div>
+      </div>
+      <button type="button" class="ghost sm" onclick="closeManualMatchModal()" style="font-size:16px;padding:4px 10px">&times;</button>
+    </div>
+
+    <div id="mmSourceCard" style="padding:10px 14px;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;margin-bottom:12px;font-size:12.5px"></div>
+
+    <div class="row" style="gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+      <input type="search" id="mmSearch" placeholder="Search candidate invoice no, supplier GSTIN, vendor, month..."
+             style="flex:1;min-width:220px" onkeydown="if (event.key === 'Enter') loadManualMatchCandidates()" />
+      <label style="font-size:12px;display:inline-flex;align-items:center;gap:5px">
+        <input type="checkbox" id="mmAllSuppliers" onchange="loadManualMatchCandidates()" /> Show all suppliers (cross-GSTIN fix)
+      </label>
+      <input type="text" id="mmReason" placeholder="Optional audit reason (e.g. Supplier invoice typo fixed)" style="min-width:240px" />
+      <button type="button" class="sm" onclick="loadManualMatchCandidates()">Search</button>
+    </div>
+
+    <div id="mmStatusMsg" class="hint" style="margin-bottom:8px"></div>
+    <div class="scroll" style="max-height:380px"><table id="mmCandidatesTable"></table></div>
   </div>
 </div>
 
@@ -4858,6 +4899,7 @@ const RECON_COLS = [
   ['book_document_type', 'Type'], ['invoice_date', 'Document date'], ['party_name', 'Vendor'],
   ['source_taxable_value', 'Source taxable'],
   ['book_taxable_value', 'Signed taxable'], ['itc_amount', 'Signed ITC'],
+  ['twob_doc', '2B Invoice & Date'],
   ['twob_taxable_value', '2B taxable'], ['twob_itc', '2B ITC'],
   ['taxable_difference', 'Taxable diff'], ['itc_difference', 'ITC diff'],
   ['twoB', '2B month'], ['status', 'Status'], ['itc', 'ITC decision'],
@@ -4970,17 +5012,35 @@ function renderRecon() {
           return '<td style="width:30px;text-align:center"><input type="checkbox" class="recon-row-chk" data-id="' + r.id + '" onchange="updateBulkRecoMsg()" /></td>';
         }
         if (k === 'edit') {
+          const canMatch = !locked && (r.match_status === 'Missing in 2B' || r.match_status === 'Amount Mismatch');
+          const matchBtn = canMatch
+            ? '<button type="button" class="sm" style="background:#2563eb;color:#fff" onclick="openManualMatchModal(' + r.id + ')" title="Select &amp; link to GSTR-2B invoice">🔗 Match 2B</button>'
+            : '';
+          const unlinkBtn = (!locked && r.recon_edited)
+            ? '<button type="button" class="ghost sm" onclick="unlinkReconRow(' + r.id + ')" title="Unlink &amp; restore original Book values">&#8617;</button>'
+            : '';
           if (RECON.fastEdit && !locked) {
             return '<td class="row-actions" style="white-space:nowrap">' +
               '<button type="button" class="sm" onclick="saveFastReconRow(' + r.id + ')">\ud83d\udcbe Save</button>' +
+              matchBtn + unlinkBtn +
               '<button type="button" class="ghost sm" onclick="reconEdit(' + r.id + ')">Full</button>' +
               '<button type="button" class="ghost sm" onclick="reconHistory(' + r.id + ')" title="Correction history">Log</button>' +
               '</td>';
           }
-          return '<td class="row-actions">' +
+          return '<td class="row-actions" style="white-space:nowrap">' +
+            matchBtn + unlinkBtn +
             '<button class="ghost sm" onclick="reconEdit(' + r.id + ')">Edit</button>' +
             '<button class="ghost sm" onclick="reconHistory(' + r.id + ')" title="Correction history">Log</button>' +
             '</td>';
+        }
+        if (k === 'twob_doc') {
+          if (!r.matched_2b_key && !r.twob_invoice_no) return '<td>&mdash;</td>';
+          const tInv = r.twob_invoice_no || '&mdash;';
+          const tDt = r.twob_invoice_date ? fmtDmy(r.twob_invoice_date) : '';
+          const tSup = r.twob_supplier_gstin && r.twob_supplier_gstin !== (r.recon_supplier_gstin || r.book_supplier_gstin)
+            ? '<div class="hint" style="font-size:10px">' + esc(r.twob_supplier_gstin) + '</div>' : '';
+          return '<td style="white-space:nowrap"><b>' + esc(tInv) + '</b>' +
+            (tDt ? '<div class="hint" style="font-size:10.5px">' + esc(tDt) + '</div>' : '') + tSup + '</td>';
         }
         if (RECON.fastEdit && !locked) {
           if (k === 'supplier_gstin') {
@@ -5057,11 +5117,7 @@ function renderRecon() {
   setHtml('reconTable', head + body);
 
   // ---- 2B side, not in the books ----
-  const twoBCols = ['our_gstin', 'twob_month', 'supplier_gstin', 'supplier_name', 'invoice_no', 'invoice_date',
-    'document_type', 'taxable_value', 'itc', 'itc_availability', 'reason'];
-  const twoBRows = (out.twoBOnly || []).map((r) => Object.assign({}, r, { itc: n(r.itc) }));
-  setHtml('reconTwoBTable', tableHtml(twoBCols, twoBRows,
-    'Every GSTR-2B invoice is matched in Books \u2014 nothing pending this month.'));
+  renderReconTwoBTable();
 }
 
 function filterToSingleGstin(g) {
@@ -5117,7 +5173,8 @@ async function saveFastReconRow(id, customReason) {
   note('reconMsg', 'hint', 'Saving Books-only override & re-reconciling\u2026');
   try {
     if (Object.keys(patch).length) {
-      await postJson('/api/lines/' + id + '/recon', Object.assign({ reason: why }, patch));
+      const cfg = getReconMatchingCfg();
+      await postJson('/api/lines/' + id + '/recon', Object.assign({ reason: why, tolerance: cfg.tolerance, dateWindow: cfg.dateWindow }, patch));
     }
     if (itcChanged) {
       await postJson('/api/lines/' + id + '/itc', {
@@ -5139,7 +5196,8 @@ async function autoLinkProbable2b() {
   note('reconMsg', 'hint', 'Auto-linking Probable 2B bills into Books Reconciliation columns (GSTR-2B stays immutable)\u2026');
   try {
     const pMode = (el('reconPeriodMode') && el('reconPeriodMode').value) || RECON.periodMode || 'single';
-    const payload = { gstin: CTX.gstin, period: CTX.period };
+    const cfg = getReconMatchingCfg();
+    const payload = { gstin: CTX.gstin, period: CTX.period, tolerance: cfg.tolerance, dateWindow: cfg.dateWindow };
     if (pMode === 'multi' && RECON.selectedMonths && RECON.selectedMonths.length) {
       payload.periods = RECON.selectedMonths;
     } else if (pMode === 'range') {
@@ -5288,7 +5346,8 @@ async function reconSave(id) {
   try {
     let changed = [];
     if (Object.keys(patch).length) {
-      const out = await postJson('/api/lines/' + id + '/recon', Object.assign({ reason: why }, patch));
+      const cfg = getReconMatchingCfg();
+      const out = await postJson('/api/lines/' + id + '/recon', Object.assign({ reason: why, tolerance: cfg.tolerance, dateWindow: cfg.dateWindow }, patch));
       changed = changed.concat(out.changed || []);
     }
     if (moves) {
@@ -5330,11 +5389,24 @@ async function reconHistory(id) {
   }
 }
 
+function getReconMatchingCfg() {
+  const tolRaw = el('cfgTaxTolerance') ? Number(el('cfgTaxTolerance').value) : 2;
+  const tolerance = Number.isFinite(tolRaw) && tolRaw >= 0 ? tolRaw : 2;
+  const dateWindow = (el('cfgDateMatching') && el('cfgDateMatching').value) || 'any';
+  return { tolerance, dateWindow };
+}
+
 /** Re-run the matcher over the stored lines for the active scope (Single Month, Month Range, or Multiple Selected Months). */
 async function rerunMonth() {
   if (!CTX.gstin && !CTX.period) return toast('Choose GSTIN and month from the header.', 'err');
   const pMode = (el('reconPeriodMode') && el('reconPeriodMode').value) || RECON.periodMode || 'single';
-  const payload = { gstin: CTX.gstin, period: CTX.period };
+  const cfg = getReconMatchingCfg();
+  const payload = {
+    gstin: CTX.gstin,
+    period: CTX.period,
+    tolerance: cfg.tolerance,
+    dateWindow: cfg.dateWindow,
+  };
   if (pMode === 'range') {
     const fp = (el('reconFromPeriod') && el('reconFromPeriod').value) || '';
     const tp = (el('reconToPeriod') && el('reconToPeriod').value) || '';
@@ -5342,7 +5414,7 @@ async function rerunMonth() {
   } else if (pMode === 'multi' && RECON.selectedMonths && RECON.selectedMonths.length) {
     payload.periods = RECON.selectedMonths;
   }
-  note('reconMsg', 'hint', 'Re-reconciling active scope\u2026');
+  note('reconMsg', 'hint', 'Re-reconciling active scope (tol \u20b9' + cfg.tolerance + ', date: ' + cfg.dateWindow + ')\u2026');
   try {
     const out = await postJson('/api/rereconcile', payload);
     if (!out.ok) {
@@ -5353,7 +5425,8 @@ async function rerunMonth() {
         CTX.fy = fyOfPeriod(out.switchedToPeriod) || CTX.fy;
         await loadContext();
       }
-      note('reconMsg', 'ok', 'Reconcile ho gaya \u2014 ' + cnt(out.matched) + ' matched out of ' + cnt(out.lines) + ' lines' +
+      const chTxt = out.changed !== undefined ? ' (' + cnt(out.changed) + ' updated)' : '';
+      note('reconMsg', 'ok', 'Reconcile ho gaya \u2014 ' + cnt(out.matched) + ' matched out of ' + cnt(out.lines) + ' lines' + chTxt +
         (out.switchedToPeriod ? ' (auto-switched to active month ' + monthLabel(out.switchedToPeriod) + ')' : '') + '.');
       toast('Reconciliation complete: ' + cnt(out.matched) + ' matched!', 'ok');
     }
@@ -6328,8 +6401,8 @@ function filterReconStatus(status) {
 
 function resetMatchingConfig() {
   if (el('cfgTaxTolerance')) el('cfgTaxTolerance').value = '2';
-  if (el('cfgDateMatching')) el('cfgDateMatching').value = 'exact';
-  toast('Matching configuration reset to statutory defaults (₹2 tolerance, Exact date).', 'ok');
+  if (el('cfgDateMatching')) el('cfgDateMatching').value = 'any';
+  toast('Matching configuration reset to defaults (\u20b92 tolerance, Any date - Prefer closest).', 'ok');
 }
 
 function toggleSelectAllRecon(checked) {
@@ -6370,6 +6443,208 @@ async function applyBulkRecoAction() {
     }
     toast('Bulk action applied successfully to ' + cnt(checked.length) + ' bills!', 'ok');
     await loadRecon();
+  } catch (e) {
+    note('reconMsg', 'err', errText(e));
+    toast(errText(e), 'err');
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Interactive Manual Invoice-to-Invoice Match Modal + Unbooked 2B Filter/Action
+// ---------------------------------------------------------------------------
+function renderReconTwoBTable() {
+  const out = RECON.data || {};
+  const raw = out.twoBOnly || [];
+  const q = ((el('twobFilterQ') && el('twobFilterQ').value) || '').trim().toLowerCase();
+  const tp = (el('twobFilterType') && el('twobFilterType').value) || '';
+  const locked = reconIsLocked();
+
+  const filtered = raw.filter((r) => {
+    const dt = String(r.document_type || 'R').toUpperCase();
+    if (tp === 'CN' && !(dt.includes('CDN') || dt.includes('CREDIT') || Number(r.taxable_value) < 0)) return false;
+    if (tp === 'DN' && !(dt === 'DN' || dt.includes('DEBIT'))) return false;
+    if (tp === 'IMPG' && !dt.includes('IMP')) return false;
+    if (tp === 'INV' && (dt.includes('CDN') || dt.includes('CREDIT') || dt === 'DN' || dt.includes('DEBIT') || dt.includes('IMP'))) return false;
+    if (q) {
+      const hay = (r.invoice_no + ' ' + r.supplier_gstin + ' ' + (r.supplier_name || '') + ' ' + (r.twob_month || '')).toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  if (el('twobFilterCount')) {
+    el('twobFilterCount').textContent = cnt(filtered.length) + ' of ' + cnt(raw.length) + ' 2B bill(s)';
+  }
+
+  const head = '<thead><tr><th>Our GSTIN</th><th>2B Month</th><th>Supplier GSTIN</th><th>Supplier Name</th><th>Invoice No</th><th>Invoice Date</th><th>Doc Type</th><th class="num">Taxable Value</th><th class="num">2B ITC</th><th>ITC Avail</th><th>Reason / Action</th></tr></thead>';
+  if (!filtered.length) {
+    setHtml('reconTwoBTable', head + '<tbody><tr><td colspan="11" class="hint">' +
+      (raw.length ? 'No unbooked 2B bills match this filter.' : 'Every GSTR-2B invoice is matched in Books \u2014 nothing pending this month.') +
+      '</td></tr></tbody>');
+    return;
+  }
+
+  const body = '<tbody>' + filtered.slice(0, 500).map((r) => {
+    const lk = r.line_key || r.matched_2b_id || '';
+    const actBtn = (!locked && lk)
+      ? '<button type="button" class="sm" data-key="' + esc(lk) + '" onclick="openReverseMatchModal(this.dataset.key)">🔗 Match to Book</button>'
+      : '';
+    return '<tr>' +
+      '<td><code>' + esc(r.our_gstin || '') + '</code></td>' +
+      '<td>' + esc(r.twob_month ? monthLabel(r.twob_month) : '') + '</td>' +
+      '<td><code>' + esc(r.supplier_gstin || '') + '</code></td>' +
+      '<td>' + esc(r.supplier_name || '') + '</td>' +
+      '<td><b>' + esc(r.invoice_no || '') + '</b></td>' +
+      '<td>' + esc(r.invoice_date ? fmtDmy(r.invoice_date) : '') + '</td>' +
+      '<td>' + esc(r.document_type || '') + '</td>' +
+      '<td class="num">' + money(r.taxable_value) + '</td>' +
+      '<td class="num">' + money(r.itc) + '</td>' +
+      '<td>' + esc(r.itc_availability || 'Yes') + '</td>' +
+      '<td style="white-space:nowrap">' + actBtn + (r.reason ? ' <span class="hint">' + esc(r.reason) + '</span>' : '') + '</td>' +
+      '</tr>';
+  }).join('') + '</tbody>';
+  setHtml('reconTwoBTable', head + body);
+}
+
+const MANUAL_MATCH = { mode: 'bookTo2b', lineId: null, twobKey: null };
+
+function closeManualMatchModal() {
+  const m = el('modalManualMatch');
+  if (m) m.style.display = 'none';
+}
+
+function openManualMatchModal(lineId) {
+  MANUAL_MATCH.mode = 'bookTo2b';
+  MANUAL_MATCH.lineId = lineId;
+  MANUAL_MATCH.twobKey = null;
+  if (el('mmTitle')) el('mmTitle').textContent = '🔗 Match Book Invoice to GSTR-2B Bill';
+  if (el('mmSearch')) el('mmSearch').value = '';
+  if (el('mmAllSuppliers')) el('mmAllSuppliers').checked = false;
+  if (el('mmReason')) el('mmReason').value = '';
+  if (el('modalManualMatch')) el('modalManualMatch').style.display = 'flex';
+  loadManualMatchCandidates();
+}
+
+function openReverseMatchModal(twobKey) {
+  MANUAL_MATCH.mode = '2bToBook';
+  MANUAL_MATCH.twobKey = twobKey;
+  MANUAL_MATCH.lineId = null;
+  if (el('mmTitle')) el('mmTitle').textContent = '🔗 Match GSTR-2B Bill to Purchase Register Invoice';
+  if (el('mmSearch')) el('mmSearch').value = '';
+  if (el('mmAllSuppliers')) el('mmAllSuppliers').checked = false;
+  if (el('mmReason')) el('mmReason').value = '';
+  if (el('modalManualMatch')) el('modalManualMatch').style.display = 'flex';
+  loadManualMatchCandidates();
+}
+
+async function loadManualMatchCandidates() {
+  const allSup = el('mmAllSuppliers') && el('mmAllSuppliers').checked ? '1' : '';
+  const q = (el('mmSearch') && el('mmSearch').value.trim()) || '';
+  setHtml('mmStatusMsg', 'Searching candidates within same GSTIN & polarity\u2026');
+  setHtml('mmCandidatesTable', '');
+  try {
+    if (MANUAL_MATCH.mode === 'bookTo2b') {
+      const url = '/api/recon/purchase/2b-candidates?lineId=' + enc(MANUAL_MATCH.lineId) +
+        (allSup ? '&allSuppliers=1' : '') + (q ? '&q=' + enc(q) : '');
+      const out = await api(url);
+      const b = out.bookLine || {};
+      setHtml('mmSourceCard',
+        '<b>Selected Book Bill (#' + esc(b.id) + '):</b> <code>' + esc(b.book_supplier_gstin) + '</code> &bull; ' +
+        esc(b.party_name || 'Vendor') + ' &bull; Inv: <b>' + esc(b.book_invoice_no) + '</b> (' +
+        esc(fmtDmy(b.book_invoice_date)) + ') &bull; Type: <b>' + esc(b.book_document_type) + '</b> &bull; Taxable: <b>' +
+        money(b.book_taxable_value) + '</b> &bull; ITC: <b>' + money(b.book_itc || b.itc_amount) + '</b>');
+      const list = out.candidates || [];
+      setHtml('mmStatusMsg', cnt(list.length) + ' unbooked GSTR-2B candidate(s) found.');
+      const head = '<thead><tr><th>2B Month</th><th>Supplier GSTIN</th><th>Supplier Name</th><th>2B Invoice No</th><th>Date</th><th>Type</th><th class="num">Taxable</th><th class="num">2B ITC</th><th class="num">Tax Diff</th><th class="num">ITC Diff</th><th>Action</th></tr></thead>';
+      const rowsHtml = list.length ? list.map((c) => {
+        const badge = c.exactAmt ? ' <span class="pill good">Exact Amt</span>' : '';
+        return '<tr>' +
+          '<td>' + esc(monthLabel(c.twob_month)) + '</td>' +
+          '<td><code>' + esc(c.supplier_gstin) + '</code>' + (!c.sameSupplier ? ' <span class="pill warn">Diff GSTIN</span>' : '') + '</td>' +
+          '<td>' + esc(c.supplier_name || '') + '</td>' +
+          '<td><b>' + esc(c.invoice_no) + '</b>' + badge + '</td>' +
+          '<td>' + esc(fmtDmy(c.invoice_date)) + (c.dateDiffDays !== null ? ' <span class="hint">(' + c.dateDiffDays + 'd)</span>' : '') + '</td>' +
+          '<td>' + esc(c.document_type) + '</td>' +
+          '<td class="num">' + money(c.taxable_value) + '</td>' +
+          '<td class="num">' + money(c.itc) + '</td>' +
+          '<td class="num">' + money(c.taxDiff) + '</td>' +
+          '<td class="num">' + money(c.itcDiff) + '</td>' +
+          '<td><button type="button" class="sm" data-twob="' + esc(c.line_key) + '" onclick="linkManualMatch(' + b.id + ', this.dataset.twob)">✓ Link &amp; Match</button></td>' +
+          '</tr>';
+      }).join('') : '<tr><td colspan="11" class="hint">No candidates found. Try checking "Show all suppliers" or clearing search filter.</td></tr>';
+      setHtml('mmCandidatesTable', head + '<tbody>' + rowsHtml + '</tbody>');
+    } else {
+      const url = '/api/recon/purchase/book-candidates?twobLineKey=' + enc(MANUAL_MATCH.twobKey) +
+        (allSup ? '&allSuppliers=1' : '') + (q ? '&q=' + enc(q) : '');
+      const out = await api(url);
+      const t = out.twobLine || {};
+      setHtml('mmSourceCard',
+        '<b>Selected GSTR-2B Bill (' + esc(monthLabel(t.twob_month)) + '):</b> <code>' + esc(t.supplier_gstin) + '</code> &bull; ' +
+        esc(t.supplier_name || 'Supplier') + ' &bull; Inv: <b>' + esc(t.invoice_no) + '</b> (' +
+        esc(fmtDmy(t.invoice_date)) + ') &bull; Type: <b>' + esc(t.document_type) + '</b> &bull; Taxable: <b>' +
+        money(t.taxable_value) + '</b> &bull; ITC: <b>' + money(t.itc) + '</b>');
+      const list = out.candidates || [];
+      setHtml('mmStatusMsg', cnt(list.length) + ' unmatched Purchase Register candidate(s) found.');
+      const head = '<thead><tr><th>Book Period</th><th>Supplier GSTIN</th><th>Vendor</th><th>Book Inv No</th><th>Date</th><th>Book Type</th><th>Status</th><th class="num">Taxable</th><th class="num">Book ITC</th><th class="num">Tax Diff</th><th>Action</th></tr></thead>';
+      const rowsHtml = list.length ? list.map((c) => {
+        const badge = c.exactAmt ? ' <span class="pill good">Exact Amt</span>' : '';
+        return '<tr>' +
+          '<td>' + esc(monthLabel(c.period)) + '</td>' +
+          '<td><code>' + esc(c.supplier_gstin) + '</code>' + (!c.sameSupplier ? ' <span class="pill warn">Diff GSTIN</span>' : '') + '</td>' +
+          '<td>' + esc(c.party_name || '') + '</td>' +
+          '<td><b>' + esc(c.invoice_no) + '</b>' + badge + '</td>' +
+          '<td>' + esc(fmtDmy(c.invoice_date)) + (c.dateDiffDays !== null ? ' <span class="hint">(' + c.dateDiffDays + 'd)</span>' : '') + '</td>' +
+          '<td>' + esc(c.book_document_type) + '</td>' +
+          '<td>' + esc(c.match_status || '') + '</td>' +
+          '<td class="num">' + money(c.taxable_value) + '</td>' +
+          '<td class="num">' + money(c.itc) + '</td>' +
+          '<td class="num">' + money(c.taxDiff) + '</td>' +
+          '<td><button type="button" class="sm" data-twob="' + esc(t.line_key) + '" onclick="linkManualMatch(' + c.id + ', this.dataset.twob)">✓ Link &amp; Match</button></td>' +
+          '</tr>';
+      }).join('') : '<tr><td colspan="11" class="hint">No unmatched Books candidates found. Try checking "Show all suppliers".</td></tr>';
+      setHtml('mmCandidatesTable', head + '<tbody>' + rowsHtml + '</tbody>');
+    }
+  } catch (e) {
+    setHtml('mmStatusMsg', '<span class="bad">' + esc(errText(e)) + '</span>');
+  }
+}
+
+async function linkManualMatch(lineId, twobLineKey) {
+  const reason = (el('mmReason') && el('mmReason').value.trim()) || '';
+  const cfg = getReconMatchingCfg();
+  try {
+    setHtml('mmStatusMsg', 'Linking Books recon override &amp; re-reconciling (GSTR-2B stays immutable)\u2026');
+    const out = await postJson('/api/recon/purchase/manual-link', {
+      lineId: lineId,
+      twobLineKey: twobLineKey,
+      reason: reason || undefined,
+      tolerance: cfg.tolerance,
+      dateWindow: cfg.dateWindow,
+    });
+    closeManualMatchModal();
+    const st = (out.line && out.line.match_status) || 'Updated';
+    toast('Linked & re-reconciled (' + st + ')!', 'ok');
+    note('reconMsg', 'ok', 'Manual match saved (Books-only override, GSTR-2B immutable). Status: ' + st);
+    await loadRecon();
+    await loadContext();
+  } catch (e) {
+    setHtml('mmStatusMsg', '<span class="bad">' + esc(errText(e)) + '</span>');
+    toast(errText(e), 'err');
+  }
+}
+
+async function unlinkReconRow(lineId) {
+  const cfg = getReconMatchingCfg();
+  try {
+    note('reconMsg', 'hint', 'Unlinking override &amp; restoring original Book values\u2026');
+    await postJson('/api/recon/purchase/unlink', {
+      lineId: lineId,
+      tolerance: cfg.tolerance,
+      dateWindow: cfg.dateWindow,
+    });
+    toast('Recon override reset to original Book values.', 'ok');
+    await loadRecon();
+    await loadContext();
   } catch (e) {
     note('reconMsg', 'err', errText(e));
     toast(errText(e), 'err');

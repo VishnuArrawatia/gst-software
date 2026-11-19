@@ -36,11 +36,17 @@ import {
   type ReconRow,
 } from './core';
 
+export type DateWindow = 'any' | 'exact' | '2days' | '5days' | 'month';
+
 export interface ReconOptions {
   /** Rupee tolerance before a difference is real. Portal rounding is common. */
   tolerance?: number;
   /** Do not treat repeat GSTIN+invoice as an error (some vendors reuse numbers). */
   ignoreDuplicates?: boolean;
+  /** Optional invoice-date matching window enforced on matched candidates. */
+  dateWindow?: DateWindow;
+  /** 2B line ids already matched to purchase lines in OTHER months (excluded from matching). */
+  claimedElsewhere?: Set<string>;
 }
 
 export interface ReconResult {
@@ -175,6 +181,50 @@ function reducesItc(r: Gstr2bRecord): boolean {
   return r2(r.taxable_value) < 0 || /credit note|creditnote|cdn/i.test(String(r.invoice_type || ''));
 }
 
+type TaxAmounts = { taxable_value: number; igst: number; cgst: number; sgst: number; cess: number };
+
+function isAllNegative(d: TaxAmounts): boolean {
+  const nonZero = [d.taxable_value, d.igst, d.cgst, d.sgst, d.cess].map(r2).filter((n) => n !== 0);
+  return nonZero.length > 0 && nonZero.every((n) => n < 0);
+}
+
+/**
+ * Effective ledger polarity (`credit` reduces ITC; `debit` adds ITC).
+ * Buyers frequently book purchase returns as negative "Debit Note" rows while
+ * suppliers report them in GSTR-2B CDNR as Credit Notes — both share `credit`
+ * polarity and match safely without ever matching a positive invoice.
+ */
+function docPolarity(doc: DocType, d: TaxAmounts): 'credit' | 'debit' {
+  if (doc === 'Credit Note' || isAllNegative(d)) return 'credit';
+  return 'debit';
+}
+
+function daysBetween(a?: string, b?: string): number {
+  if (!a || !b) return 9999;
+  const ma = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(a).trim());
+  const mb = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(b).trim());
+  if (!ma || !mb) return 9999;
+  const ta = Date.UTC(Number(ma[1]), Number(ma[2]) - 1, Number(ma[3]));
+  const tb = Date.UTC(Number(mb[1]), Number(mb[2]) - 1, Number(mb[3]));
+  return Math.round(Math.abs(ta - tb) / 86400000);
+}
+
+function monthDiffAbs(a?: string, b?: string): number {
+  const ma = /^(\d{4})-(\d{2})/.exec(String(a || '').trim());
+  const mb = /^(\d{4})-(\d{2})/.exec(String(b || '').trim());
+  if (!ma || !mb) return 999;
+  return Math.abs((Number(ma[1]) * 12 + Number(ma[2])) - (Number(mb[1]) * 12 + Number(mb[2])));
+}
+
+function dateWithinWindow(bookDate: string, twobDate: string, window: DateWindow): boolean {
+  if (window === 'any' || !bookDate || !twobDate) return true;
+  if (window === 'exact') return daysBetween(bookDate, twobDate) === 0;
+  if (window === '2days') return daysBetween(bookDate, twobDate) <= 2;
+  if (window === '5days') return daysBetween(bookDate, twobDate) <= 5;
+  if (window === 'month') return bookDate.slice(0, 7) === twobDate.slice(0, 7);
+  return true;
+}
+
 /**
  * Reconcile one company's purchase side.
  *
@@ -188,6 +238,8 @@ export function reconcilePurchases(
   opts: ReconOptions = {},
 ): ReconResult {
   const tolerance = opts.tolerance ?? DEFAULT_TOLERANCE;
+  const dateWindow: DateWindow = opts.dateWindow ?? 'any';
+  const claimedElsewhere = opts.claimedElsewhere;
 
   // Give every 2B line a stable id up front. Both the matching pass and the
   // unbooked pass then read the SAME id for the same row.
@@ -201,12 +253,15 @@ export function reconcilePurchases(
     twobByKey.get(k)!.push(r);
   }
 
-  // ---- count repeats on the books side ----------------------------------
+  // ---- count repeats on the books side (keyed by GSTIN + inv + polarity) -
+  // A positive Tax Invoice and a negative Credit/Debit Note sharing the same
+  // reference number are distinct economic events, not a duplicate booking.
   const booksKeyCount = new Map<string, number>();
   for (const b of books) {
     const m = matchValuesOf(b);
-    const k = keyOf(m.supplier_gstin, m.invoice_no);
-    booksKeyCount.set(k, (booksKeyCount.get(k) || 0) + 1);
+    const pol = docPolarity(bookDocOf(b), b);
+    const dk = `${keyOf(m.supplier_gstin, m.invoice_no)}|${pol}`;
+    booksKeyCount.set(dk, (booksKeyCount.get(dk) || 0) + 1);
   }
 
   const claimed = new Set<string>();
@@ -217,12 +272,16 @@ export function reconcilePurchases(
     const k = keyOf(mv.supplier_gstin, mv.invoice_no);
     const itc = taxOf(b);
     const bookDoc = bookDocOf(b);
-    // A credit note is never the counterpart of an invoice that happens to
-    // carry the same number. The portal keeps notes in CDNR and the books keep
-    // them in the same register, so the type has to be part of the identity.
-    const bucket = (twobByKey.get(k) || []).filter(
-      (x) => twobDocOf(x) === bookDoc,
-    );
+    const bookPol = docPolarity(bookDoc, b);
+    const dk = `${k}|${bookPol}`;
+
+    // Candidate 2B lines: same normalized GSTIN + Invoice No + polarity, and not
+    // already claimed in this run or in another month's purchase register.
+    const rawBucket = (twobByKey.get(k) || []).filter((x) => {
+      const id = twobId(x);
+      if (claimed.has(id) || claimedElsewhere?.has(id)) return false;
+      return docPolarity(twobDocOf(x), x) === bookPol;
+    });
 
     const base: ReconRow = {
       status: 'Pending Review',
@@ -241,7 +300,7 @@ export function reconcilePurchases(
       sgst: r2(b.sgst),
       cess: r2(b.cess),
       itc,
-      duplicate_count: booksKeyCount.get(k),
+      duplicate_count: booksKeyCount.get(dk),
       source_file: b.source_file,
       source_row: b.source_row,
       itc_decision: b.itc_decision,
@@ -254,7 +313,7 @@ export function reconcilePurchases(
 
     // A repeated key on the books side is a real finding — flag every copy so
     // the reviewer can see the whole cluster, not just the second occurrence.
-    if (!opts.ignoreDuplicates && (booksKeyCount.get(k) || 0) > 1) {
+    if (!opts.ignoreDuplicates && (booksKeyCount.get(dk) || 0) > 1) {
       rows.push({
         ...base,
         status: 'Duplicate',
@@ -264,7 +323,99 @@ export function reconcilePurchases(
       continue;
     }
 
-    if (bucket.length === 0) {
+    // Group candidate 2B lines by (twobMonth, docType) so multi-rate lines of
+    // one invoice in one 2B return sum cleanly without mixing distinct docs.
+    const groupsByMonthDoc = new Map<string, Gstr2bRecord[]>();
+    for (const x of rawBucket) {
+      const gm = twobMonthOf(x) || x.period || '';
+      const gk = `${gm}|${twobDocOf(x)}`;
+      if (!groupsByMonthDoc.has(gk)) groupsByMonthDoc.set(gk, []);
+      groupsByMonthDoc.get(gk)!.push(x);
+    }
+
+    interface ScoredGroup {
+      group: Gstr2bRecord[];
+      month: string;
+      twobTaxable: number;
+      twobIgst: number;
+      twobCgst: number;
+      twobSgst: number;
+      twobCess: number;
+      twobItc: number;
+      diffItc: number;
+      diffTaxable: number;
+      diffComponents: { igst: number; cgst: number; sgst: number; cess: number };
+      amountExact: boolean;
+      exactDate: boolean;
+      within60Days: boolean;
+      minDateDiff: number;
+      mDiff: number;
+      exactDoc: boolean;
+      amtDiff: number;
+    }
+
+    const scoredGroups: ScoredGroup[] = [];
+    for (const grp of groupsByMonthDoc.values()) {
+      const m0 = twobMonthOf(grp[0]) || grp[0].period || '';
+      const twobTaxable = r2(grp.reduce((a, x) => a + r2(x.taxable_value), 0));
+      const twobIgst = r2(grp.reduce((a, x) => a + r2(x.igst), 0));
+      const twobCgst = r2(grp.reduce((a, x) => a + r2(x.cgst), 0));
+      const twobSgst = r2(grp.reduce((a, x) => a + r2(x.sgst), 0));
+      const twobCess = r2(grp.reduce((a, x) => a + r2(x.cess), 0));
+      const twobItc = r2(grp.reduce((a, x) => a + taxOf(x), 0));
+      const diffItc = r2(twobItc - itc);
+      const diffTaxable = r2(twobTaxable - r2(b.taxable_value));
+      const diffComponents = {
+        igst: r2(twobIgst - r2(b.igst)),
+        cgst: r2(twobCgst - r2(b.cgst)),
+        sgst: r2(twobSgst - r2(b.sgst)),
+        cess: r2(twobCess - r2(b.cess)),
+      };
+      const amountExact =
+        withinTolerance(diffTaxable, 0, tolerance) &&
+        withinTolerance(diffItc, 0, tolerance) &&
+        Object.values(diffComponents).every((d) => withinTolerance(d, 0, tolerance));
+      const minDateDiff = grp.reduce((mn, x) => Math.min(mn, daysBetween(mv.invoice_date, x.invoice_date)), 9999);
+      scoredGroups.push({
+        group: grp,
+        month: m0,
+        twobTaxable,
+        twobIgst,
+        twobCgst,
+        twobSgst,
+        twobCess,
+        twobItc,
+        diffItc,
+        diffTaxable,
+        diffComponents,
+        amountExact,
+        exactDate: minDateDiff === 0,
+        within60Days: minDateDiff <= 60,
+        minDateDiff,
+        mDiff: monthDiffAbs(b.period, m0),
+        exactDoc: grp.some((x) => twobDocOf(x) === bookDoc),
+        amtDiff: Math.abs(diffTaxable) + Math.abs(diffItc),
+      });
+    }
+
+    scoredGroups.sort((a, z) => {
+      if (a.amountExact !== z.amountExact) return a.amountExact ? -1 : 1;
+      if (a.exactDate !== z.exactDate) return a.exactDate ? -1 : 1;
+      if (a.within60Days !== z.within60Days) return a.within60Days ? -1 : 1;
+      if (a.minDateDiff !== z.minDateDiff) return a.minDateDiff - z.minDateDiff;
+      if (a.mDiff !== z.mDiff) return a.mDiff - z.mDiff;
+      if (a.exactDoc !== z.exactDoc) return a.exactDoc ? -1 : 1;
+      return a.amtDiff - z.amtDiff;
+    });
+
+    const best = scoredGroups[0];
+    // Cross-FY collision guard: never pair a book invoice with a 180+ day old/future
+    // GSTR-2B bill whose invoice number collided across FY resets if amounts also disagree.
+    const crossFyCollision = !!(
+      best && !best.amountExact && best.minDateDiff > 180 && best.minDateDiff < 9999
+    );
+
+    if (!best || crossFyCollision) {
       rows.push({
         ...base,
         status: 'Missing in 2B',
@@ -274,54 +425,47 @@ export function reconcilePurchases(
       continue;
     }
 
-    // A single invoice reaches GSTR-2B as several lines when it carries more than
-    // one rate, so an invoice-level comparison is the SUM of the lines the portal
-    // filed for it in ONE return month. Comparing against a single line reported
-    // half an invoice as an amount mismatch, and left the invoice's other line
-    // looking like a purchase nobody had booked.
-    const primary = bucket.find((x) => x.invoice_date === mv.invoice_date) || bucket[0];
-    const matched2bMonth = twobMonthOf(primary) || primary.period || '';
-    const group = bucket.filter((x) => (twobMonthOf(x) || x.period || '') === matched2bMonth);
+    const group = best.group;
+    const primary = group.find((x) => x.invoice_date === mv.invoice_date) || group[0];
+    const matched2bMonth = best.month;
     for (const g of group) claimed.add(twobId(g));
 
     const matchId = twobId(primary);
     const blockedLine = group.find(itcBlocked);
-    const twobTaxable = r2(group.reduce((a, x) => a + r2(x.taxable_value), 0));
-    const twobIgst = r2(group.reduce((a, x) => a + r2(x.igst), 0));
-    const twobCgst = r2(group.reduce((a, x) => a + r2(x.cgst), 0));
-    const twobSgst = r2(group.reduce((a, x) => a + r2(x.sgst), 0));
-    const twobCess = r2(group.reduce((a, x) => a + r2(x.cess), 0));
+    const {
+      twobTaxable,
+      twobIgst,
+      twobCgst,
+      twobSgst,
+      twobCess,
+      twobItc,
+      diffItc,
+      diffTaxable,
+      diffComponents,
+    } = best;
     const twobRcm = b.reverse_charge ?? group.some((x) => x.reverse_charge);
-    const twobItc = r2(group.reduce((a, x) => a + taxOf(x), 0));
-    const diffItc = r2(twobItc - itc);
-    const diffTaxable = r2(twobTaxable - r2(b.taxable_value));
-    // Taxable and every tax component, not just the total tax: two invoices can
-    // carry the same tax total split differently (IGST vs CGST+SGST), and that
-    // is exactly the kind of mismatch that blocks credit on the portal.
-    const component = (f: 'igst' | 'cgst' | 'sgst' | 'cess') =>
-      r2(group.reduce((a, x) => a + r2(x[f]), 0) - r2(b[f]));
-    const diffComponents = {
-      igst: component('igst'),
-      cgst: component('cgst'),
-      sgst: component('sgst'),
-      cess: component('cess'),
+    const twoBFields = {
+      matched_2b_id: matchId,
+      matched_2b_month: matched2bMonth || undefined,
+      two_b_supplier_gstin: normGstin(primary.supplier_gstin),
+      two_b_invoice_no: String(primary.invoice_no ?? '').trim(),
+      two_b_invoice_date: primary.invoice_date || '',
+      two_b_taxable: r2(twobTaxable),
+      two_b_igst: twobIgst,
+      two_b_cgst: twobCgst,
+      two_b_sgst: twobSgst,
+      two_b_cess: twobCess,
+      reverse_charge: twobRcm,
+      two_b_itc: twobItc,
+      itc_difference: diffItc,
+      taxable_difference: diffTaxable,
     };
 
     if (blockedLine) {
       rows.push({
         ...base,
+        ...twoBFields,
         status: 'ITC Blocked',
-        matched_2b_id: matchId,
-        matched_2b_month: matched2bMonth || undefined,
-        two_b_taxable: r2(twobTaxable),
-        two_b_igst: twobIgst,
-        two_b_cgst: twobCgst,
-        two_b_sgst: twobSgst,
-        two_b_cess: twobCess,
-        reverse_charge: twobRcm,
-        two_b_itc: twobItc,
-        itc_difference: diffItc,
-        taxable_difference: diffTaxable,
         itc_availability: blockedLine?.itc_availability ?? primary.itc_availability,
         reason: blockedLine?.reason ?? primary.reason,
         action: `GSTR-2B me ITC available = "${blockedLine?.itc_availability ?? primary.itc_availability}"${blockedLine?.reason ?? primary.reason ? ` (${blockedLine?.reason ?? primary.reason})` : ''}. Ye credit claim nahi ho sakta — books se claim hataayein.`,
@@ -329,44 +473,34 @@ export function reconcilePurchases(
       continue;
     }
 
-    const amountOk =
-      withinTolerance(diffTaxable, 0, tolerance) &&
-      withinTolerance(diffItc, 0, tolerance) &&
-      Object.values(diffComponents).every((d) => withinTolerance(d, 0, tolerance));
+    const amountOk = best.amountExact;
+    const dateOk = dateWithinWindow(mv.invoice_date, primary.invoice_date || '', dateWindow);
 
-    if (amountOk) {
+    if (amountOk && dateOk) {
       rows.push({
         ...base,
+        ...twoBFields,
         status: 'Matched',
-        matched_2b_id: matchId,
-        matched_2b_month: matched2bMonth || undefined,
-        two_b_taxable: r2(twobTaxable),
-        two_b_igst: twobIgst,
-        two_b_cgst: twobCgst,
-        two_b_sgst: twobSgst,
-        two_b_cess: twobCess,
-        reverse_charge: twobRcm,
-        two_b_itc: twobItc,
-        itc_difference: r2(diffItc),
-        taxable_difference: r2(diffTaxable),
         itc_availability: blockedLine?.itc_availability ?? primary.itc_availability,
         action: 'OK — GSTR-3B table 4(A) me claim kar sakte hain.',
+      });
+    } else if (amountOk && !dateOk) {
+      const gapDays = daysBetween(mv.invoice_date, primary.invoice_date);
+      const dateReason = `Invoice date mismatch: Books ${mv.invoice_date} vs 2B ${primary.invoice_date} (${gapDays} days, window: ${dateWindow})`;
+      rows.push({
+        ...base,
+        ...twoBFields,
+        status: 'Amount Mismatch',
+        itc_availability: blockedLine?.itc_availability ?? primary.itc_availability,
+        reason: dateReason,
+        action:
+          `${dateReason}. Books me recon date check karein ya Date Window setting badlein.`,
       });
     } else {
       rows.push({
         ...base,
+        ...twoBFields,
         status: 'Amount Mismatch',
-        matched_2b_id: matchId,
-        matched_2b_month: matched2bMonth || undefined,
-        two_b_taxable: r2(twobTaxable),
-        two_b_igst: twobIgst,
-        two_b_cgst: twobCgst,
-        two_b_sgst: twobSgst,
-        two_b_cess: twobCess,
-        reverse_charge: twobRcm,
-        two_b_itc: twobItc,
-        itc_difference: diffItc,
-        taxable_difference: diffTaxable,
         itc_availability: blockedLine?.itc_availability ?? primary.itc_availability,
         reason: blockedLine?.reason ?? primary.reason,
         action:
@@ -422,19 +556,34 @@ export function reconcilePurchases(
   // ---- Probable / Fuzzy Match Suggestions (Missing in 2B <-> Unbooked 2B) --
   const unbookedBySupplier = new Map<string, ReconRow[]>();
   for (const u of unbooked2b) {
-    const sk = `${u.our_gstin}|${u.supplier_gstin}|${u.document_type || 'Tax Invoice'}`;
+    if (u.matched_2b_id && claimedElsewhere?.has(u.matched_2b_id)) continue;
+    const pol = docPolarity(u.document_type || 'Tax Invoice', u);
+    const sk = `${u.our_gstin}|${u.supplier_gstin}|${pol}`;
     if (!unbookedBySupplier.has(sk)) unbookedBySupplier.set(sk, []);
     unbookedBySupplier.get(sk)!.push(u);
   }
+  const probTol = Math.max(2, tolerance);
+  const usedProbIds = new Set<string>();
   for (const r of rows) {
     if (r.status !== 'Missing in 2B') continue;
-    const sk = `${r.our_gstin}|${r.supplier_gstin}|${r.document_type || 'Tax Invoice'}`;
-    const candidates = unbookedBySupplier.get(sk);
-    if (!candidates || candidates.length === 0) continue;
-    const cand = candidates.find(
-      (c) => Math.abs(r2(c.taxable_value) - r2(r.taxable_value)) <= 2 && Math.abs(r2(c.itc) - r2(r.itc)) <= 2,
-    );
+    const pol = docPolarity(r.document_type || 'Tax Invoice', r);
+    const sk = `${r.our_gstin}|${r.supplier_gstin}|${pol}`;
+    const cands = (unbookedBySupplier.get(sk) || [])
+      .filter((c) => {
+        if (c.matched_2b_id && usedProbIds.has(c.matched_2b_id)) return false;
+        return Math.abs(r2(c.taxable_value) - r2(r.taxable_value)) <= probTol &&
+               Math.abs(r2(c.itc) - r2(r.itc)) <= probTol;
+      })
+      .sort((a, z) => {
+        const da = daysBetween(r.invoice_date, a.invoice_date);
+        const dz = daysBetween(r.invoice_date, z.invoice_date);
+        if (da !== dz) return da - dz;
+        return monthDiffAbs(r.period, a.matched_2b_month || a.period) -
+               monthDiffAbs(r.period, z.matched_2b_month || z.period);
+      });
+    const cand = cands[0];
     if (cand) {
+      if (cand.matched_2b_id) usedProbIds.add(cand.matched_2b_id);
       r.suggested_2b_invoice_no = cand.invoice_no;
       r.suggested_2b_date = cand.invoice_date;
       r.match_hint = `Probable 2B match: "${cand.invoice_no}" dated ${cand.invoice_date} (Taxable ${cand.taxable_value}, ITC ${cand.itc})`;

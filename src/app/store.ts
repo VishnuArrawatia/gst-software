@@ -27,7 +27,7 @@ import { Client } from 'pg';
 import {
   fyOf, isValidGstin, isoDate, labelOf, normDate, normDocType, normGstin, normInvoice, r2, taxOf,
 } from '../engine/core';
-import { reconcilePurchases, type ReconResult } from '../engine/match';
+import { reconcilePurchases, type DateWindow, type ReconResult } from '../engine/match';
 import type { Gstr2bRecord, PurchaseBill, ReconRow, SalesInvoice } from '../engine/core';
 import { pgConfig } from '../config/env';
 import { assertConnectedDatabase, isTestProfile } from '../config/test-db';
@@ -960,7 +960,36 @@ export async function loadBundleForReconcile(gstin: string, period: string, cach
       });
     }
   }
-  return { books, twob };
+
+  // Exclude 2B lines already claimed by purchase lines in OTHER months of the
+  // same GSTIN so across-FY invoice numbers can never hijack an old 2B line.
+  const ceRes = await withClient((c) =>
+    c.query(
+      `SELECT DISTINCT matched_2b_key
+         FROM purchase_lines
+        WHERE our_gstin = $1
+          AND period <> $2
+          AND matched_2b_key IS NOT NULL
+          AND match_status = 'Matched'`,
+      [normGstin(gstin), period],
+    ),
+  );
+  const claimedElsewhere = new Set<string>(ceRes.rows.map((r: any) => String(r.matched_2b_key)));
+  if (claimedElsewhere.size > 0 && twob.length > 0) {
+    const claimedTuples = new Set<string>();
+    for (const t of twob) {
+      if (t.id && claimedElsewhere.has(t.id)) {
+        claimedTuples.add(`${normGstin(t.supplier_gstin)}|${normInvoice(t.invoice_no)}|${t.portal_fp || t.period || ''}`);
+      }
+    }
+    for (const t of twob) {
+      if (!t.id) continue;
+      const tup = `${normGstin(t.supplier_gstin)}|${normInvoice(t.invoice_no)}|${t.portal_fp || t.period || ''}`;
+      if (claimedTuples.has(tup)) claimedElsewhere.add(t.id);
+    }
+  }
+
+  return { books, twob, claimedElsewhere };
 }
 
 function iso(d: Date): string {
@@ -1001,7 +1030,13 @@ export interface ReReconcileResult {
 export async function reReconcile(
   gstin: string,
   period: string,
-  opts: { changedBy: string; reason?: string; cachedTwob?: Gstr2bRecord[] } = { changedBy: 'unknown' },
+  opts: {
+    changedBy: string;
+    reason?: string;
+    cachedTwob?: Gstr2bRecord[];
+    tolerance?: number;
+    dateWindow?: DateWindow;
+  } = { changedBy: 'unknown' },
 ): Promise<ReReconcileResult> {
   const out: ReReconcileResult = {
     ok: false, gstin: normGstin(gstin), period, lines: 0, twobLines: 0,
@@ -1014,7 +1049,7 @@ export async function reReconcile(
       return out;
     }
 
-    const { books, twob } = await loadBundleForReconcile(gstin, period, opts.cachedTwob);
+    const { books, twob, claimedElsewhere } = await loadBundleForReconcile(gstin, period, opts.cachedTwob);
     out.lines = books.length;
     out.twobLines = twob.length;
     if (!books.length) {
@@ -1024,7 +1059,11 @@ export async function reReconcile(
 
     // The engine must not re-file a book row under the 2B month; it groups by
     // our own period, which is what the DB stores.
-    const result = reconcilePurchases(books, twob);
+    const result = reconcilePurchases(books, twob, {
+      tolerance: opts.tolerance,
+      dateWindow: opts.dateWindow,
+      claimedElsewhere,
+    });
     out.before = countStatuses(await statusesFor(gstin, period));
     out.after = countStatuses(result.rows);
 
@@ -1034,7 +1073,7 @@ export async function reReconcile(
       // the same identity the DB stores — not the invoice number, because two
       // vendors can both invoice "123".
       const byKey = new Map<string, string>();
-      for (const b of books as any[]) byKey.set(`${b.source_file}|${b.source_row}`, b.id);
+      for (const b of books as any[]) byKey.set(`${b.source_file ?? ''}|${b.source_row}`, b.id);
       // The stored outcome is read BEFORE the writes, so the run can report how
       // many lines it actually moved. Comparing after the UPDATE would always
       // compare the new values with themselves and report the matched total.
@@ -1054,12 +1093,17 @@ export async function reReconcile(
       const tInvs: Array<string | null> = [];
       const tDates: Array<string | null> = [];
       const tTaxables: Array<number | null> = [];
+      const tIgsts: Array<number | null> = [];
+      const tCgsts: Array<number | null> = [];
+      const tSgsts: Array<number | null> = [];
+      const tCesss: Array<number | null> = [];
       const tItcs: Array<number | null> = [];
       const tAvails: Array<string | null> = [];
       const reasons: Array<string | null> = [];
       const itcAmts: Array<number | null> = [];
       const taxDiffs: Array<number | null> = [];
       const itcDiffs: Array<number | null> = [];
+      const dupCounts: Array<number | null> = [];
       const actions: Array<string | null> = [];
 
       for (const r of result.rows) {
@@ -1071,16 +1115,21 @@ export async function reReconcile(
         statuses.push(r.status);
         mKeys.push(r.matched_2b_id ?? null);
         mMonths.push(r.matched_2b_month ?? null);
-        tGstins.push(r.matched_2b_id ? normGstin(r.supplier_gstin) : null);
-        tInvs.push(r.matched_2b_id ? r.invoice_no : null);
-        tDates.push(r.matched_2b_id ? r.invoice_date || null : null);
+        tGstins.push(r.matched_2b_id ? normGstin(r.two_b_supplier_gstin ?? r.supplier_gstin) : null);
+        tInvs.push(r.matched_2b_id ? (r.two_b_invoice_no ?? r.invoice_no) : null);
+        tDates.push(r.matched_2b_id ? (r.two_b_invoice_date ?? r.invoice_date) || null : null);
         tTaxables.push(r.two_b_taxable ?? null);
+        tIgsts.push(r.two_b_igst ?? null);
+        tCgsts.push(r.two_b_cgst ?? null);
+        tSgsts.push(r.two_b_sgst ?? null);
+        tCesss.push(r.two_b_cess ?? null);
         tItcs.push(r.two_b_itc ?? null);
         tAvails.push(r.itc_availability ?? null);
         reasons.push(r.reason ?? null);
         itcAmts.push(r.itc ?? null);
         taxDiffs.push(r.taxable_difference ?? null);
         itcDiffs.push(r.itc_difference ?? null);
+        dupCounts.push(r.duplicate_count ?? 1);
         actions.push([r.action, r.match_hint].filter(Boolean).join(' | ') || null);
       }
 
@@ -1095,31 +1144,39 @@ export async function reReconcile(
              twob_invoice_no = v.twob_invoice_no,
              twob_invoice_date = NULLIF(v.twob_invoice_date, '')::date,
              twob_taxable_value = v.twob_taxable_value,
+             twob_igst = v.twob_igst,
+             twob_cgst = v.twob_cgst,
+             twob_sgst = v.twob_sgst,
+             twob_cess = v.twob_cess,
              twob_itc = v.twob_itc,
              itc_availability = v.itc_availability,
              mismatch_reason = v.mismatch_reason,
              itc_amount = v.itc_amount,
              taxable_difference = v.taxable_difference,
              itc_difference = v.itc_difference,
+             duplicate_count = v.duplicate_count,
              suggested_action = v.suggested_action,
              reconciled_at = now(),
              updated_at = now()
            FROM (
              SELECT * FROM unnest(
                $1::bigint[], $2::text[], $3::text[], $4::text[], $5::text[],
-               $6::text[], $7::text[], $8::numeric[], $9::numeric[], $10::text[],
-               $11::text[], $12::numeric[], $13::numeric[], $14::numeric[], $15::text[]
+               $6::text[], $7::text[], $8::numeric[], $9::numeric[], $10::numeric[],
+               $11::numeric[], $12::numeric[], $13::numeric[], $14::text[],
+               $15::text[], $16::numeric[], $17::numeric[], $18::numeric[], $19::int[], $20::text[]
              )
            ) AS v(
              id, match_status, matched_2b_key, matched_2b_month, twob_supplier_gstin,
-             twob_invoice_no, twob_invoice_date, twob_taxable_value, twob_itc, itc_availability,
-             mismatch_reason, itc_amount, taxable_difference, itc_difference, suggested_action
+             twob_invoice_no, twob_invoice_date, twob_taxable_value, twob_igst, twob_cgst,
+             twob_sgst, twob_cess, twob_itc, itc_availability,
+             mismatch_reason, itc_amount, taxable_difference, itc_difference, duplicate_count, suggested_action
            )
            WHERE p.id = v.id`,
           [
             ids, statuses, mKeys, mMonths, tGstins,
-            tInvs, tDates, tTaxables, tItcs, tAvails,
-            reasons, itcAmts, taxDiffs, itcDiffs, actions,
+            tInvs, tDates, tTaxables, tIgsts, tCgsts,
+            tSgsts, tCesss, tItcs, tAvails,
+            reasons, itcAmts, taxDiffs, itcDiffs, dupCounts, actions,
           ],
         );
       }
@@ -1515,6 +1572,42 @@ export async function updateRecon(
   out.locked = row?.locked;
   out.reason = bulk.reason ?? row?.reason;
   return out;
+}
+
+/**
+ * Reset a purchase line's recon_* override fields back to its immutable book_*
+ * values (e.g. to unlink an incorrect manual/auto match), logging every change
+ * to recon_corrections and audit_trail.
+ */
+export async function resetReconToBook(
+  lineId: number,
+  opts: { changedBy: string; reason?: string },
+): Promise<EditResult> {
+  const existing = await getLine(lineId);
+  if (!existing) return { ok: false, changed: [], reason: `Purchase line ${lineId} does not exist.` };
+  const patch: Partial<Record<ReconField, string>> = {
+    recon_supplier_gstin: fieldText(existing.book_supplier_gstin),
+    recon_invoice_no: fieldText(existing.book_invoice_no),
+  };
+  const bookDt = existing.book_invoice_date ? isoDate(existing.book_invoice_date) : '';
+  if (bookDt) patch.recon_invoice_date = bookDt;
+  const bulk = await applyEdits([{ lineId, recon: patch }], {
+    by: opts.changedBy,
+    reason: opts.reason || 'Reset recon fields back to original book values',
+    atomic: true,
+  });
+  const row = bulk.rows[0];
+  if (bulk.ok && row?.ok) {
+    await withClient((c) =>
+      c.query(`UPDATE purchase_lines SET recon_edited = false, updated_at = now() WHERE id = $1`, [lineId]),
+    );
+  }
+  return {
+    ok: bulk.ok && !!row?.ok,
+    changed: row?.changed ?? [],
+    locked: row?.locked,
+    reason: bulk.reason ?? row?.reason,
+  };
 }
 
 /**

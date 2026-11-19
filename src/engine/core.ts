@@ -153,6 +153,13 @@ export function isBlankish(v: unknown): boolean {
 export function normDate(v: unknown): string {
   if (v === null || v === undefined || v === '') return '';
 
+  // SheetJS (with cellDates: true) and pg DATE columns both hand us Date objects.
+  // Keep local calendar parts rather than toISOString() so IST local midnight
+  // or SheetJS's 23:59:50 LMT offset never shifts the date back by 1 day.
+  if (v instanceof Date) {
+    return dateObjToIso(v);
+  }
+
   // Excel serial: 1..2958465 (1900-01-01 .. 9999-12-31)
   if (typeof v === 'number' || /^\d+(\.\d+)?$/.test(String(v).trim())) {
     const n = Number(v);
@@ -195,12 +202,7 @@ export function normDate(v: unknown): string {
 
   const d = new Date(s);
   if (!Number.isNaN(d.getTime())) {
-    const iso = d.toISOString().slice(0, 10);
-    // Same sanity window as above: `new Date('24')` happily yields year 2049 or
-    // similar nonsense from a stray numeric cell.
-    const y = Number(iso.slice(0, 4));
-    if (y < 2017 || y > 2100) return '';
-    return iso;
+    return dateObjToIso(d);
   }
   return '';
 }
@@ -235,11 +237,22 @@ function pad2(n: number): string {
   return n < 10 ? `0${n}` : String(n);
 }
 
-/** Excel serial -> YYYY-MM-DD, honouring the 1900 leap-year quirk. */
+/** Excel serial -> YYYY-MM-DD, honouring the 1900 leap-year quirk via pure UTC arithmetic. */
 export function excelSerialToIso(serial: number): string {
   const ms = Math.round((serial - 25569) * 86400 * 1000);
-  const d = new Date(ms);
-  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  return new Date(ms).toISOString().slice(0, 10);
+}
+
+/**
+ * Format a JavaScript Date into YYYY-MM-DD without shifting IST midnight /
+ * SheetJS LMT offsets (e.g. 23:59:50 local) backwards by one day.
+ */
+function dateObjToIso(d: Date): string {
+  if (Number.isNaN(d.getTime())) return '';
+  const adj = d.getHours() === 23 && d.getMinutes() >= 45
+    ? new Date(d.getTime() + 2 * 3600 * 1000)
+    : d;
+  return iso(adj.getFullYear(), adj.getMonth() + 1, adj.getDate());
 }
 
 function iso(y: number, m: number, d: number): string {
@@ -283,6 +296,10 @@ export function fyOf(period: string): string {
  * than silently filing under the wrong month.
  */
 export function periodFromAny(v: unknown): string {
+  if (v instanceof Date) {
+    const dt = normDate(v);
+    return dt ? dt.slice(0, 7) : '';
+  }
   const s = String(v ?? '').trim();
   if (!s) return '';
 
@@ -804,6 +821,9 @@ export interface ReconRow {
   matched_2b_id?: string;
   reverse_charge?: boolean;
   hsn?: string;
+  two_b_supplier_gstin?: string;
+  two_b_invoice_no?: string;
+  two_b_invoice_date?: string;
   two_b_igst?: number;
   two_b_cgst?: number;
   two_b_sgst?: number;

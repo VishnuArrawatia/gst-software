@@ -168,7 +168,8 @@ export function parsePurchaseRegister(
     sourceFile,
     ['invoice_no', 'supplier_gstin', 'taxable_value'],
     (raw, map, rowNo) => {
-      const invoiceNo = String(pick(raw, map, 'invoice_no') ?? '').trim();
+      const rawInv = pick(raw, map, 'invoice_no');
+      const invoiceNo = (rawInv instanceof Date ? normDate(rawInv) : String(rawInv ?? '')).trim();
       const gstin = normGstin(pick(raw, map, 'supplier_gstin'));
       const date = normDate(pick(raw, map, 'invoice_date'));
       if (!invoiceNo || !gstin) return null;
@@ -304,7 +305,8 @@ export function parseGstr2b(rows: unknown[][], sourceFile = 'gstr2b'): IngestRes
     sourceFile,
     ['invoice_no', 'supplier_gstin', 'taxable_value', 'itc_availability'],
     (raw, map, rowNo) => {
-      const invoiceNo = String(pick(raw, map, 'invoice_no') ?? '').trim();
+      const rawInv = pick(raw, map, 'invoice_no');
+      const invoiceNo = (rawInv instanceof Date ? normDate(rawInv) : String(rawInv ?? '')).trim();
       const gstin = normGstin(pick(raw, map, 'supplier_gstin'));
       if (!invoiceNo || !gstin) return null;
 
@@ -600,7 +602,7 @@ export function parseGstr2bJson(
     const pct = rateFromJson || t.rates.join(',');
 
     // "R" regular, "C" credit note, "D" debit note.
-    const rawType = pickStr(o, ['inv_typ', 'invTyp', 'inv_type', 'typ']).toUpperCase();
+    const rawType = pickStr(o, ['ntty', 'typ', 'inv_typ', 'invTyp', 'inv_type']).toUpperCase();
     let invType: string;
     if (ctx.group === 'CDNR') invType = rawType.startsWith('D') ? 'DN' : 'CDNR';
     else invType = normInvoiceType(rawType || 'R');
