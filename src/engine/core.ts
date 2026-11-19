@@ -673,6 +673,12 @@ export interface Gstr2bRecord {
   itc_availability: string;
   reason?: string;
   applicable_pct?: string;
+  doc_category?: string;
+  source_taxable_value?: number;
+  source_igst?: number;
+  source_cgst?: number;
+  source_sgst?: number;
+  source_cess?: number;
   source_file?: string;
   source_row?: number;
   itc_decision?: string;
@@ -800,8 +806,35 @@ export type ReconStatus =
   | 'Duplicate'
   | 'Pending Review';
 
+/** Granular 15-status classification for Complete Reconciliation & analytics (Part 3). */
+export type DetailedReconStatus =
+  | 'MATCHED IN SAME MONTH'
+  | 'MATCHED IN SUBSEQUENT MONTH'
+  | 'MATCHED IN SUBSEQUENT FINANCIAL YEAR'
+  | 'MATCHED AFTER BOOKS CORRECTION'
+  | 'MATCHED WITH TAX DIFFERENCE'
+  | 'MATCHED WITH TAXABLE DIFFERENCE'
+  | 'BOOKS ONLY'
+  | 'GSTR-2B ONLY'
+  | 'DOCUMENT NUMBER MISMATCH'
+  | 'DOCUMENT DATE MISMATCH'
+  | 'SUPPLIER GSTIN MISMATCH'
+  | 'DOCUMENT TYPE MISMATCH'
+  | 'DUPLICATE'
+  | 'POSSIBLE DUPLICATE'
+  | 'PENDING MANUAL REVIEW';
+
 export interface ReconRow {
   status: ReconStatus;
+  detailed_status?: DetailedReconStatus;
+  match_type?: string;
+  subsequent_month_match?: boolean;
+  cross_fy_match?: boolean;
+  matched_after_books_correction?: boolean;
+  date_diff_days?: number;
+  doc_no_diff?: string;
+  duplicate_ref?: string;
+  doc_category?: string;
   our_gstin: string;
   unit_name?: string;
   party_name: string;

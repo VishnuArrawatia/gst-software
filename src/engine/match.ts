@@ -22,6 +22,7 @@
  */
 
 import {
+  fyOf,
   isCreditDoc,
   isSec16_4TimeBarred,
   normDocType,
@@ -30,6 +31,7 @@ import {
   r2,
   taxOf,
   withinTolerance,
+  type DetailedReconStatus,
   type DocType,
   type Gstr2bRecord,
   type PurchaseBill,
@@ -47,6 +49,8 @@ export interface ReconOptions {
   dateWindow?: DateWindow;
   /** 2B line ids already matched to purchase lines in OTHER months (excluded from matching). */
   claimedElsewhere?: Set<string>;
+  /** When true, strictly enforce Tax Invoice↔Tax Invoice, DN↔DN, CN↔CN. */
+  strictDocType?: boolean;
 }
 
 export interface ReconResult {
@@ -257,11 +261,25 @@ export function reconcilePurchases(
   // A positive Tax Invoice and a negative Credit/Debit Note sharing the same
   // reference number are distinct economic events, not a duplicate booking.
   const booksKeyCount = new Map<string, number>();
+  const booksSoftPosCount = new Map<string, string[]>();
   for (const b of books) {
     const m = matchValuesOf(b);
-    const pol = docPolarity(bookDocOf(b), b);
+    const bDoc = bookDocOf(b);
+    const pol = docPolarity(bDoc, b);
     const dk = `${keyOf(m.supplier_gstin, m.invoice_no)}|${pol}`;
     booksKeyCount.set(dk, (booksKeyCount.get(dk) || 0) + 1);
+
+    const softK = `${normGstin(b.our_gstin)}|${normGstin(m.supplier_gstin)}|${bDoc}|${m.invoice_date || ''}|${r2(b.taxable_value).toFixed(2)}|${taxOf(b).toFixed(2)}`;
+    if (!booksSoftPosCount.has(softK)) booksSoftPosCount.set(softK, []);
+    booksSoftPosCount.get(softK)!.push(`${b.source_file || 'books'}#${b.source_row ?? ''}:${m.invoice_no}`);
+  }
+
+  // Diagnostic index for SUPPLIER GSTIN MISMATCH & DOCUMENT TYPE MISMATCH
+  const twobByOurAndInv = new Map<string, Gstr2bRecord[]>();
+  for (const r of twob) {
+    const ik = `${normGstin(r.our_gstin)}|${normInvoice(r.invoice_no)}`;
+    if (!twobByOurAndInv.has(ik)) twobByOurAndInv.set(ik, []);
+    twobByOurAndInv.get(ik)!.push(r);
   }
 
   const claimed = new Set<string>();
@@ -275,12 +293,14 @@ export function reconcilePurchases(
     const bookPol = docPolarity(bookDoc, b);
     const dk = `${k}|${bookPol}`;
 
-    // Candidate 2B lines: same normalized GSTIN + Invoice No + polarity, and not
-    // already claimed in this run or in another month's purchase register.
+    // Candidate 2B lines: same normalized GSTIN + Invoice No + polarity (plus strictDocType if set),
+    // and not already claimed in this run or in another month's purchase register.
     const rawBucket = (twobByKey.get(k) || []).filter((x) => {
       const id = twobId(x);
       if (claimed.has(id) || claimedElsewhere?.has(id)) return false;
-      return docPolarity(twobDocOf(x), x) === bookPol;
+      const tDoc = twobDocOf(x);
+      if (opts.strictDocType && tDoc !== bookDoc) return false;
+      return docPolarity(tDoc, x) === bookPol;
     });
 
     const base: ReconRow = {
@@ -317,6 +337,8 @@ export function reconcilePurchases(
       rows.push({
         ...base,
         status: 'Duplicate',
+        detailed_status: 'DUPLICATE',
+        duplicate_ref: `DUP:${mv.supplier_gstin}|${mv.invoice_no} (x${booksKeyCount.get(dk)})`,
         action:
           'Purchase register me ye same GSTIN + Invoice No 2 ya zyada baar hai. Duplicate booking hoga to ITC double claim ho jayega — pehle duplicate entry delete/void karein.',
       });
@@ -417,9 +439,36 @@ export function reconcilePurchases(
     );
 
     if (!best || crossFyCollision) {
+      // Classify exact mismatch diagnosis among unbooked 2B / Books without auto-matching
+      const sameKeyDiffType = (twobByKey.get(k) || []).find(
+        (x) => !claimed.has(twobId(x)) && !claimedElsewhere?.has(twobId(x)) && twobDocOf(x) !== bookDoc,
+      );
+      const sameInvDiffGstin = (twobByOurAndInv.get(`${normGstin(b.our_gstin)}|${normInvoice(mv.invoice_no)}`) || []).find(
+        (x) =>
+          !claimed.has(twobId(x)) &&
+          !claimedElsewhere?.has(twobId(x)) &&
+          normGstin(x.supplier_gstin) !== mv.supplier_gstin &&
+          twobDocOf(x) === bookDoc &&
+          withinTolerance(x.taxable_value, b.taxable_value, Math.max(2, tolerance)) &&
+          withinTolerance(taxOf(x), itc, Math.max(2, tolerance)),
+      );
+      const softK = `${normGstin(b.our_gstin)}|${normGstin(mv.supplier_gstin)}|${bookDoc}|${mv.invoice_date || ''}|${r2(b.taxable_value).toFixed(2)}|${itc.toFixed(2)}`;
+      const softCluster = booksSoftPosCount.get(softK) || [];
+
+      let detailedMissing: DetailedReconStatus = 'BOOKS ONLY';
+      let dupRef: string | undefined;
+      if (sameKeyDiffType) detailedMissing = 'DOCUMENT TYPE MISMATCH';
+      else if (sameInvDiffGstin) detailedMissing = 'SUPPLIER GSTIN MISMATCH';
+      else if (softCluster.length > 1) {
+        detailedMissing = 'POSSIBLE DUPLICATE';
+        dupRef = softCluster.slice(0, 3).join('; ');
+      }
+
       rows.push({
         ...base,
         status: 'Missing in 2B',
+        detailed_status: detailedMissing,
+        duplicate_ref: dupRef,
         action:
           'Purchase book me hai par GSTR-2B me nahi. Vendor se GSTR-1 me daal kar file karwaayein; tab tak ispe ITC claim mat karein (cl.16(2)(b)).',
       });
@@ -451,9 +500,17 @@ export function reconcilePurchases(
       diffComponents,
     } = best;
     const twobRcm = b.reverse_charge ?? group.some((x) => x.reverse_charge);
+    const gapDays = mv.invoice_date && primary.invoice_date ? daysBetween(mv.invoice_date, primary.invoice_date) : undefined;
+    const crossFy = Boolean(matched2bMonth && b.period && fyOf(matched2bMonth) !== fyOf(b.period));
+    const subsequentMonth = Boolean(matched2bMonth && b.period && matched2bMonth !== b.period);
+    const docNoDiff =
+      String(mv.invoice_no ?? '').trim() !== String(primary.invoice_no ?? '').trim()
+        ? `${mv.invoice_no} vs ${primary.invoice_no}`
+        : undefined;
     const twoBFields = {
       matched_2b_id: matchId,
       matched_2b_month: matched2bMonth || undefined,
+      doc_category: (primary as any).doc_category || undefined,
       two_b_supplier_gstin: normGstin(primary.supplier_gstin),
       two_b_invoice_no: String(primary.invoice_no ?? '').trim(),
       two_b_invoice_date: primary.invoice_date || '',
@@ -466,6 +523,18 @@ export function reconcilePurchases(
       two_b_itc: twobItc,
       itc_difference: diffItc,
       taxable_difference: diffTaxable,
+      subsequent_month_match: subsequentMonth,
+      cross_fy_match: crossFy,
+      matched_after_books_correction: mv.edited || undefined,
+      date_diff_days: gapDays,
+      doc_no_diff: docNoDiff,
+      match_type: mv.edited
+        ? 'Books Correction Match'
+        : crossFy
+          ? 'Cross-FY Match'
+          : subsequentMonth
+            ? 'Subsequent Month Match'
+            : 'Same Month Match',
     };
 
     if (blockedLine) {
@@ -473,6 +542,7 @@ export function reconcilePurchases(
         ...base,
         ...twoBFields,
         status: 'ITC Blocked',
+        detailed_status: 'PENDING MANUAL REVIEW',
         itc_availability: blockedLine?.itc_availability ?? primary.itc_availability,
         reason: blockedLine?.reason ?? primary.reason,
         action: `GSTR-2B me ITC available = "${blockedLine?.itc_availability ?? primary.itc_availability}"${blockedLine?.reason ?? primary.reason ? ` (${blockedLine?.reason ?? primary.reason})` : ''}. Ye credit claim nahi ho sakta — books se claim hataayein.`,
@@ -482,32 +552,45 @@ export function reconcilePurchases(
 
     const amountOk = best.amountExact;
     const dateOk = dateWithinWindow(mv.invoice_date, primary.invoice_date || '', dateWindow);
+    const taxableDiffers = !withinTolerance(diffTaxable, 0, tolerance);
+    const typeMismatch = bookDoc !== bestDoc;
 
     if (amountOk && dateOk) {
+      let ds: DetailedReconStatus = 'MATCHED IN SAME MONTH';
+      if (typeMismatch) ds = 'DOCUMENT TYPE MISMATCH';
+      else if (mv.edited) ds = 'MATCHED AFTER BOOKS CORRECTION';
+      else if (crossFy) ds = 'MATCHED IN SUBSEQUENT FINANCIAL YEAR';
+      else if (subsequentMonth) ds = 'MATCHED IN SUBSEQUENT MONTH';
+
       rows.push({
         ...base,
         ...twoBFields,
         status: 'Matched',
+        detailed_status: ds,
         itc_availability: blockedLine?.itc_availability ?? primary.itc_availability,
         action: 'OK — GSTR-3B table 4(A) me claim kar sakte hain.',
       });
     } else if (amountOk && !dateOk) {
-      const gapDays = daysBetween(mv.invoice_date, primary.invoice_date);
       const dateReason = `Invoice date mismatch: Books ${mv.invoice_date} vs 2B ${primary.invoice_date} (${gapDays} days, window: ${dateWindow})`;
       rows.push({
         ...base,
         ...twoBFields,
         status: 'Amount Mismatch',
+        detailed_status: 'DOCUMENT DATE MISMATCH',
         itc_availability: blockedLine?.itc_availability ?? primary.itc_availability,
         reason: dateReason,
         action:
           `${dateReason}. Books me recon date check karein ya Date Window setting badlein.`,
       });
     } else {
+      const ds: DetailedReconStatus = taxableDiffers
+        ? 'MATCHED WITH TAXABLE DIFFERENCE'
+        : 'MATCHED WITH TAX DIFFERENCE';
       rows.push({
         ...base,
         ...twoBFields,
         status: 'Amount Mismatch',
+        detailed_status: ds,
         itc_availability: blockedLine?.itc_availability ?? primary.itc_availability,
         reason: blockedLine?.reason ?? primary.reason,
         action:
@@ -544,6 +627,8 @@ export function reconcilePurchases(
       // absent from the purchase books. The two directions are opposite findings
       // and sharing one label made the exception reports unreadable.
       status: itcBlocked(r) ? 'ITC Blocked' : 'Missing in Books',
+      detailed_status: itcBlocked(r) ? 'PENDING MANUAL REVIEW' : 'GSTR-2B ONLY',
+      doc_category: r.doc_category,
       our_gstin: normGstin(r.our_gstin),
       party_name: r.supplier_name,
       supplier_gstin: normGstin(r.supplier_gstin),
@@ -606,6 +691,9 @@ export function reconcilePurchases(
       r.suggested_2b_invoice_no = cand.invoice_no;
       r.suggested_2b_date = cand.invoice_date;
       r.match_hint = `Probable 2B match: "${cand.invoice_no}" dated ${cand.invoice_date} (Taxable ${cand.taxable_value}, ITC ${cand.itc})`;
+      if (r.detailed_status === 'BOOKS ONLY' && (cand.document_type || 'Tax Invoice') === (r.document_type || 'Tax Invoice')) {
+        r.detailed_status = 'DOCUMENT NUMBER MISMATCH';
+      }
     }
   }
 

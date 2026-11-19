@@ -27,6 +27,10 @@ import { Client } from 'pg';
 import {
   fyOf, isValidGstin, isoDate, labelOf, normDate, normDocType, normGstin, normInvoice, r2, taxOf,
 } from '../engine/core';
+import {
+  fingerprintOfGstr2bRecord,
+  type Gstr2bExcelBatchPreview,
+} from '../engine/gstr2b-excel';
 import { reconcilePurchases, type DateWindow, type ReconResult } from '../engine/match';
 import type { Gstr2bRecord, PurchaseBill, ReconRow, SalesInvoice } from '../engine/core';
 import { pgConfig } from '../config/env';
@@ -588,7 +592,7 @@ const SALES_ITEM_COL_COUNT = 16;
   return res;
 }
 
-const PURCHASE_COL_COUNT = 58;
+const PURCHASE_COL_COUNT = 59;
 const TWOB_COL_COUNT = 24;
 /** PostgreSQL allows 65535 bind parameters per statement, so bulk writes chunk. */
 const MAX_PARAMS = 60_000;
@@ -610,7 +614,7 @@ function insertPurchaseSql(n: number): string {
         source_taxable_value, source_igst, source_cgst, source_sgst, source_cess,
         book_taxable_value, book_igst, book_cgst, book_sgst, book_cess,
         recon_supplier_gstin, recon_invoice_no, recon_invoice_date,
-        match_status, match_method, matched_2b_key, matched_2b_month,
+        match_status, detailed_match_status, match_method, matched_2b_key, matched_2b_month,
         twob_supplier_gstin, twob_invoice_no, twob_invoice_date, twob_taxable_value,
         twob_igst, twob_cgst, twob_sgst, twob_cess, twob_itc, itc_availability,
         mismatch_reason, itc_amount, taxable_difference, itc_difference,
@@ -655,6 +659,7 @@ function insertPurchaseSql(n: number): string {
        source_cess = EXCLUDED.source_cess,
        unit_name = COALESCE(EXCLUDED.unit_name, purchase_lines.unit_name),
        match_status = EXCLUDED.match_status,
+       detailed_match_status = EXCLUDED.detailed_match_status,
        match_method = EXCLUDED.match_method,
        matched_2b_key = EXCLUDED.matched_2b_key,
        matched_2b_month = EXCLUDED.matched_2b_month,
@@ -727,7 +732,7 @@ function lineParams(
     // recon_* — the editable copy
     normGstin(b.supplier_gstin), String(b.invoice_no ?? '').trim(), b.invoice_date || null,
     // match outcome
-    row?.status ?? null, row ? 'primary' : 'none', row?.matched_2b_id ?? null,
+    row?.status ?? null, row?.detailed_status ?? null, row ? 'primary' : 'none', row?.matched_2b_id ?? null,
     row?.matched_2b_month ?? null,
     matched ? normGstin(twob?.supplier_gstin ?? b.supplier_gstin) : null,
     matched ? String(twob?.invoice_no ?? row?.invoice_no ?? '') : null,
@@ -796,7 +801,7 @@ const LINE_COLS = `id, line_key, our_gstin, period, financial_year, company_id, 
   has_e_invoice, e_invoice_no, has_e_way_bill, e_way_bill_no,
   e_invoice_required, e_way_bill_required,
   recon_supplier_gstin, recon_invoice_no, recon_invoice_date, recon_edited, recon_edited_by, recon_edited_at,
-  match_status, match_method, matched_2b_key, matched_2b_month,
+  match_status, detailed_match_status, match_method, matched_2b_key, matched_2b_month,
   twob_supplier_gstin, twob_invoice_no, twob_invoice_date, twob_taxable_value,
   twob_igst, twob_cgst, twob_sgst, twob_cess, twob_itc, itc_availability,
   mismatch_reason, itc_amount, taxable_difference, itc_difference, duplicate_count,
@@ -1087,6 +1092,7 @@ export async function reReconcile(
 
       const ids: number[] = [];
       const statuses: string[] = [];
+      const dStatuses: Array<string | null> = [];
       const mKeys: Array<string | null> = [];
       const mMonths: Array<string | null> = [];
       const tGstins: Array<string | null> = [];
@@ -1113,6 +1119,7 @@ export async function reReconcile(
         if (was && (was.st !== r.status || was.k !== (r.matched_2b_id ?? ''))) moved++;
         ids.push(Number(id));
         statuses.push(r.status);
+        dStatuses.push(r.detailed_status ?? null);
         mKeys.push(r.matched_2b_id ?? null);
         mMonths.push(r.matched_2b_month ?? null);
         tGstins.push(r.matched_2b_id ? normGstin(r.two_b_supplier_gstin ?? r.supplier_gstin) : null);
@@ -1137,6 +1144,7 @@ export async function reReconcile(
         await c.query(
           `UPDATE purchase_lines AS p SET
              match_status = v.match_status,
+             detailed_match_status = v.detailed_match_status,
              match_method = 're-reconcile',
              matched_2b_key = v.matched_2b_key,
              matched_2b_month = v.matched_2b_month,
@@ -1163,20 +1171,21 @@ export async function reReconcile(
                $1::bigint[], $2::text[], $3::text[], $4::text[], $5::text[],
                $6::text[], $7::text[], $8::numeric[], $9::numeric[], $10::numeric[],
                $11::numeric[], $12::numeric[], $13::numeric[], $14::text[],
-               $15::text[], $16::numeric[], $17::numeric[], $18::numeric[], $19::int[], $20::text[]
+               $15::text[], $16::numeric[], $17::numeric[], $18::numeric[], $19::int[], $20::text[], $21::text[]
              )
            ) AS v(
              id, match_status, matched_2b_key, matched_2b_month, twob_supplier_gstin,
              twob_invoice_no, twob_invoice_date, twob_taxable_value, twob_igst, twob_cgst,
              twob_sgst, twob_cess, twob_itc, itc_availability,
-             mismatch_reason, itc_amount, taxable_difference, itc_difference, duplicate_count, suggested_action
+             mismatch_reason, itc_amount, taxable_difference, itc_difference, duplicate_count, suggested_action,
+             detailed_match_status
            )
            WHERE p.id = v.id`,
           [
             ids, statuses, mKeys, mMonths, tGstins,
             tInvs, tDates, tTaxables, tIgsts, tCgsts,
             tSgsts, tCesss, tItcs, tAvails,
-            reasons, itcAmts, taxDiffs, itcDiffs, dupCounts, actions,
+            reasons, itcAmts, taxDiffs, itcDiffs, dupCounts, actions, dStatuses,
           ],
         );
       }
@@ -2932,5 +2941,315 @@ export async function listUsers(): Promise<AppUser[]> {
       roles: x.roles as string[],
       isMaster: (x.roles as string[]).includes(MASTER_ROLE),
     }));
+  });
+}
+
+// ===========================================================================
+// PART 2 — DEDICATED GSTR-2B EXCEL IMPORT (MULTI-MONTH / MULTI-SHEET)
+// ===========================================================================
+
+export async function loadExistingGstr2bFingerprints(gstins?: string[] | null): Promise<{
+  fingerprints: Set<string>;
+  softKeys: Map<string, Set<string>>;
+}> {
+  return withClient(async (c) => {
+    const params: unknown[] = [];
+    let where = '';
+    if (gstins && gstins.length) {
+      params.push(gstins.map(normGstin));
+      where = 'WHERE our_gstin = ANY($1::text[])';
+    }
+    const r = await c.query(
+      `SELECT our_gstin, supplier_gstin, invoice_no, document_type, doc_category,
+              twob_month, portal_fp, invoice_date, taxable_value, igst, cgst, sgst, cess
+         FROM gstr2b_lines ${where}`,
+      params,
+    );
+    const fingerprints = new Set<string>();
+    const softKeys = new Map<string, Set<string>>();
+    for (const row of r.rows) {
+      const fp = fingerprintOfGstr2bRecord({
+        our_gstin: row.our_gstin,
+        supplier_gstin: row.supplier_gstin,
+        invoice_no: row.invoice_no,
+        invoice_type: row.document_type || 'Regular',
+        doc_category: row.doc_category || undefined,
+        period: row.twob_month,
+        portal_fp: row.portal_fp || row.twob_month,
+        invoice_date: row.invoice_date instanceof Date ? iso(row.invoice_date) : String(row.invoice_date || ''),
+        taxable_value: Number(row.taxable_value || 0),
+        igst: Number(row.igst || 0),
+        cgst: Number(row.cgst || 0),
+        sgst: Number(row.sgst || 0),
+        cess: Number(row.cess || 0),
+      });
+      fingerprints.add(fp);
+      const sk = `${normGstin(row.our_gstin)}|${normGstin(row.supplier_gstin)}|${normInvoice(row.invoice_no)}|${normDocType(row.document_type || 'Regular')}`;
+      if (!softKeys.has(sk)) softKeys.set(sk, new Set());
+      const m = String(row.portal_fp || row.twob_month || '').slice(0, 7);
+      if (m) softKeys.get(sk)!.add(m);
+    }
+    return { fingerprints, softKeys };
+  });
+}
+
+export interface Gstr2bExcelCommitResult {
+  ok: boolean;
+  batchId: number;
+  batchUid: string;
+  insertedRows: number;
+  skippedDuplicateRows: number;
+  lockedSkipped: string[];
+  reconciled: ReReconcileResult[];
+  reason?: string;
+}
+
+export async function importGstr2bExcelBatch(
+  preview: Gstr2bExcelBatchPreview,
+  opts: { importedBy: string; autoReconcile?: boolean },
+): Promise<Gstr2bExcelCommitResult> {
+  const batchUid = `2BX-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
+  const lockedSkipped: string[] = [];
+  let insertedRows = 0;
+  let skippedDuplicateRows = preview.duplicateRecords;
+  let batchId = 0;
+
+  try {
+    const unlockedPairs = new Set<string>();
+
+    await withClient(async (c) => {
+      await c.query('BEGIN');
+      try {
+        const gmap = await loadGstinMap();
+        const lockRes = await c.query('SELECT our_gstin, period FROM month_locks WHERE is_locked');
+        const locked = new Set(lockRes.rows.map((r: any) => `${normGstin(r.our_gstin)}|${r.period}`));
+
+        const batchIns = await c.query(
+          `INSERT INTO gstr2b_import_batches
+             (batch_uid, our_gstin, detected_gstins, financial_year, period_mode,
+              selected_periods, detected_periods, file_names, file_hashes, categories,
+              total_records, accepted_records, duplicate_records, rejected_records,
+              validation_errors, imported_by)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+           RETURNING id`,
+          [
+            batchUid,
+            preview.gstins.length === 1 ? preview.gstins[0] : null,
+            preview.gstins,
+            preview.financialYears[0] || null,
+            preview.periodMode,
+            preview.selectedPeriods,
+            preview.returnPeriods,
+            preview.files.map((f) => f.fileName),
+            preview.files.map((f) => f.fileSha256),
+            preview.categories,
+            preview.totalRecords,
+            preview.acceptedRecords,
+            preview.duplicateRecords,
+            preview.rejectedRecords,
+            JSON.stringify(preview.validationErrors.slice(0, 200)),
+            opts.importedBy || 'system',
+          ],
+        );
+        batchId = Number(batchIns.rows[0].id);
+
+        // Register file tuples in gstr2b_files without overwriting historical registrations
+        const pairSummary = new Map<string, {
+          fileName: string; sha: string; gstin: string; period: string; count: number; blocked: number;
+        }>();
+        const fileHashByName = new Map(preview.files.map((f) => [f.fileName, f.fileSha256]));
+
+        const vals: unknown[][] = [];
+        for (const rec of preview.acceptedRows) {
+          const bk = `${normGstin(rec.our_gstin)}|${rec.period}`;
+          if (locked.has(bk)) {
+            if (!lockedSkipped.includes(`${rec.our_gstin} ${labelOf(rec.period)}`)) {
+              lockedSkipped.push(`${rec.our_gstin} ${labelOf(rec.period)}`);
+            }
+            continue;
+          }
+          unlockedPairs.add(bk);
+
+          const sha = fileHashByName.get(rec.source_file || '') || '';
+          const pk = `${rec.source_file || 'gstr2b.xlsx'}|${bk}`;
+          const ps = pairSummary.get(pk) || {
+            fileName: rec.source_file || 'gstr2b.xlsx',
+            sha, gstin: normGstin(rec.our_gstin), period: rec.period, count: 0, blocked: 0,
+          };
+          ps.count++;
+          if (String(rec.itc_availability || '').toLowerCase() !== 'yes') ps.blocked++;
+          pairSummary.set(pk, ps);
+
+          const fpHash = crypto.createHash('sha1').update(rec.fingerprint).digest('hex').slice(0, 12);
+          const lKey = `${normGstin(rec.our_gstin)}|${rec.period}|${rec.doc_category}|${rec.source_file || 'excel'}|${rec.source_row ?? 0}|${fpHash}`;
+          vals.push([
+            lKey,
+            normGstin(rec.our_gstin),
+            normGstin(rec.supplier_gstin),
+            rec.supplier_name || '',
+            String(rec.invoice_no).trim(),
+            rec.invoice_date || null,
+            rec.invoice_type || 'Regular',
+            r2(rec.taxable_value),
+            r2(rec.igst),
+            r2(rec.cgst),
+            r2(rec.sgst),
+            r2(rec.cess),
+            r2(rec.invoice_value),
+            rec.period,
+            rec.portal_fp || rec.period,
+            rec.filing_date || null,
+            rec.place_of_supply || null,
+            !!rec.reverse_charge,
+            rec.itc_availability || 'Yes',
+            rec.reason || null,
+            rec.applicable_pct || null,
+            rec.source_file || null,
+            rec.source_row ?? null,
+            'xlsx',
+            rec.doc_category || 'B2B',
+            batchId,
+            true,
+            r2(rec.source_taxable_value ?? rec.taxable_value),
+            r2(rec.source_igst ?? rec.igst),
+            r2(rec.source_cgst ?? rec.cgst),
+            r2(rec.source_sgst ?? rec.sgst),
+            r2(rec.source_cess ?? rec.cess),
+          ]);
+        }
+
+        const COL_CNT = 32;
+        for (const chunk of chunkRows(vals, COL_CNT)) {
+          const ins = await c.query(
+            `INSERT INTO gstr2b_lines
+               (line_key, our_gstin, supplier_gstin, supplier_name, invoice_no, invoice_date,
+                document_type, taxable_value, igst, cgst, sgst, cess, invoice_value,
+                twob_month, portal_fp, filing_date, place_of_supply, reverse_charge,
+                itc_availability, reason, applicable_pct, source_file, source_row, source_format,
+                doc_category, import_batch_id, original_sign_preserved,
+                source_taxable_value, source_igst, source_cgst, source_sgst, source_cess)
+             VALUES ${chunk.map((_, i) =>
+               `(${Array.from({ length: COL_CNT }, (__, k) => '$' + (i * COL_CNT + k + 1)).join(',')})`).join(',')}
+             ON CONFLICT (line_key) DO NOTHING`,
+            chunk.flat(),
+          );
+          insertedRows += ins.rowCount ?? 0;
+        }
+        skippedDuplicateRows += Math.max(0, vals.length - insertedRows);
+
+        for (const ps of pairSummary.values()) {
+          const gm = gmap.get(ps.gstin);
+          await c.query(
+            `INSERT INTO gstr2b_files
+               (file_name, sha256, our_gstin, company_id, financial_year,
+                twob_month, portal_fp, record_count, blocked_count, source_format, uploaded_by, notes)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'xlsx',$10,$11)
+             ON CONFLICT (our_gstin, twob_month, sha256) DO NOTHING`,
+            [
+              ps.fileName, ps.sha, ps.gstin, gm?.company_id ?? null, fyOf(ps.period),
+              ps.period, ps.period, ps.count, ps.blocked, opts.importedBy || 'system',
+              `GSTR-2B Excel batch ${batchUid}`,
+            ],
+          );
+        }
+
+        await c.query(
+          `INSERT INTO audit_trail
+             (changed_by, action, our_gstin, financial_year, period, reason, details)
+           VALUES ($1,'GSTR2B_EXCEL_IMPORT',$2,$3,$4,$5,$6)`,
+          [
+            opts.importedBy || 'system',
+            preview.gstins[0] || null,
+            preview.financialYears[0] || null,
+            preview.returnPeriods[0] || null,
+            `GSTR-2B Excel Import Batch ${batchUid}`,
+            JSON.stringify({
+              batchId,
+              batchUid,
+              files: preview.files.map((f) => f.fileName),
+              periods: preview.returnPeriods,
+              categories: preview.categories,
+              accepted: insertedRows,
+              duplicates: skippedDuplicateRows,
+              rejected: preview.rejectedRecords,
+            }),
+          ],
+        );
+
+        await c.query('COMMIT');
+      } catch (err) {
+        await c.query('ROLLBACK');
+        throw err;
+      }
+    });
+
+    const reconciled: ReReconcileResult[] = [];
+    if (opts.autoReconcile !== false && insertedRows > 0) {
+      // Find all unlocked purchase bundles matching imported GSTINs (to cover same-month & cross-month claims)
+      const gstins = [...new Set(preview.acceptedRows.map((r) => normGstin(r.our_gstin)))];
+      const periodRes = await withClient((c) =>
+        c.query(
+          `SELECT DISTINCT our_gstin, period FROM purchase_lines
+            WHERE our_gstin = ANY($1::text[])
+            ORDER BY our_gstin, period`,
+          [gstins],
+        ),
+      );
+      for (const row of periodRes.rows) {
+        const pairKey = `${normGstin(row.our_gstin)}|${row.period}`;
+        if (unlockedPairs.has(pairKey) || preview.returnPeriods.includes(row.period) || row.period <= (preview.returnPeriods[preview.returnPeriods.length - 1] || '9999-12')) {
+          const rr = await reReconcile(row.our_gstin, row.period, {
+            changedBy: opts.importedBy || 'system',
+            reason: `Post GSTR-2B Excel Batch ${batchUid}`,
+          });
+          if (rr.ok) reconciled.push(rr);
+        }
+      }
+    }
+
+    return {
+      ok: true,
+      batchId,
+      batchUid,
+      insertedRows,
+      skippedDuplicateRows,
+      lockedSkipped,
+      reconciled,
+    };
+  } catch (e: any) {
+    return {
+      ok: false,
+      batchId,
+      batchUid,
+      insertedRows,
+      skippedDuplicateRows,
+      lockedSkipped,
+      reconciled: [],
+      reason: e?.message || 'GSTR-2B Excel import failed',
+    };
+  }
+}
+
+export async function listGstr2bExcelBatches(allowed?: string[] | null) {
+  return withClient(async (c) => {
+    const params: unknown[] = [];
+    let where = '';
+    if (allowed && allowed.length) {
+      params.push(allowed.map(normGstin));
+      where = 'WHERE our_gstin = ANY($1::text[]) OR detected_gstins && $1::text[]';
+    } else if (allowed && allowed.length === 0) {
+      return [];
+    }
+    const r = await c.query(
+      `SELECT id::int, batch_uid, our_gstin, detected_gstins, financial_year, period_mode,
+              selected_periods, detected_periods, file_names, categories,
+              total_records, accepted_records, duplicate_records, rejected_records,
+              validation_errors, imported_by, imported_at
+         FROM gstr2b_import_batches
+         ${where}
+        ORDER BY imported_at DESC LIMIT 100`,
+      params,
+    );
+    return r.rows;
   });
 }

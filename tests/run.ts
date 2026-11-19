@@ -48,6 +48,9 @@ import { detectTable, isGstr1Json, parseFiledJson, parseFiledWorkbook, parseMone
 import { buildGstr3b, gstr3bWorkingRows, itcDetailFromRecon } from '../src/engine/gstr3b';
 import { isSec16_4TimeBarred } from '../src/engine/core';
 import { buildImsActions } from '../src/engine/ims';
+import type { ImsSourceDocForRecon, BookLineForImsRecon } from '../src/engine/ims-recon';
+import type { ImsWorkingRow } from '../src/app/ims-excel';
+import type { CompleteReconDataset, CompleteReconExportRow } from '../src/app/complete-recon-export';
 import { buildGstr9, buildGstr9c, fyMonths, gstr9PortalJson, gstr9WorkingRows, gstr9cWorkingRows } from '../src/engine/gstr9';
 import XLSX from 'xlsx';
 
@@ -4072,6 +4075,505 @@ section('34. Category 1 fixes — 40% slab, 2B JSON edge cases, 3B ITC decisions
       'function copyLegalCitation(',
     ]) {
       check(`Calendar & Legal Library UI has ${marker}`, htmlUi.includes(marker));
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+section('34. master recon: GSTR-2B excel, 1-sheet complete export & independent IMS');
+// ---------------------------------------------------------------------------
+
+{
+  const XLSX = (await import('xlsx')).default;
+  const { expandSelectedPeriods, parseGstr2bExcelBatch } = await import('../src/engine/gstr2b-excel');
+  const { parseImsFilesBatch } = await import('../src/engine/ims-import');
+  const {
+    reconcileImsVsBooks,
+    recommendImsAction,
+    supportedActionsForIms,
+  } = await import('../src/engine/ims-recon');
+  const {
+    buildImsWorkingWorkbook,
+    parseAndValidateImsWorkingUpload,
+  } = await import('../src/app/ims-excel');
+  const {
+    buildCompleteReconWorkbook,
+  } = await import('../src/app/complete-recon-export');
+
+  // A. GSTR-2B period expansion modes
+  const singleMonths = expandSelectedPeriods({ periodMode: 'single', period: '2026-04' });
+  eq('Period expansion: single month', singleMonths, ['2026-04']);
+
+  const rangeMonths = expandSelectedPeriods({ periodMode: 'range', from: '2026-04', to: '2026-09' });
+  eq('Period expansion: continuous range', rangeMonths, ['2026-04', '2026-05', '2026-06', '2026-07', '2026-08', '2026-09']);
+
+  const multiMonths = expandSelectedPeriods({ periodMode: 'multi', periods: ['2026-04', '2026-06', '2026-08', '2026-11'] });
+  eq('Period expansion: non-consecutive multiple months', multiMonths, ['2026-04', '2026-06', '2026-08', '2026-11']);
+
+  // B. Multi-sheet Official GSTR-2B parser with CN negative polarity preservation
+  {
+    const wb = XLSX.utils.book_new();
+    const b2bData = [
+      ['GSTR-2B B2B Invoices'],
+      ['GSTIN of recipient', '26AALCS9985J1ZC'],
+      ['Return Period', '04/2026'],
+      [],
+      ['GSTIN of supplier', 'Trade Name', 'Invoice number', 'Invoice type', 'Invoice Date', 'Invoice Value', 'Place of supply', 'Supply Attract Reverse Charge', 'Taxable Value', 'Integrated Tax', 'Central Tax', 'State/UT Tax', 'Cess', 'GSTR-1/IFF/GSTR-5 Period', 'GSTR-1/IFF/GSTR-5 Filing Date', 'ITC Availability', 'Reason'],
+      ['24AALCS9985J1ZG', 'ACME SUPPLIER', 'INV-2026-001', 'Regular', '15-04-2026', 11800, '26-Dadra and Nagar Haveli', 'N', 10000, 1800, 0, 0, 0, '04/2026', '11-05-2026', 'Yes', ''],
+      ['24AALCS9985J1ZG', 'ACME SUPPLIER', 'INV-2026-002', 'Regular', '20-04-2026', 23600, '26-Dadra and Nagar Haveli', 'N', 20000, 3600, 0, 0, 0, '04/2026', '11-05-2026', 'Yes', ''],
+    ];
+    const wsB2B = XLSX.utils.aoa_to_sheet(b2bData);
+    XLSX.utils.book_append_sheet(wb, wsB2B, 'B2B');
+
+    const cdnrData = [
+      ['GSTR-2B Credit/Debit Notes'],
+      ['GSTIN of recipient', '26AALCS9985J1ZC'],
+      ['Return Period', '04/2026'],
+      [],
+      ['GSTIN of supplier', 'Trade Name', 'Note type', 'Note number', 'Note Date', 'Note Value', 'Place of supply', 'Supply Attract Reverse Charge', 'Taxable Value', 'Integrated Tax', 'Central Tax', 'State/UT Tax', 'Cess', 'ITC Availability', 'Reason'],
+      ['24AALCS9985J1ZG', 'ACME SUPPLIER', 'C', 'CN-2026-001', '25-04-2026', 1180, '26-Dadra and Nagar Haveli', 'N', 1000, 180, 0, 0, 0, 'Yes', ''],
+      ['24AALCS9985J1ZG', 'ACME SUPPLIER', 'D', 'DN-2026-001', '28-04-2026', 2360, '26-Dadra and Nagar Haveli', 'N', 2000, 360, 0, 0, 0, 'Yes', ''],
+    ];
+    const wsCDNR = XLSX.utils.aoa_to_sheet(cdnrData);
+    XLSX.utils.book_append_sheet(wb, wsCDNR, 'CDNR');
+
+    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    const parsed = parseGstr2bExcelBatch([
+      { name: 'gstr2b_apr2026.xlsx', buffer: buf },
+    ], { fallbackGstin: '26AALCS9985J1ZC', periodMode: 'single', period: '2026-04' });
+
+    eq('Parsed file count', parsed.files.length, 1);
+    eq('Accepted doc count across B2B & CDNR', parsed.acceptedRecords, 4);
+    eq('Total file records count', parsed.totalRecords, 4);
+
+    const cnDoc = parsed.acceptedRows.find((r) => r.invoice_no === 'CN-2026-001');
+    check('CN record found in multi-sheet import', Boolean(cnDoc));
+    eq('CN record doc type is Credit Note', cnDoc?.invoice_type, 'Credit Note');
+    eq('CN taxable value is preserved negative', cnDoc?.taxable_value, -1000);
+    eq('CN IGST value is preserved negative', cnDoc?.igst, -180);
+
+    const dnDoc = parsed.acceptedRows.find((r) => r.invoice_no === 'DN-2026-001');
+    check('DN record found in multi-sheet import', Boolean(dnDoc));
+    eq('DN record doc type is Debit Note', dnDoc?.invoice_type, 'Debit Note');
+    eq('DN taxable value is positive', dnDoc?.taxable_value, 2000);
+    eq('DN IGST value is positive', dnDoc?.igst, 360);
+  }
+
+  // C. Enhanced 15-status reconciliation & doc-type strictness
+  {
+    const bInv = BILL({ invoice_no: 'INV-100', invoice_date: '2026-04-10', period: '2026-04', taxable_value: 10000, igst: 1800 });
+    const tInvSame = TWO({ invoice_no: 'INV-100', invoice_date: '2026-04-10', invoice_type: 'Regular', taxable_value: 10000, igst: 1800, period: '2026-04' });
+    const rSame = reconcilePurchases([bInv], [tInvSame], { strictDocType: true });
+    eq('Status: MATCHED IN SAME MONTH', rSame.rows[0]?.detailed_status, 'MATCHED IN SAME MONTH');
+
+    const tInvSub = TWO({ invoice_no: 'INV-100', invoice_date: '2026-04-10', invoice_type: 'Regular', taxable_value: 10000, igst: 1800, period: '2026-06' });
+    const rSub = reconcilePurchases([bInv], [tInvSub], { strictDocType: true });
+    eq('Status: MATCHED IN SUBSEQUENT MONTH', rSub.rows[0]?.detailed_status, 'MATCHED IN SUBSEQUENT MONTH');
+    eq('Subsequent month flag set', rSub.rows[0]?.subsequent_month_match, true);
+
+    const tInvCrossFy = TWO({ invoice_no: 'INV-100', invoice_date: '2026-04-10', invoice_type: 'Regular', taxable_value: 10000, igst: 1800, period: '2027-05' });
+    const rCross = reconcilePurchases([bInv], [tInvCrossFy], { strictDocType: true });
+    eq('Status: MATCHED IN SUBSEQUENT FINANCIAL YEAR', rCross.rows[0]?.detailed_status, 'MATCHED IN SUBSEQUENT FINANCIAL YEAR');
+    eq('Cross FY flag set', rCross.rows[0]?.cross_fy_match, true);
+
+    const tInvTaxDiff = TWO({ invoice_no: 'INV-100', invoice_date: '2026-04-10', invoice_type: 'Regular', taxable_value: 10000, igst: 1750, period: '2026-04' });
+    const rTaxDiff = reconcilePurchases([bInv], [tInvTaxDiff], { strictDocType: true });
+    eq('Status: MATCHED WITH TAX DIFFERENCE', rTaxDiff.rows[0]?.detailed_status, 'MATCHED WITH TAX DIFFERENCE');
+
+    const tInvTaxableDiff = TWO({ invoice_no: 'INV-100', invoice_date: '2026-04-10', invoice_type: 'Regular', taxable_value: 9500, igst: 1800, period: '2026-04' });
+    const rTaxableDiff = reconcilePurchases([bInv], [tInvTaxableDiff], { strictDocType: true });
+    eq('Status: MATCHED WITH TAXABLE DIFFERENCE', rTaxableDiff.rows[0]?.detailed_status, 'MATCHED WITH TAXABLE DIFFERENCE');
+
+    const rBooksOnly = reconcilePurchases([bInv], [], { strictDocType: true });
+    eq('Status: BOOKS ONLY', rBooksOnly.rows[0]?.detailed_status, 'BOOKS ONLY');
+
+    const r2bOnly = reconcilePurchases([], [tInvSame], { strictDocType: true });
+    eq('Status: GSTR-2B ONLY', r2bOnly.unbooked2b[0]?.detailed_status, 'GSTR-2B ONLY');
+
+    // Strict doc type prevents Tax Invoice matching Credit Note even if numbers & amounts match
+    const bInv2 = BILL({ invoice_no: 'MATCH-99', taxable_value: 5000, igst: 900 });
+    const tCn2 = TWO({ invoice_no: 'MATCH-99', invoice_type: 'Credit Note', taxable_value: -5000, igst: -900 });
+    const rStrict = reconcilePurchases([bInv2], [tCn2], { strictDocType: true });
+    check('Invoice does not match Credit Note with strictDocType', rStrict.rows[0]?.status !== 'Matched');
+  }
+
+  // D. Complete Reconciliation Excel Builder — 1 Single Consolidated Sheet
+  {
+    const sampleRow: CompleteReconExportRow = {
+      company_name: 'TEST CORP',
+      our_gstin: '26AALCS9985J1ZC',
+      books_fy: '2026-27',
+      books_month: '2026-04',
+      books_doc_date: '2026-04-15',
+      books_entry_date: '2026-04-16',
+      actual_2b_month: '2026-04',
+      actual_2b_fy: '2026-27',
+
+      doc_category: 'B2B',
+      document_type: 'Tax Invoice',
+      books_doc_no: 'INV-001',
+      recon_books_doc_no: 'INV-001',
+      twob_doc_no: 'INV-001',
+      books_supplier_gstin: '24AALCS9985J1ZG',
+      recon_supplier_gstin: '24AALCS9985J1ZG',
+      twob_supplier_gstin: '24AALCS9985J1ZG',
+      supplier_name: 'ALPHA TRADERS',
+      matching_key: '26AALCS9985J1ZC|24AALCS9985J1ZG|INV-001|2026-04',
+
+      books_taxable: 10000,
+      books_igst: 1800,
+      books_cgst: 0,
+      books_sgst: 0,
+      books_cess: 0,
+      books_total_tax: 1800,
+
+      twob_taxable: 10000,
+      twob_igst: 1800,
+      twob_cgst: 0,
+      twob_sgst: 0,
+      twob_cess: 0,
+      twob_total_tax: 1800,
+
+      taxable_diff: 0,
+      igst_diff: 0,
+      cgst_diff: 0,
+      sgst_diff: 0,
+      cess_diff: 0,
+      total_tax_diff: 0,
+      doc_date_diff_days: 0,
+      doc_no_diff: '',
+
+      reconciliation_status: 'MATCHED IN SAME MONTH',
+      summary_status: 'Matched',
+      match_type: 'Same Month Match',
+      original_books_month: '2026-04',
+      actual_2b_month_result: '2026-04',
+      subsequent_month_match: 'No',
+      cross_fy_match: 'No',
+      matched_after_correction: 'No',
+      correction_remarks: '',
+      pending_reason: '',
+      duplicate_reference: '',
+
+      itc_decision: 'Claimed',
+      itc_claim_month: '2026-04',
+      itc_claim_fy: '2026-27',
+      manual_review_status: 'Reviewed',
+      user_remarks: 'Verified against PO',
+    };
+
+    const cnRow: CompleteReconExportRow = {
+      ...sampleRow,
+      doc_category: 'CDNR',
+      document_type: 'Credit Note',
+      books_doc_no: 'CN-001',
+      recon_books_doc_no: 'CN-001',
+      twob_doc_no: 'CN-001',
+      books_taxable: -1000,
+      books_igst: -180,
+      books_total_tax: -180,
+      twob_taxable: -1000,
+      twob_igst: -180,
+      twob_total_tax: -180,
+    };
+
+    const dataset: CompleteReconDataset = {
+      rows: [sampleRow, cnRow],
+      resolvedPeriods: ['2026-04'],
+      resolvedGstins: ['26AALCS9985J1ZC'],
+      periodLabel: 'April 2026',
+      companyLabel: 'TEST CORP',
+      filterSummary: 'Period: April 2026 | GSTIN: 26AALCS9985J1ZC',
+      summary: {
+        totalRecords: 2,
+        byDocType: { 'Tax Invoice': 1, 'Credit Note': 1 },
+        byStatus: { 'MATCHED IN SAME MONTH': 2 },
+        booksTaxable: 9000,
+        booksTotalTax: 1620,
+        twobTaxable: 9000,
+        twobTotalTax: 1620,
+        taxableDiff: 0,
+        taxDiff: 0,
+      },
+    };
+
+    const reconBuf = buildCompleteReconWorkbook(dataset);
+    const reconWb = XLSX.read(reconBuf, { type: 'buffer' });
+    eq('Single consolidated sheet count', reconWb.SheetNames.length, 1);
+    eq('Worksheet name is Complete Reconciliation', reconWb.SheetNames[0], 'Complete Reconciliation');
+
+    const ws = reconWb.Sheets['Complete Reconciliation'];
+    check('AutoFilter is enabled', Boolean(ws['!autofilter']));
+
+    // Verify freeze panes in XML
+    const { zipRead } = await import('../src/app/xlsx-format');
+    const xmlEntries = zipRead(reconBuf);
+    const sheet1Xml = xmlEntries.get('xl/worksheets/sheet1.xml')?.toString('utf8') || '';
+    check('Freeze panes ySplit=6 applied in sheet XML', sheet1Xml.includes('ySplit="6"') && sheet1Xml.includes('state="frozen"'));
+
+    // Cell checks for row 7 (first data row)
+    // Col S: Books Taxable Value -> numeric type 'n', value 10000
+    const cellS7 = ws['S7'];
+    check('Books taxable value cell exists in Col S', Boolean(cellS7));
+    eq('Numeric cell type is n', cellS7?.t, 'n');
+    eq('Numeric cell value is exactly 10000', cellS7?.v, 10000);
+
+    // Credit Note cell S8: negative numeric value
+    const cellS8 = ws['S8'];
+    eq('Credit note taxable cell type is n', cellS8?.t, 'n');
+    eq('Credit note taxable value is -1000', cellS8?.v, -1000);
+
+    // Verify zero merged cells in the data range (row > 6)
+    const merges = ws['!merges'] || [];
+    const dataRangeMerges = merges.filter((m) => m.s.r >= 5);
+    eq('Zero merged cells in data range (rows > 6)', dataRangeMerges.length, 0);
+  }
+
+  // E. Independent IMS Parsing, Matching, Action Recommendation & Working Excel roundtrip
+  {
+    const {
+      reconcileImsVsBooks,
+      recommendImsAction,
+      supportedActionsForIms,
+    } = await import('../src/engine/ims-recon');
+
+    const imsDocs: ImsSourceDocForRecon[] = [
+      {
+        id: 101,
+        our_gstin: '26AALCS9985J1ZC',
+        portal_matching_key: '24AALCS9985J1ZG|INV-501|2026-04',
+        doc_category: 'B2B',
+        document_type: 'Tax Invoice',
+        supplier_gstin: '24AALCS9985J1ZG',
+        supplier_name: 'BETA LTD',
+        document_no: 'INV-501',
+        document_date: '2026-04-12',
+        taxable_value: 50000,
+        igst: 9000,
+        cgst: 0,
+        sgst: 0,
+        cess: 0,
+        ims_source_action: 'NO ACTION',
+        ims_source_status: 'ACTIVE',
+      },
+      {
+        id: 102,
+        our_gstin: '26AALCS9985J1ZC',
+        portal_matching_key: '24AALCS9985J1ZG|CN-502|2026-04',
+        doc_category: 'CDNR',
+        document_type: 'Credit Note',
+        supplier_gstin: '24AALCS9985J1ZG',
+        supplier_name: 'BETA LTD',
+        document_no: 'CN-502',
+        document_date: '2026-04-14',
+        taxable_value: -5000,
+        igst: -900,
+        cgst: 0,
+        sgst: 0,
+        cess: 0,
+        ims_source_action: 'NO ACTION',
+        ims_source_status: 'ACTIVE',
+      },
+      {
+        id: 103,
+        our_gstin: '26AALCS9985J1ZC',
+        portal_matching_key: '24AALCS9985J1ZG|INV-503|2026-04',
+        doc_category: 'B2B',
+        document_type: 'Tax Invoice',
+        supplier_gstin: '24AALCS9985J1ZG',
+        supplier_name: 'BETA LTD',
+        document_no: 'INV-503',
+        document_date: '2026-04-20',
+        taxable_value: 10000,
+        igst: 1800,
+        cgst: 0,
+        sgst: 0,
+        cess: 0,
+        ims_source_action: 'NO ACTION',
+        ims_source_status: 'ACTIVE',
+      },
+    ];
+
+    const booksDocs: BookLineForImsRecon[] = [
+      {
+        id: 201,
+        our_gstin: '26AALCS9985J1ZC',
+        supplier_gstin: '24AALCS9985J1ZG',
+        recon_supplier_gstin: '24AALCS9985J1ZG',
+        party_name: 'BETA LTD',
+        invoice_no: 'INV-501',
+        recon_invoice_no: 'INV-501',
+        document_type: 'Tax Invoice',
+        invoice_date: '2026-04-12',
+        recon_invoice_date: '2026-04-12',
+        period: '2026-04',
+        taxable_value: 50000,
+        igst: 9000,
+        cgst: 0,
+        sgst: 0,
+        cess: 0,
+      },
+      {
+        id: 202,
+        our_gstin: '26AALCS9985J1ZC',
+        supplier_gstin: '24AALCS9985J1ZG',
+        recon_supplier_gstin: '24AALCS9985J1ZG',
+        party_name: 'BETA LTD',
+        invoice_no: 'CN-502',
+        recon_invoice_no: 'CN-502',
+        document_type: 'Credit Note',
+        invoice_date: '2026-04-14',
+        recon_invoice_date: '2026-04-14',
+        period: '2026-04',
+        taxable_value: -5000,
+        igst: -900,
+        cgst: 0,
+        sgst: 0,
+        cess: 0,
+      },
+      {
+        id: 203,
+        our_gstin: '26AALCS9985J1ZC',
+        supplier_gstin: '24AALCS9985J1ZG',
+        recon_supplier_gstin: '24AALCS9985J1ZG',
+        party_name: 'BETA LTD',
+        invoice_no: 'INV-BOOKS-ONLY',
+        recon_invoice_no: 'INV-BOOKS-ONLY',
+        document_type: 'Tax Invoice',
+        invoice_date: '2026-04-22',
+        recon_invoice_date: '2026-04-22',
+        period: '2026-04',
+        taxable_value: 12000,
+        igst: 2160,
+        cgst: 0,
+        sgst: 0,
+        cess: 0,
+      },
+    ];
+
+    const imsRecon = reconcileImsVsBooks(imsDocs, booksDocs);
+    eq('IMS recon matched pair count', imsRecon.summary.matched, 2);
+    eq('IMS only doc count (INV-503)', imsRecon.summary.ims_only, 1);
+    eq('Books only doc count (INV-BOOKS-ONLY)', imsRecon.summary.books_only, 1);
+
+    const matchRow101 = imsRecon.results.find((r) => r.ims_doc_id === 101);
+    eq('IMS matched status is MATCHED — IMS vs BOOKS', matchRow101?.recon_status, 'MATCHED — IMS vs BOOKS');
+    eq('Recommended action on clean match is ACCEPT', matchRow101?.recommended_action, 'ACCEPT');
+
+    // Supported actions: B2B invoice supports ACCEPT, REJECT, PENDING, DO NOT TAKE ANY ACTION
+    const supportedActions = supportedActionsForIms({
+      docCategory: 'B2B',
+      documentType: 'Tax Invoice',
+      reconStatus: 'MATCHED — IMS vs BOOKS',
+      hasImsDoc: true,
+    });
+    check('B2B supports ACCEPT', supportedActions.includes('ACCEPT'));
+    check('B2B supports REJECT', supportedActions.includes('REJECT'));
+    check('B2B supports PENDING', supportedActions.includes('PENDING'));
+    check('B2B supports DO NOT TAKE ANY ACTION', supportedActions.includes('DO NOT TAKE ANY ACTION'));
+
+    // Working Excel round-trip & validation
+    const workingRows: ImsWorkingRow[] = [
+      {
+        ims_doc_id: 101,
+        our_gstin: '26AALCS9985J1ZC',
+        portal_matching_key: '24AALCS9985J1ZG|INV-501|2026-04',
+        internal_match_key: 'IMS|101|BOOK|201',
+        doc_category: 'B2B',
+        document_type: 'Tax Invoice',
+        supplier_gstin: '24AALCS9985J1ZG',
+        supplier_name: 'BETA LTD',
+        ims_doc_no: 'INV-501',
+        ims_doc_date: '2026-04-12',
+        ims_taxable: 50000,
+        ims_igst: 9000,
+        ims_cgst: 0,
+        ims_sgst: 0,
+        ims_cess: 0,
+        ims_total_tax: 9000,
+        books_doc_no: 'INV-501',
+        books_doc_date: '2026-04-12',
+        books_taxable: 50000,
+        books_total_tax: 9000,
+        taxable_diff: 0,
+        total_tax_diff: 0,
+        recon_status: 'MATCHED — IMS vs BOOKS',
+        current_portal_action: 'NO ACTION',
+        recommended_action: 'ACCEPT',
+        proposed_action: 'ACCEPT',
+        user_remarks: 'Approved for GSTR-2B computation',
+      },
+    ];
+
+    const workingBuf = buildImsWorkingWorkbook(workingRows);
+    const workingWb = XLSX.read(workingBuf, { type: 'buffer' });
+    eq('Working workbook sheet name', workingWb.SheetNames[0], 'IMS Action Working');
+
+    const storedDocsMap = new Map([
+      [101, {
+        id: 101,
+        our_gstin: '26AALCS9985J1ZC',
+        supplier_gstin: '24AALCS9985J1ZG',
+        doc_category: 'B2B',
+        document_type: 'Tax Invoice',
+        document_no: 'INV-501',
+        portal_matching_key: '24AALCS9985J1ZG|INV-501|2026-04',
+        ims_source_action: 'NO ACTION',
+        recon_status: 'MATCHED — IMS vs BOOKS',
+        itc_reduction_required: false,
+        existing_user_action: null,
+        existing_remarks: null,
+        existing_workflow_status: 'READY FOR REVIEW',
+      }]
+    ]);
+
+    // Clean upload test
+    const validUpload = parseAndValidateImsWorkingUpload(workingBuf, storedDocsMap);
+    eq('Valid working Excel upload has 0 rejections', validUpload.rejectedRows.length, 0);
+    eq('Valid upload proposed action extracted', validUpload.validChanges[0]?.new_action, 'ACCEPT');
+
+    // Tampered matching key test
+    const tamperedRows = JSON.parse(JSON.stringify(workingRows));
+    tamperedRows[0].portal_matching_key = 'TAMPERED_KEY';
+    const tamperedBuf = buildImsWorkingWorkbook(tamperedRows);
+    const tamperedUpload = parseAndValidateImsWorkingUpload(tamperedBuf, storedDocsMap);
+    check('Tampered matching key rejected', tamperedUpload.rejectedRows.some((r) => r.code === 'MODIFIED_MATCHING_KEY'));
+
+    // Invalid action test
+    const invalidActionRows = JSON.parse(JSON.stringify(workingRows));
+    invalidActionRows[0].proposed_action = 'BOGUS_ACTION';
+    const invalidActionBuf = buildImsWorkingWorkbook(invalidActionRows);
+    const invalidActionUpload = parseAndValidateImsWorkingUpload(invalidActionBuf, storedDocsMap);
+    check('Invalid action value rejected', invalidActionUpload.rejectedRows.some((r) => r.code === 'INVALID_ACTION'));
+  }
+
+  // F. UI markers for Master Prompt requirements
+  {
+    const fs = await import('node:fs');
+    const html = fs.readFileSync('src/server/public/index.html', 'utf8');
+
+    for (const marker of [
+      'id="modalGstr2bExcelImport"',
+      'IMPORT GSTR-2B EXCEL',
+      'id="modalCompleteReconExport"',
+      'EXPORT COMPLETE RECONCILIATION TO EXCEL',
+      'id="viewIms"',
+      'data-ims-tab="dashboard"',
+      'data-ims-tab="import"',
+      'data-ims-tab="recon"',
+      'data-ims-tab="approval"',
+      'data-ims-tab="reports"',
+      'data-ims-tab="combined"',
+      'id="imsKpiTotalDocs"',
+      'id="imsKpiMatchedClean"',
+      'id="imsReportSelect"',
+      'id="btnDownloadCompleteReconExcel"',
+      'id="btnUploadImsWorking"',
+      'id="btnDownloadImsWorking"',
+      'id="btnApproveImsBatch"',
+      'id="btnExportImsCurrentReport"',
+    ]) {
+      check(`UI includes Master Prompt element: ${marker}`, html.includes(marker));
     }
   }
 }

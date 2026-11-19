@@ -54,8 +54,51 @@ import {
   type ReconField,
 } from '../app/store';
 import { isGstr2bJson, parseGstr2b, parseGstr2bJson, parsePurchaseRegister, parseSalesRegister, sniffKind } from '../engine/ingest';
+import {
+  parseGstr2bExcelBatch,
+  type Gstr2bPeriodMode,
+} from '../engine/gstr2b-excel';
 import { buildGstr3b } from '../engine/gstr3b';
-import { persistRun, sha256 } from '../app/store';
+import {
+  persistRun,
+  sha256,
+  loadExistingGstr2bFingerprints,
+  importGstr2bExcelBatch,
+  listGstr2bExcelBatches,
+} from '../app/store';
+import {
+  queryCompleteReconDataset,
+  buildCompleteReconWorkbook,
+  logReconExportHistory,
+  listReconExportHistory,
+  type CompleteExportFilters,
+  type CompleteExportPeriodMode,
+} from '../app/complete-recon-export';
+import {
+  buildImsWorkingWorkbook,
+  parseAndValidateImsWorkingUpload,
+} from '../app/ims-excel';
+import {
+  COMBINED_VIEW_COLUMNS,
+  IMS_REPORTS_CATALOG,
+  commitImsImport,
+  getCombinedManagementView,
+  getImsDashboard,
+  getImsWorkingRows,
+  importImsPortalErrorReport,
+  listImsBatches,
+  listImsReconDocuments,
+  listImsUploadBatches,
+  manualLinkImsDocument,
+  previewImsImport,
+  reviewAndApproveImsActions,
+  runImsReconciliation,
+  runImsReport,
+  runImsReportWorkbook,
+  saveImsUserActions,
+  updateImsUploadBatchStatus,
+} from '../app/ims-store';
+import { IMS_WORKFLOW_STATES, type ImsWorkflowState } from '../engine/ims-recon';
 import { normGstin as normGstinOf, r2, isoDate, normInvoiceType, normDocType, normInvoice, docAmount, docSign, docTypeOrNull, monthRange } from '../engine/core';
 import { reconcilePurchases, type DateWindow } from '../engine/match';
 import { buildImsActions } from '../engine/ims';
@@ -4709,6 +4752,516 @@ app.get('/api/ims/csv', wrap(async (req, res) => {
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="IMS_Actions_${gstin || 'ALL'}_${periodReq || fy}.csv"`);
   res.send('\uFEFF' + lines.join('\r\n'));
+}));
+
+// ===========================================================================
+// PART 2 — DEDICATED GSTR-2B EXCEL IMPORT ROUTES
+// ===========================================================================
+
+function parseBatchFilesBody(body: any): Array<{ name: string; buffer: Buffer }> {
+  const arr = Array.isArray(body?.files) ? body.files : [];
+  const out: Array<{ name: string; buffer: Buffer }> = [];
+  for (const f of arr) {
+    const buf = parseDataUrl(f?.data);
+    if (buf) out.push({ name: path.basename(str(f?.name) || 'gstr2b.xlsx'), buffer: buf });
+  }
+  if (!out.length && body?.data) {
+    const buf = parseDataUrl(body.data);
+    if (buf) out.push({ name: path.basename(str(body?.name) || 'gstr2b.xlsx'), buffer: buf });
+  }
+  return out;
+}
+
+app.post('/api/gstr2b/excel/preview', requirePerm('data', 'upload_2b'), wrap(async (req, res) => {
+  const files = parseBatchFilesBody(req.body);
+  if (!files.length) return res.status(400).json({ error: 'Kam se kam ek GSTR-2B Excel/CSV file chahiye.' });
+  const allowed = await allowedGstins(req.user);
+  const ready = await dbReady();
+  const dbFp = ready.ok ? await loadExistingGstr2bFingerprints(allowed) : { fingerprints: new Set<string>(), softKeys: new Map<string, Set<string>>() };
+
+  const periods = Array.isArray(req.body?.periods)
+    ? req.body.periods.map((p: any) => String(p).trim()).filter(Boolean)
+    : str(req.body?.periods).split(',').map((p) => p.trim()).filter(Boolean);
+
+  const preview = parseGstr2bExcelBatch(files, {
+    periodMode: (str(req.body?.periodMode) as Gstr2bPeriodMode) || 'single',
+    period: str(req.body?.period),
+    from: str(req.body?.from),
+    to: str(req.body?.to),
+    periods,
+    fallbackGstin: str(req.body?.gstin),
+    financialYear: str(req.body?.financialYear),
+    allowedGstins: allowed,
+    existingDbFingerprints: dbFp.fingerprints,
+    existingDbSoftKeys: dbFp.softKeys,
+  });
+
+  res.json({
+    periodMode: preview.periodMode,
+    selectedPeriods: preview.selectedPeriods,
+    files: preview.files,
+    gstins: preview.gstins,
+    financialYears: preview.financialYears,
+    returnPeriods: preview.returnPeriods,
+    categories: preview.categories,
+    totalRecords: preview.totalRecords,
+    acceptedRecords: preview.acceptedRecords,
+    duplicateRecords: preview.duplicateRecords,
+    rejectedRecords: preview.rejectedRecords,
+    validationErrors: preview.validationErrors,
+    duplicateRows: preview.duplicateRows.slice(0, 50),
+  });
+}));
+
+app.post('/api/gstr2b/excel/import', requirePerm('data', 'upload_2b'), wrap(async (req, res) => {
+  const ready = await dbReady();
+  if (!ready.ok) return res.status(503).json({ error: ready.reason });
+  const files = parseBatchFilesBody(req.body);
+  if (!files.length) return res.status(400).json({ error: 'Import karne ke liye kam se kam ek Excel/CSV file chahiye.' });
+
+  const allowed = await allowedGstins(req.user);
+  const dbFp = await loadExistingGstr2bFingerprints(allowed);
+  const periods = Array.isArray(req.body?.periods)
+    ? req.body.periods.map((p: any) => String(p).trim()).filter(Boolean)
+    : str(req.body?.periods).split(',').map((p) => p.trim()).filter(Boolean);
+
+  const preview = parseGstr2bExcelBatch(files, {
+    periodMode: (str(req.body?.periodMode) as Gstr2bPeriodMode) || 'single',
+    period: str(req.body?.period),
+    from: str(req.body?.from),
+    to: str(req.body?.to),
+    periods,
+    fallbackGstin: str(req.body?.gstin),
+    financialYear: str(req.body?.financialYear),
+    allowedGstins: allowed,
+    existingDbFingerprints: dbFp.fingerprints,
+    existingDbSoftKeys: dbFp.softKeys,
+  });
+
+  for (const g of preview.gstins) {
+    if (!(await checkGstinAccess(req, res, g))) return;
+  }
+
+  if (preview.acceptedRows.length === 0) {
+    return res.status(400).json({
+      error: preview.duplicateRecords > 0
+        ? `Sabhi ${preview.duplicateRecords} records pehle se database/batch me maujood hain (Duplicate blocked).`
+        : (preview.validationErrors[0]?.message || 'Koi valid GSTR-2B record import layak nahi mila.'),
+      preview,
+    });
+  }
+
+  const committed = await importGstr2bExcelBatch(preview, {
+    importedBy: actorOf(req),
+    autoReconcile: req.body?.autoReconcile !== false,
+  });
+  if (!committed.ok) return res.status(500).json({ error: committed.reason || 'Import failed', committed });
+  res.json({
+    ...committed,
+    preview: {
+      gstins: preview.gstins,
+      returnPeriods: preview.returnPeriods,
+      categories: preview.categories,
+      totalRecords: preview.totalRecords,
+      acceptedRecords: preview.acceptedRecords,
+      duplicateRecords: preview.duplicateRecords,
+      rejectedRecords: preview.rejectedRecords,
+      validationErrors: preview.validationErrors,
+    },
+  });
+}));
+
+app.get('/api/gstr2b/excel/batches', requirePerm('recon', 'view'), wrap(async (req, res) => {
+  const ready = await dbReady();
+  if (!ready.ok) return res.status(503).json({ error: ready.reason });
+  const allowed = await allowedGstins(req.user);
+  res.json({ rows: await listGstr2bExcelBatches(allowed) });
+}));
+
+// ===========================================================================
+// PART 4 — COMPLETE RECONCILIATION ONE-SHEET EXCEL EXPORT ROUTES
+// ===========================================================================
+
+async function parseCompleteExportFiltersFromReq(req: any): Promise<CompleteExportFilters> {
+  const allowed = await allowedGstins(req.user);
+  const rawPeriodMode = str(req.query.periodMode) as CompleteExportPeriodMode;
+  const rawPeriods = str(req.query.periods).split(',').map((p) => p.trim()).filter(Boolean);
+  const rawGstins = str(req.query.gstins).split(',').map((g) => normGstinOf(g)).filter(Boolean);
+
+  return {
+    periodMode: rawPeriodMode || undefined,
+    period: str(req.query.period) || undefined,
+    from: str(req.query.from) || undefined,
+    to: str(req.query.to) || undefined,
+    periods: rawPeriods.length ? rawPeriods : undefined,
+    fy: str(req.query.fy) || undefined,
+    gstin: str(req.query.gstin) || undefined,
+    gstins: rawGstins.length ? rawGstins : undefined,
+    status: str(req.query.status) || undefined,
+    detailedStatus: str(req.query.detailedStatus) || undefined,
+    docType: str(req.query.docType) || undefined,
+    supplier: str(req.query.supplier) || undefined,
+    q: str(req.query.q) || undefined,
+    allowedGstins: allowed,
+  };
+}
+
+app.get('/api/recon/purchase/complete-export/preview', requirePerm('report', 'export'), wrap(async (req, res) => {
+  const ready = await dbReady();
+  if (!ready.ok) return res.status(503).json({ error: ready.reason });
+  const filters = await parseCompleteExportFiltersFromReq(req);
+  const ds = await queryCompleteReconDataset(filters);
+  res.json({
+    filterSummary: ds.filterSummary,
+    periodLabel: ds.periodLabel,
+    companyLabel: ds.companyLabel,
+    resolvedGstins: ds.resolvedGstins,
+    resolvedPeriods: ds.resolvedPeriods,
+    summary: ds.summary,
+  });
+}));
+
+app.get('/api/recon/purchase/complete-export.xlsx', requirePerm('report', 'export'), wrap(async (req, res) => {
+  const ready = await dbReady();
+  if (!ready.ok) return res.status(503).json({ error: ready.reason });
+  const filters = await parseCompleteExportFiltersFromReq(req);
+  const ds = await queryCompleteReconDataset(filters);
+  const now = new Date();
+  const buf = buildCompleteReconWorkbook(ds, now);
+  const gTag = ds.resolvedGstins.length === 1 ? ds.resolvedGstins[0] : 'CONSOLIDATED';
+  const pTag = filters.fy || (ds.resolvedPeriods.length === 1 ? ds.resolvedPeriods[0] : filters.periodMode || 'ALL');
+  const fileName = `Complete_Reconciliation_${gTag}_${pTag}.xlsx`;
+
+  await logReconExportHistory({
+    exportType: 'gstr2b_complete',
+    exportedBy: actorOf(req),
+    ourGstin: ds.resolvedGstins.length === 1 ? ds.resolvedGstins[0] : null,
+    selectedGstins: ds.resolvedGstins,
+    periodMode: filters.periodMode || 'single',
+    selectedPeriods: ds.resolvedPeriods,
+    filters: {
+      status: filters.status,
+      detailedStatus: filters.detailedStatus,
+      docType: filters.docType,
+      supplier: filters.supplier,
+      q: filters.q,
+      fy: filters.fy,
+    },
+    recordCount: ds.summary.totalRecords,
+    fileName,
+  });
+
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+  res.send(buf);
+}));
+
+app.get('/api/recon/purchase/complete-export/history', requirePerm('report', 'view'), wrap(async (req, res) => {
+  const ready = await dbReady();
+  if (!ready.ok) return res.status(503).json({ error: ready.reason });
+  const allowed = await allowedGstins(req.user);
+  res.json({ rows: await listReconExportHistory(allowed) });
+}));
+
+// ===========================================================================
+// PARTS 6–10 — INDEPENDENT IMS RECONCILIATION, WORKFLOW, REPORTS & COMBINED VIEW
+// ===========================================================================
+
+function parseImsScope(req: any, allowed: string[] | null) {
+  const rawGstins = str(req.query.gstins || req.body?.gstins).split(',').map((g) => normGstinOf(g)).filter(Boolean);
+  const rawPeriods = str(req.query.periods || req.body?.periods).split(',').map((p) => p.trim()).filter(Boolean);
+  return {
+    gstin: str(req.query.gstin || req.body?.gstin) || undefined,
+    gstins: rawGstins.length ? rawGstins : undefined,
+    allowedGstins: allowed,
+    portalMatchingKey: str(req.query.matchingKey) || undefined,
+    reconStatus: str(req.query.status) || undefined,
+    docType: str(req.query.docType) || undefined,
+    supplierGstin: str(req.query.supplier) || undefined,
+    actionView: (str(req.query.actionView) as any) || 'all',
+    uploadStatus: str(req.query.uploadStatus) || undefined,
+    q: str(req.query.q) || undefined,
+    periodMode: (str(req.query.periodMode || req.body?.periodMode) as any) || 'single',
+    period: str(req.query.period || req.body?.period) || undefined,
+    from: str(req.query.from || req.body?.from) || undefined,
+    to: str(req.query.to || req.body?.to) || undefined,
+    periods: rawPeriods.length ? rawPeriods : undefined,
+    limit: req.query.limit ? Number(req.query.limit) : undefined,
+    offset: req.query.offset ? Number(req.query.offset) : undefined,
+  };
+}
+
+app.post('/api/ims-recon/import/preview', requirePerm('data', 'upload_2b'), wrap(async (req, res) => {
+  const ready = await dbReady();
+  if (!ready.ok) return res.status(503).json({ error: ready.reason });
+  const files = parseBatchFilesBody(req.body);
+  if (!files.length) return res.status(400).json({ error: 'IMS Excel/CSV/JSON file chahiye.' });
+  const allowed = await allowedGstins(req.user);
+  const selGstin = normGstinOf(req.body?.gstin);
+  if (selGstin && !(await checkGstinAccess(req, res, selGstin))) return;
+  const preview = await previewImsImport(files, { selectedGstin: selGstin, allowedGstins: allowed });
+  res.json({
+    ...preview,
+    acceptedDocs: preview.acceptedDocs.slice(0, 25),
+    duplicateRows: preview.duplicateRows.slice(0, 50),
+  });
+}));
+
+app.post('/api/ims-recon/import/commit', requirePerm('data', 'upload_2b'), wrap(async (req, res) => {
+  const ready = await dbReady();
+  if (!ready.ok) return res.status(503).json({ error: ready.reason });
+  const files = parseBatchFilesBody(req.body);
+  if (!files.length) return res.status(400).json({ error: 'IMS Excel/CSV/JSON file chahiye.' });
+  const allowed = await allowedGstins(req.user);
+  const selGstin = normGstinOf(req.body?.gstin);
+  if (selGstin && !(await checkGstinAccess(req, res, selGstin))) return;
+
+  const result = await commitImsImport(files, {
+    selectedGstin: selGstin,
+    allowedGstins: allowed,
+    importedBy: actorOf(req),
+  });
+  for (const g of result.preview.gstins) {
+    if (!(await checkGstinAccess(req, res, g))) return;
+  }
+  res.json({
+    ok: result.ok,
+    batchIds: result.batchIds,
+    insertedCount: result.insertedCount,
+    duplicateCount: result.duplicateCount,
+    rejectedRecords: result.preview.rejectedRecords,
+    validationErrors: result.preview.validationErrors,
+    gstins: result.preview.gstins,
+    categories: result.preview.categories,
+    reason: result.reason,
+  });
+}));
+
+app.get('/api/ims-recon/batches', requirePerm('recon', 'view'), wrap(async (req, res) => {
+  const ready = await dbReady();
+  if (!ready.ok) return res.status(503).json({ error: ready.reason });
+  const allowed = await allowedGstins(req.user);
+  res.json({ rows: await listImsBatches(allowed) });
+}));
+
+app.post('/api/ims-recon/reconcile', requirePerm('recon', 'rereconcile'), wrap(async (req, res) => {
+  const ready = await dbReady();
+  if (!ready.ok) return res.status(503).json({ error: ready.reason });
+  const gstin = normGstinOf(req.body?.gstin);
+  if (!gstin) return res.status(400).json({ error: 'GSTIN zaroori hai IMS reconciliation ke liye.' });
+  if (!(await checkGstinAccess(req, res, gstin))) return;
+
+  const periods = Array.isArray(req.body?.periods)
+    ? req.body.periods.map((p: any) => String(p).trim()).filter(Boolean)
+    : undefined;
+  const out = await runImsReconciliation({
+    gstin,
+    periodMode: (str(req.body?.periodMode) as any) || 'single',
+    period: str(req.body?.period) || undefined,
+    from: str(req.body?.from) || undefined,
+    to: str(req.body?.to) || undefined,
+    periods,
+    tolerance: parseToleranceArg(req.body?.tolerance) ?? 1,
+    actor: actorOf(req),
+  });
+  res.json(out);
+}));
+
+app.get('/api/ims-recon/dashboard', requirePerm('recon', 'view'), wrap(async (req, res) => {
+  const ready = await dbReady();
+  if (!ready.ok) return res.status(503).json({ error: ready.reason });
+  const allowed = await allowedGstins(req.user);
+  res.json(await getImsDashboard(parseImsScope(req, allowed)));
+}));
+
+app.get('/api/ims-recon/documents', requirePerm('recon', 'view'), wrap(async (req, res) => {
+  const ready = await dbReady();
+  if (!ready.ok) return res.status(503).json({ error: ready.reason });
+  const allowed = await allowedGstins(req.user);
+  res.json(await listImsReconDocuments(parseImsScope(req, allowed)));
+}));
+
+app.get('/api/ims-recon/recommendations', requirePerm('recon', 'view'), wrap(async (req, res) => {
+  const ready = await dbReady();
+  if (!ready.ok) return res.status(503).json({ error: ready.reason });
+  const allowed = await allowedGstins(req.user);
+  const { rows } = await listImsReconDocuments({ ...parseImsScope(req, allowed), limit: 5000, offset: 0 });
+  const docs = rows.filter((r) => Boolean(r.ims_doc_id));
+  const counts = { ACCEPT: 0, REJECT: 0, PENDING: 0, 'DO NOT TAKE ANY ACTION': 0 } as Record<string, number>;
+  for (const r of docs) {
+    if (r.recommended_action) counts[r.recommended_action] = (counts[r.recommended_action] || 0) + 1;
+  }
+  res.json({ total: docs.length, counts, rows: docs });
+}));
+
+app.post('/api/ims-recon/actions', requirePerm('recon', 'edit'), wrap(async (req, res) => {
+  const ready = await dbReady();
+  if (!ready.ok) return res.status(503).json({ error: ready.reason });
+  const allowed = await allowedGstins(req.user);
+  const decisions = Array.isArray(req.body?.decisions) ? req.body.decisions : [];
+  if (!decisions.length) return res.status(400).json({ error: 'Kam se kam ek document decision chahiye.' });
+  res.json(await saveImsUserActions(decisions, actorOf(req), 'ui', allowed));
+}));
+
+app.post('/api/ims-recon/manual-link', requirePerm('recon', 'edit'), wrap(async (req, res) => {
+  const ready = await dbReady();
+  if (!ready.ok) return res.status(503).json({ error: ready.reason });
+  const imsDocId = Number(req.body?.ims_doc_id);
+  const purchaseLineId = Number(req.body?.purchase_line_id);
+  if (!imsDocId || !purchaseLineId) return res.status(400).json({ error: 'ims_doc_id aur purchase_line_id zaroori hain.' });
+  const out = await manualLinkImsDocument({
+    imsDocId,
+    purchaseLineId,
+    actor: actorOf(req),
+    reason: str(req.body?.reason) || 'Manual link after review',
+  });
+  if (!out.ok) return res.status(400).json(out);
+  res.json(out);
+}));
+
+app.get('/api/ims-recon/working.xlsx', requirePerm('report', 'export'), wrap(async (req, res) => {
+  const ready = await dbReady();
+  if (!ready.ok) return res.status(503).json({ error: ready.reason });
+  const allowed = await allowedGstins(req.user);
+  const scope = parseImsScope(req, allowed);
+  const { rows } = await getImsWorkingRows(scope);
+  const buf = buildImsWorkingWorkbook(rows);
+  const fname = `IMS_Action_Working_${scope.gstin || 'ALL'}.xlsx`;
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="${fname}"`);
+  res.send(buf);
+}));
+
+app.post('/api/ims-recon/working/preview', requirePerm('recon', 'edit'), wrap(async (req, res) => {
+  const ready = await dbReady();
+  if (!ready.ok) return res.status(503).json({ error: ready.reason });
+  const buf = parseDataUrl(req.body?.data);
+  if (!buf) return res.status(400).json({ error: 'Working Excel payload khali hai.' });
+  const allowed = await allowedGstins(req.user);
+  const { docsById } = await getImsWorkingRows({ allowedGstins: allowed });
+  res.json(parseAndValidateImsWorkingUpload(buf, docsById, allowed));
+}));
+
+app.post('/api/ims-recon/working/commit', requirePerm('recon', 'edit'), wrap(async (req, res) => {
+  const ready = await dbReady();
+  if (!ready.ok) return res.status(503).json({ error: ready.reason });
+  const buf = parseDataUrl(req.body?.data);
+  if (!buf) return res.status(400).json({ error: 'Working Excel payload khali hai.' });
+  const allowed = await allowedGstins(req.user);
+  const { docsById } = await getImsWorkingRows({ allowedGstins: allowed });
+  const parsed = parseAndValidateImsWorkingUpload(buf, docsById, allowed);
+  if (parsed.rejectedRows.length > 0 && req.body?.allowPartial !== true) {
+    return res.status(400).json({
+      error: `${parsed.rejectedRows.length} rows validation me reject hui (e.g. ${parsed.rejectedRows[0].message}).`,
+      preview: parsed,
+    });
+  }
+  const saved = await saveImsUserActions(
+    parsed.validChanges.map((ch) => ({ ims_doc_id: ch.ims_doc_id, user_action: ch.new_action, remarks: ch.remarks })),
+    actorOf(req),
+    'excel_upload',
+    allowed,
+  );
+  res.json({ ...saved, preview: parsed, note: 'Changes saved locally ONLY — not auto-submitted to GST Portal.' });
+}));
+
+app.post('/api/ims-recon/upload-batches/approve', requirePerm('itc', 'decide'), wrap(async (req, res) => {
+  const ready = await dbReady();
+  if (!ready.ok) return res.status(503).json({ error: ready.reason });
+  const gstin = normGstinOf(req.body?.gstin);
+  if (!gstin) return res.status(400).json({ error: 'GSTIN zaroori hai.' });
+  if (!(await checkGstinAccess(req, res, gstin))) return;
+  if (req.body?.explicitApproval !== true) {
+    return res.status(400).json({ error: 'Explicit user confirmation checkbox (explicitApproval=true) zaroori hai.' });
+  }
+  const ids = Array.isArray(req.body?.ims_doc_ids) ? req.body.ims_doc_ids.map(Number).filter(Boolean) : [];
+  const out = await reviewAndApproveImsActions({
+    gstin,
+    imsDocIds: ids,
+    actor: actorOf(req),
+    remarks: str(req.body?.remarks) || undefined,
+  });
+  if (!out.ok) return res.status(400).json(out);
+  res.json(out);
+}));
+
+app.get('/api/ims-recon/upload-batches', requirePerm('recon', 'view'), wrap(async (req, res) => {
+  const ready = await dbReady();
+  if (!ready.ok) return res.status(503).json({ error: ready.reason });
+  const allowed = await allowedGstins(req.user);
+  res.json({ rows: await listImsUploadBatches(allowed) });
+}));
+
+app.post('/api/ims-recon/upload-batches/:id/status', requirePerm('itc', 'decide'), wrap(async (req, res) => {
+  const ready = await dbReady();
+  if (!ready.ok) return res.status(503).json({ error: ready.reason });
+  const status = str(req.body?.status) as ImsWorkflowState;
+  if (!IMS_WORKFLOW_STATES.includes(status)) return res.status(400).json({ error: `Invalid status "${status}".` });
+  const out = await updateImsUploadBatchStatus({
+    batchId: Number(req.params.id),
+    status,
+    portalAckRef: str(req.body?.portalAckRef) || undefined,
+    notes: str(req.body?.notes) || undefined,
+    actor: actorOf(req),
+  });
+  if (!out.ok) return res.status(400).json(out);
+  res.json(out);
+}));
+
+app.post('/api/ims-recon/error-report/import', requirePerm('recon', 'edit'), wrap(async (req, res) => {
+  const ready = await dbReady();
+  if (!ready.ok) return res.status(503).json({ error: ready.reason });
+  const gstin = normGstinOf(req.body?.gstin);
+  if (!gstin) return res.status(400).json({ error: 'GSTIN zaroori hai.' });
+  if (!(await checkGstinAccess(req, res, gstin))) return;
+  const buf = parseDataUrl(req.body?.data);
+  if (!buf) return res.status(400).json({ error: 'Error report file payload khali hai.' });
+  const out = await importImsPortalErrorReport({
+    uploadBatchId: req.body?.uploadBatchId ? Number(req.body.uploadBatchId) : undefined,
+    gstin,
+    fileName: path.basename(str(req.body?.name) || 'ims_error_report.json'),
+    buffer: buf,
+    actor: actorOf(req),
+  });
+  res.json(out);
+}));
+
+app.get('/api/ims-recon/reports', requirePerm('report', 'view'), (_req, res) => {
+  res.json({ reports: IMS_REPORTS_CATALOG });
+});
+
+app.get('/api/ims-recon/reports/:name', requirePerm('report', 'view'), wrap(async (req, res) => {
+  const ready = await dbReady();
+  if (!ready.ok) return res.status(503).json({ error: ready.reason });
+  const allowed = await allowedGstins(req.user);
+  const scope = parseImsScope(req, allowed);
+  if (str(req.query.format).toLowerCase() === 'xlsx') {
+    const wb = await runImsReportWorkbook(req.params.name, scope);
+    if (!wb) return res.status(404).json({ error: 'Report not found' });
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${wb.fileName}"`);
+    return res.send(wb.buffer);
+  }
+  const rep = await runImsReport(req.params.name, scope);
+  if (!rep) return res.status(404).json({ error: 'Report not found' });
+  res.json(rep);
+}));
+
+app.get('/api/ims-recon/combined-view', requirePerm('recon', 'view'), wrap(async (req, res) => {
+  const ready = await dbReady();
+  if (!ready.ok) return res.status(503).json({ error: ready.reason });
+  const allowed = await allowedGstins(req.user);
+  const scope = parseImsScope(req, allowed);
+  const out = await getCombinedManagementView(scope);
+  if (str(req.query.format).toLowerCase() === 'xlsx') {
+    const buf = toWorkbookBuffer('Combined Management View — Books, 2B, IMS & ITC Decision', COMBINED_VIEW_COLUMNS, out.rows, [
+      `GSTIN: ${scope.gstin || 'ALL'} | Records: ${out.total}`,
+    ]);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="Combined_Management_View_${scope.gstin || 'ALL'}.xlsx"`);
+    return res.send(buf);
+  }
+  res.json(out);
 }));
 
 app.get('/api/returns/:gstin/:period/:kind', (req, res) => {

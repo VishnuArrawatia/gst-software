@@ -183,10 +183,11 @@ let headerXfIndex = 0;
  */
 export function polishWorkbook(
   xlsx: Buffer,
-  opts: { freezeRows?: number; styleHeader?: boolean } = {},
+  opts: { freezeRows?: number; styleHeader?: boolean; headerRow?: number } = {},
 ): Buffer {
   const freezeRows = opts.freezeRows ?? 1;
   const styleHeader = opts.styleHeader ?? true;
+  const headerRow = opts.headerRow ?? 1;
   const files = zipRead(xlsx);
 
   const sheetNames = [...files.keys()]
@@ -208,7 +209,7 @@ export function polishWorkbook(
     }
 
     if (styleHeader && headerXfIndex >= 0) {
-      xml = styleFirstRow(xml, headerXfIndex);
+      xml = styleRowAt(xml, headerRow, headerXfIndex);
     }
     files.set(name, Buffer.from(xml, 'utf8'));
   }
@@ -349,10 +350,12 @@ const decodeXml = (s: string): string =>
     .replace(/&apos;/g, "'")
     .replace(/&amp;/g, '&');
 
-/** Put `s="<xf>"` on every cell of the first row of a sheet. */
-function styleFirstRow(xml: string, xf: number): string {
-  return xml.replace(/<row r="1"([^>]*)>([\s\S]*?)<\/row>/, (_m, attrs: string, body: string) => {
-    const styled = body.replace(/<c r="([A-Z]+1)"(?![^>]*\bs=)/g, `<c r="$1" s="${xf}"`);
-    return `<row r="1"${attrs}>${styled}</row>`;
+/** Put `s="<xf>"` on every cell of row `rowNum` of a sheet. */
+function styleRowAt(xml: string, rowNum: number, xf: number): string {
+  const rowRe = new RegExp(`<row r="${rowNum}"([^>]*)>([\\s\\S]*?)<\\/row>`);
+  const cellRe = new RegExp(`<c r="([A-Z]+${rowNum})"(?![^>]*\\bs=)`, 'g');
+  return xml.replace(rowRe, (_m, attrs: string, body: string) => {
+    const styled = body.replace(cellRe, `<c r="$1" s="${xf}"`);
+    return `<row r="${rowNum}"${attrs}>${styled}</row>`;
   });
 }
