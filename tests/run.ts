@@ -4056,6 +4056,23 @@ section('34. Category 1 fixes — 40% slab, 2B JSON edge cases, 3B ITC decisions
       dockerInitSrc.includes('deduplicateUploadedBatches(') &&
       htmlUi.includes('id="reconDupBanner"') &&
       htmlUi.includes('cleanDuplicateUploads('));
+
+    // 14. Redesigned GST Compliance Calendar & Legal Library checks
+    for (const marker of [
+      'id="calMiniGrid"',
+      'id="calCardsWrap"',
+      'id="calKpiStrip"',
+      'id="legalSearchInput"',
+      'id="legalPaneRule36"',
+      'id="legalPaneRule88D"',
+      'id="legalPaneRcm"',
+      'id="legalPaneInterest"',
+      'function buildGstCalendarItemsForMonth(',
+      'function searchLegalLibrary(',
+      'function copyLegalCitation(',
+    ]) {
+      check(`Calendar & Legal Library UI has ${marker}`, htmlUi.includes(marker));
+    }
   }
 }
 

@@ -1074,6 +1074,291 @@ tr.clickable { cursor: default; }
 [data-theme="dark"] .cal-badge.duesoon { background: #78350f; color: #fde68a; border-color: #92400e; }
 [data-theme="dark"] .cal-badge.normal { background: #064e3b; color: #6ee7b7; border-color: #047857; }
 
+/* ---- Premium Attractive UI: Topbar Pills, Calendar Workspace & Legal Library ---- */
+.top-cal-pill {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.14), rgba(6, 182, 212, 0.14)) !important;
+  border-color: rgba(16, 185, 129, 0.42) !important;
+  color: var(--good-text) !important;
+  font-weight: 700 !important;
+}
+.top-cal-pill:hover {
+  background: linear-gradient(135deg, #059669, #0891b2) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px -6px rgba(16, 185, 129, 0.55) !important;
+}
+.top-legal-pill {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.14), rgba(245, 158, 11, 0.14)) !important;
+  border-color: rgba(99, 102, 241, 0.42) !important;
+  color: var(--accent) !important;
+  font-weight: 700 !important;
+}
+[data-theme="dark"] .top-legal-pill { color: #c7d2fe !important; }
+.top-legal-pill:hover {
+  background: linear-gradient(135deg, #4f46e5, #6d28d9) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px -6px rgba(99, 102, 241, 0.55) !important;
+}
+
+@keyframes modalPop {
+  from { opacity: 0; transform: translateY(14px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.gst-modal-card.lux-modal {
+  padding: 0;
+  width: min(1100px, 98%);
+  max-height: 92vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border-radius: 20px;
+  animation: modalPop 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.lux-modal-body {
+  padding: 18px 22px 22px;
+  overflow-y: auto;
+  flex: 1;
+}
+.lux-close-btn {
+  background: rgba(255, 255, 255, 0.14) !important;
+  color: #fff !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  width: 34px; height: 34px; border-radius: 10px !important;
+  display: grid; place-items: center; font-size: 20px; line-height: 1; cursor: pointer;
+  flex-shrink: 0; padding: 0 !important;
+}
+.lux-close-btn:hover { background: rgba(255, 255, 255, 0.26) !important; transform: scale(1.04); }
+
+/* ---- Compliance Calendar Redesign ---- */
+.cal-hero {
+  position: relative; overflow: hidden;
+  padding: 20px 24px 18px;
+  color: #fff;
+  background: radial-gradient(circle at 88% 15%, rgba(56, 189, 248, 0.35), transparent 46%),
+              linear-gradient(135deg, #064e3b 0%, #0f766e 52%, #0369a1 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+}
+.cal-next-pill {
+  display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-top: 12px; padding: 6px 14px; border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14); backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.24); font-size: 12px; font-weight: 600; color: #f0fdfa;
+}
+.cal-kpi-strip {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px; margin-bottom: 14px;
+}
+.cal-kpi-card {
+  position: relative; overflow: hidden; cursor: pointer;
+  background: var(--panel-3); border: 1px solid var(--line); border-radius: 13px;
+  padding: 11px 14px; transition: all 0.16s ease; text-align: left;
+}
+.cal-kpi-card::before {
+  content: ''; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: var(--accent);
+}
+.cal-kpi-card.k-soon::before { background: linear-gradient(90deg, #f59e0b, #f97316); }
+.cal-kpi-card.k-norm::before { background: linear-gradient(90deg, #10b981, #06b6d4); }
+.cal-kpi-card.k-past::before { background: #64748b; }
+.cal-kpi-card:hover { transform: translateY(-2px); border-color: var(--accent); box-shadow: var(--shadow); }
+.cal-kpi-card.active {
+  border-color: var(--accent); background: var(--accent-soft);
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.18);
+}
+.cal-kpi-lbl { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 700; }
+.cal-kpi-val { font-size: 22px; font-weight: 800; color: var(--text); margin-top: 2px; font-family: "Plus Jakarta Sans", sans-serif; }
+.cal-kpi-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+.cal-filter-bar {
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end;
+  padding: 12px 14px; background: var(--panel-3); border: 1px solid var(--line);
+  border-radius: 13px; margin-bottom: 14px;
+}
+.cal-view-toggle {
+  display: inline-flex; border: 1px solid var(--line); border-radius: 9px; overflow: hidden;
+  background: var(--panel);
+}
+.cal-view-toggle button {
+  border: 0; border-radius: 0; padding: 6px 11px; font-size: 12px; font-weight: 600;
+  background: transparent; color: var(--text-2); cursor: pointer; box-shadow: none;
+}
+.cal-view-toggle button.active { background: #0f766e; color: #fff; }
+
+.cal-workspace {
+  display: grid; grid-template-columns: 300px 1fr; gap: 16px; align-items: start;
+}
+@media (max-width: 840px) { .cal-workspace { grid-template-columns: 1fr; } }
+
+.cal-mini-wrap {
+  background: var(--panel-3); border: 1px solid var(--line); border-radius: 14px;
+  padding: 14px; position: sticky; top: 0;
+}
+.cal-weekdays, .cal-days-grid {
+  display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center;
+}
+.cal-weekdays span {
+  font-size: 10px; font-weight: 800; color: var(--muted); text-transform: uppercase; padding: 4px 0;
+}
+.cal-day-cell {
+  position: relative; aspect-ratio: 1 / 1; min-height: 34px; border-radius: 9px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 600; color: var(--text-2); background: var(--panel);
+  border: 1px solid transparent; cursor: default; transition: all 0.14s ease;
+}
+.cal-day-cell.empty { background: transparent; pointer-events: none; }
+.cal-day-cell.has-due { cursor: pointer; font-weight: 800; color: var(--text); border-color: var(--line); }
+.cal-day-cell.has-due:hover { border-color: #0d9488; transform: scale(1.05); }
+.cal-day-cell.due-soon { background: var(--warn-soft); color: var(--warn-text); border-color: rgba(245, 158, 11, 0.45); }
+.cal-day-cell.due-norm { background: var(--good-soft); color: var(--good-text); border-color: rgba(16, 185, 129, 0.4); }
+.cal-day-cell.due-past { opacity: 0.72; }
+.cal-day-cell.is-today { box-shadow: 0 0 0 2px #0284c7; }
+.cal-day-cell.selected { background: #0f766e !important; color: #fff !important; border-color: transparent !important; }
+.cal-day-dots { display: flex; gap: 2px; margin-top: 2px; }
+.cal-day-dot { width: 4px; height: 4px; border-radius: 50%; background: currentColor; }
+
+.cal-card-list { display: grid; gap: 10px; max-height: 410px; overflow-y: auto; padding-right: 4px; }
+.cal-item-card {
+  display: grid; grid-template-columns: 62px 1fr auto; gap: 14px; align-items: center;
+  padding: 12px 14px; border-radius: 13px; background: var(--panel-3);
+  border: 1px solid var(--line); transition: all 0.15s ease;
+}
+.cal-item-card:hover { border-color: #0d9488; transform: translateX(2px); box-shadow: var(--shadow); }
+@media (max-width: 600px) { .cal-item-card { grid-template-columns: 54px 1fr; } }
+.cal-date-tile {
+  border-radius: 11px; overflow: hidden; text-align: center; background: var(--panel);
+  border: 1px solid var(--line); box-shadow: 0 2px 8px -4px rgba(15, 23, 42, 0.18);
+}
+.cal-date-tile .cdt-top {
+  font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em;
+  padding: 3px 0; color: #fff; background: #0d9488;
+}
+.cal-item-card.st-soon .cal-date-tile .cdt-top { background: linear-gradient(135deg, #f59e0b, #ea580c); }
+.cal-item-card.st-past .cal-date-tile .cdt-top { background: #64748b; }
+.cal-date-tile .cdt-day { font-size: 20px; font-weight: 800; color: var(--text); line-height: 1.3; padding: 3px 0 4px; }
+
+/* ---- Legal Library Redesign ---- */
+.legal-hero {
+  position: relative; overflow: hidden;
+  padding: 20px 24px 18px;
+  color: #fff;
+  background: radial-gradient(circle at 90% 10%, rgba(245, 158, 11, 0.26), transparent 42%),
+              linear-gradient(135deg, #0f172a 0%, #1e1b4b 54%, #312e81 100%);
+  border-bottom: 2px solid rgba(245, 158, 11, 0.55);
+}
+.legal-gold-pill {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px;
+  background: rgba(245, 158, 11, 0.18); border: 1px solid rgba(251, 191, 36, 0.45);
+  color: #fde68a; font-size: 10.5px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
+}
+.legal-hero-controls {
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 14px;
+}
+.legal-search-box {
+  flex: 1; min-width: 240px; position: relative; display: flex; align-items: center;
+}
+.legal-search-box input {
+  width: 100%; height: 38px; padding: 0 36px 0 34px; border-radius: 10px;
+  background: rgba(255, 255, 255, 0.13); border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #fff; font-size: 13px;
+}
+.legal-search-box input::placeholder { color: rgba(226, 232, 240, 0.72); }
+.legal-search-box input:focus { outline: none; background: rgba(255, 255, 255, 0.2); border-color: #fbbf24; }
+.legal-search-ico { position: absolute; left: 11px; font-size: 13px; opacity: 0.85; pointer-events: none; }
+.legal-search-clr {
+  position: absolute; right: 8px; background: transparent !important; border: 0 !important;
+  color: #e2e8f0 !important; cursor: pointer; font-size: 15px; padding: 2px 6px !important; box-shadow: none !important;
+}
+.legal-portal-btn {
+  text-decoration: none; display: inline-flex; align-items: center; gap: 6px;
+  background: linear-gradient(135deg, #f59e0b, #d97706); color: #0f172a;
+  border-radius: 10px; padding: 8px 15px; font-weight: 800; font-size: 12.5px;
+  box-shadow: 0 6px 16px -6px rgba(245, 158, 11, 0.6); transition: transform 0.15s ease;
+}
+.legal-portal-btn:hover { transform: translateY(-1px); filter: brightness(1.06); }
+
+.legal-shell {
+  display: grid; grid-template-columns: 265px 1fr; gap: 16px; align-items: start;
+}
+@media (max-width: 840px) { .legal-shell { grid-template-columns: 1fr; } }
+
+.legal-nav {
+  display: flex; flex-direction: column; gap: 6px;
+  background: var(--panel-3); border: 1px solid var(--line); border-radius: 14px; padding: 10px;
+}
+.legal-nav-item {
+  width: 100%; text-align: left; display: flex; flex-direction: column; gap: 2px;
+  padding: 9px 12px; border-radius: 10px; border: 1px solid transparent;
+  background: transparent; color: var(--text-2); cursor: pointer; font: inherit;
+  transition: all 0.14s ease; box-shadow: none;
+}
+.legal-nav-item:hover { background: var(--panel); border-color: var(--line); color: var(--text); }
+.legal-nav-item.active {
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.12), rgba(59, 130, 246, 0.12));
+  border-color: rgba(99, 102, 241, 0.45); color: var(--text);
+  box-shadow: 0 4px 12px -6px rgba(79, 70, 229, 0.35);
+}
+[data-theme="dark"] .legal-nav-item.active {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(37, 99, 235, 0.18));
+  color: #fff;
+}
+.legal-nav-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: 12.5px; font-weight: 700; }
+.legal-nav-sub { font-size: 11px; color: var(--muted); font-weight: 500; }
+.legal-nav-tag {
+  font-size: 9.5px; font-weight: 800; padding: 2px 7px; border-radius: 999px;
+  background: var(--accent-soft); color: var(--accent); text-transform: uppercase;
+}
+[data-theme="dark"] .legal-nav-tag { color: #c7d2fe; }
+
+.legal-reader {
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px;
+}
+.legal-head-banner {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding-bottom: 12px; border-bottom: 1px solid var(--line); margin-bottom: 14px;
+}
+.legal-head-banner h3 {
+  margin: 0; font-size: 17px; color: var(--text); text-transform: none; letter-spacing: -0.01em;
+}
+.legal-facts-strip {
+  display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px;
+}
+.legal-fact-chip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 9px;
+  background: var(--panel-3); border: 1px solid var(--line); font-size: 11.5px; color: var(--text-2);
+}
+.legal-fact-chip b { color: var(--text); }
+.legal-clause-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 10px;
+}
+.legal-clause-card {
+  background: var(--panel-3); border: 1px solid var(--line); border-radius: 11px;
+  padding: 11px 13px; font-size: 12.5px; line-height: 1.55; color: var(--text-2);
+}
+.legal-clause-card:hover { border-color: var(--accent); }
+.legal-clause-head {
+  display: inline-block; font-size: 10.5px; font-weight: 800; text-transform: uppercase;
+  letter-spacing: 0.05em; padding: 2px 8px; border-radius: 999px; margin-bottom: 6px;
+  background: var(--info-soft); color: var(--info-text);
+}
+.legal-clause-head.bad { background: var(--bad-soft); color: var(--bad-text); }
+.legal-clause-head.warn { background: var(--warn-soft); color: var(--warn-text); }
+.legal-clause-head.good { background: var(--good-soft); color: var(--good-text); }
+.legal-erp-tip {
+  margin-top: 14px; padding: 12px 14px; border-radius: 12px;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.09), rgba(59, 130, 246, 0.09));
+  border: 1px solid rgba(16, 185, 129, 0.28);
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  font-size: 12.5px; color: var(--text);
+}
+.legal-search-card {
+  padding: 12px 14px; border-radius: 12px; background: var(--panel-3); border: 1px solid var(--line);
+  margin-bottom: 10px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  transition: all 0.14s ease;
+}
+.legal-search-card:hover { border-color: var(--accent); transform: translateX(2px); }
+
 /* ---- Easy Matching Workspace, Sticky Actions & Side-by-Side Book Editor ---- */
 .recon-tabs {
   display: flex; flex-wrap: wrap; gap: 7px; margin: 12px 0 10px;
@@ -1279,8 +1564,8 @@ tbody tr:hover td.recon-sticky-act { background: var(--panel-3); }
         <div><label for="ctxGstin">Our GSTIN</label><select id="ctxGstin"></select></div>
         <div><label for="ctxFy">Financial year</label><select id="ctxFy"></select></div>
         <div><label for="ctxPeriod">Return month</label><select id="ctxPeriod"></select></div>
-        <button type="button" class="ghost sm theme-btn" onclick="openGstCalendarModal()" title="GST Compliance Calendar &amp; Deadlines">📅 Calendar</button>
-        <button type="button" class="ghost sm theme-btn" onclick="openGstLegalLibraryModal()" title="GST Legal Library | CGST Act, Rules, Notifications &amp; Circulars">⚖️ Legal Library</button>
+        <button type="button" class="sm theme-btn top-cal-pill" onclick="openGstCalendarModal()" title="GST Compliance Calendar &amp; Deadlines">📅 Calendar</button>
+        <button type="button" class="sm theme-btn top-legal-pill" onclick="openGstLegalLibraryModal()" title="GST Legal Library | CGST Act, Rules, Notifications &amp; Circulars">⚖️ Legal Library</button>
         <button type="button" class="ghost sm theme-btn" onclick="download('/api/guide/pdf','GST_Control_ERP_Step_by_Step_Guide_With_Screenshots.pdf')" title="Download Step-by-Step User Guide (Hinglish PDF)">📘 Guide (HI)</button>
         <button type="button" class="ghost sm theme-btn" onclick="download('/api/guide/pdf?lang=en','GST_Control_ERP_User_Manual_English.pdf')" title="Download Step-by-Step User Manual (English PDF)">📗 Guide (EN)</button>
         <button type="button" class="theme-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Switch Light / Dark Mode">🌙 Dark</button>
@@ -2163,7 +2448,7 @@ tbody tr:hover td.recon-sticky-act { background: var(--panel-3); }
             <button type="button" class="reco-resource-pill" onclick="openGstRuleModal('rule37a')">Rule 37A ITC Reversal &amp; Re-availment</button>
             <button type="button" class="reco-resource-pill" onclick="openGstRuleModal('rule37')">180-Day ITC Payment Rule (Rule 37)</button>
             <button type="button" class="reco-resource-pill" onclick="filterReconStatus('ITC Blocked')">Blocked ITC under Section 17(5)</button>
-            <button type="button" class="reco-resource-pill" onclick="window.open('https://gstreconciliation.in/gst-act.html', '_blank')" style="background:#eff6ff;color:#1e40af;border-color:#93c5fd" title="Open Official CGST Act &amp; Rules Library">⚖️ GST Legal Library | CGST Act &amp; Rules &nearr;</button>
+            <button type="button" class="reco-resource-pill" onclick="openGstLegalLibraryModal()" style="background:#eff6ff;color:#1e40af;border-color:#93c5fd" title="Open Interactive CGST Act &amp; Rules Library">⚖️ GST Legal Library | CGST Act &amp; Rules</button>
             <button type="button" class="reco-resource-pill" onclick="openGstCalendarModal()" style="background:#ecfdf5;color:#047857;border-color:#a7f3d0" title="Open GST Compliance Deadlines Calendar">📅 GST Compliance Calendar</button>
           </div>
         </div>
@@ -2563,169 +2848,387 @@ tbody tr:hover td.recon-sticky-act { background: var(--panel-3); }
 </div>
 
 <!-- ===================== GST COMPLIANCE CALENDAR MODAL ===================== -->
-<div class="gst-modal-backdrop" id="modalGstCalendar" style="display:none">
-  <div class="gst-modal-card">
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px">
-      <div>
-        <h2 style="margin:0;font-size:20px;color:var(--text);display:flex;align-items:center;gap:8px">
-          <span>📅 GST Compliance Calendar</span>
-          <span class="pill info" style="font-size:11px">Statutory Due Dates</span>
-        </h2>
-        <div style="font-size:12.5px;color:var(--muted);margin-top:4px">
-          Stay updated with important GST return filing, payment and compliance deadlines. Filter the calendar based on your financial year, taxpayer profile and compliance type.
+<div class="gst-modal-backdrop" id="modalGstCalendar" style="display:none" onclick="if (event.target === this) closeGstCalendarModal()">
+  <div class="gst-modal-card lux-modal">
+    <div class="cal-hero">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px">
+        <div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <h2 style="margin:0;font-size:21px;color:#fff;letter-spacing:-0.01em">📅 GST Compliance Calendar &amp; Deadlines</h2>
+            <span class="legal-gold-pill" style="background:rgba(16,185,129,0.22);border-color:rgba(110,231,183,0.45);color:#d1fae5">Live Statutory Tracker</span>
+          </div>
+          <div style="font-size:12.5px;color:rgba(240,253,250,0.85);margin-top:4px;max-width:72ch">
+            Interactive monthly return calendar, live due-date countdown, 2B generation alerts, QRMP &amp; Annual Return cutoffs — sabhi dates aur direct ERP jump links ek jagah.
+          </div>
+          <div class="cal-next-pill" id="calNextDueBanner">⏳ Calculating next upcoming statutory deadline…</div>
+        </div>
+        <button type="button" class="lux-close-btn" onclick="closeGstCalendarModal()" title="Close (Esc)">&times;</button>
+      </div>
+    </div>
+
+    <div class="lux-modal-body">
+      <!-- Clickable KPI Strip -->
+      <div class="cal-kpi-strip" id="calKpiStrip"></div>
+
+      <!-- Filter & View Switcher Bar -->
+      <div class="cal-filter-bar">
+        <div>
+          <label for="calFilterFy" style="font-size:11px;font-weight:700;display:block;margin-bottom:3px">Financial Year</label>
+          <select id="calFilterFy" onchange="onCalFyChange()" style="min-width:125px">
+            <option value="2026-27" selected>FY 2026-27</option>
+            <option value="2025-26">FY 2025-26</option>
+          </select>
+        </div>
+        <div>
+          <label for="calFilterMonth" style="font-size:11px;font-weight:700;display:block;margin-bottom:3px">Month</label>
+          <select id="calFilterMonth" onchange="CAL_STATE.selectedDay=null;renderGstCalendar()" style="min-width:155px"></select>
+        </div>
+        <div>
+          <label for="calFilterProfile" style="font-size:11px;font-weight:700;display:block;margin-bottom:3px">Taxpayer Profile</label>
+          <select id="calFilterProfile" onchange="renderGstCalendar()" style="min-width:155px">
+            <option value="all" selected>All profiles</option>
+            <option value="Regular / Monthly">Regular / Monthly</option>
+            <option value="QRMP">QRMP</option>
+            <option value="GST TDS">GST TDS</option>
+            <option value="GST TCS">GST TCS</option>
+            <option value="ISD">ISD</option>
+            <option value="Annual / Cutoff">Annual / Cutoff</option>
+            <option value="Special / Other">Special / Other</option>
+          </select>
+        </div>
+        <div>
+          <label for="calFilterType" style="font-size:11px;font-weight:700;display:block;margin-bottom:3px">Compliance Type</label>
+          <select id="calFilterType" onchange="renderGstCalendar()" style="min-width:150px">
+            <option value="all" selected>All types</option>
+            <option value="Returns / Statements">Returns / Statements</option>
+            <option value="Payments">Payments</option>
+            <option value="ITC / Reconciliation">ITC / Reconciliation</option>
+          </select>
+        </div>
+        <button type="button" class="ghost sm" id="btnCalNext7" onclick="filterCalNext7Days()">⚡ Upcoming / Due Soon</button>
+        <button type="button" class="ghost sm" onclick="resetCalFilters()">↺ Reset</button>
+        <div class="cal-view-toggle" style="margin-left:auto">
+          <button type="button" id="btnCalViewCards" class="active" onclick="setCalView('cards')">🃏 Cards</button>
+          <button type="button" id="btnCalViewTable" onclick="setCalView('table')">📋 Table</button>
+        </div>
+        <button type="button" class="sm" style="background:#0f766e;color:#fff" onclick="exportGstCalendarCsv()">⬇ CSV</button>
+      </div>
+
+      <!-- 2-Column Workspace: Interactive Month Grid + Cards / Table -->
+      <div class="cal-workspace">
+        <div class="cal-mini-wrap">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <b id="calMiniTitle" style="font-size:14px;color:var(--text)">November 2026</b>
+            <button type="button" class="ghost sm" id="btnCalClearDay" style="display:none;padding:2px 8px;font-size:11px" onclick="CAL_STATE.selectedDay=null;renderGstCalendar()">Clear Day</button>
+          </div>
+          <div class="cal-weekdays">
+            <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+          </div>
+          <div class="cal-days-grid" id="calMiniGrid" style="margin-top:6px"></div>
+          <div id="calDayFilterHint" class="hint" style="margin-top:10px;font-size:11px">
+            Kisi highlighted date par click karke us din ke deadlines filter karein.
+          </div>
+        </div>
+
+        <div>
+          <div style="margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+            <span id="calSummaryText" style="font-size:12.5px;font-weight:700;color:var(--text-2)">Loading deadlines…</span>
+            <span style="font-size:11px;color:var(--muted)">Status live date ke hisab se calculate hota hai</span>
+          </div>
+          <div id="calCardsWrap" class="cal-card-list"></div>
+          <div id="calTableWrap" class="scroll" style="max-height:410px;display:none"><table id="calTable"></table></div>
         </div>
       </div>
-      <button type="button" class="ghost sm" onclick="closeGstCalendarModal()" style="font-size:16px;padding:4px 10px">&times;</button>
     </div>
-
-    <!-- Calendar Filter Bar -->
-    <div class="row" style="padding:12px;background:var(--panel-3);border:1px solid var(--line);border-radius:10px;gap:12px;align-items:flex-end;flex-wrap:wrap">
-      <div>
-        <label for="calFilterFy" style="font-size:11px;font-weight:700">Financial Year</label>
-        <select id="calFilterFy" onchange="renderGstCalendar()" style="min-width:130px">
-          <option value="2026-27" selected>FY 2026-27</option>
-          <option value="2025-26">FY 2025-26</option>
-        </select>
-      </div>
-      <div>
-        <label for="calFilterMonth" style="font-size:11px;font-weight:700">Month</label>
-        <select id="calFilterMonth" onchange="renderGstCalendar()" style="min-width:140px">
-          <option value="2026-11" selected>November 2026</option>
-          <option value="2026-10">October 2026</option>
-          <option value="2026-09">September 2026</option>
-          <option value="2026-08">August 2026</option>
-          <option value="2026-07">July 2026</option>
-          <option value="2026-06">June 2026</option>
-          <option value="2026-05">May 2026</option>
-          <option value="2026-04">April 2026</option>
-        </select>
-      </div>
-      <div>
-        <label for="calFilterProfile" style="font-size:11px;font-weight:700">Taxpayer Profile</label>
-        <select id="calFilterProfile" onchange="renderGstCalendar()" style="min-width:160px">
-          <option value="all" selected>All taxpayer profiles</option>
-          <option value="Regular / Monthly">Regular / Monthly</option>
-          <option value="QRMP">QRMP</option>
-          <option value="GST TDS">GST TDS</option>
-          <option value="GST TCS">GST TCS</option>
-          <option value="ISD">ISD</option>
-          <option value="Special / Other">Special / Other</option>
-        </select>
-      </div>
-      <div>
-        <label for="calFilterType" style="font-size:11px;font-weight:700">Compliance Type</label>
-        <select id="calFilterType" onchange="renderGstCalendar()" style="min-width:160px">
-          <option value="all" selected>All compliance types</option>
-          <option value="Returns / Statements">Returns / Statements</option>
-          <option value="Payments">Payments</option>
-        </select>
-      </div>
-      <button type="button" class="ghost sm" onclick="filterCalNext7Days()">Next 7 Days</button>
-      <button type="button" class="sm" onclick="exportGstCalendarCsv()">⬇ Download CSV</button>
-    </div>
-
-    <div style="margin:12px 0 6px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
-      <span id="calSummaryText" style="font-size:12px;font-weight:700;color:var(--text-2)">7 compliance item(s) shown &bull; November 2026</span>
-      <span style="font-size:11px;color:var(--muted)">Badges indicate Past, Due soon (&le;7 days) or Normal due</span>
-    </div>
-
-    <div class="scroll" style="max-height:420px"><table id="calTable"></table></div>
   </div>
 </div>
 
 <!-- ===================== GST LEGAL LIBRARY & RULES MODAL ===================== -->
-<div class="gst-modal-backdrop" id="modalGstLegal" style="display:none">
-  <div class="gst-modal-card">
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px">
-      <div>
-        <h2 style="margin:0;font-size:20px;color:var(--text);display:flex;align-items:center;gap:8px">
-          <span>⚖️ GST Legal Library | CGST Act, Rules, Notifications &amp; Circulars</span>
-        </h2>
-        <div style="font-size:12.5px;color:var(--muted);margin-top:4px">
-          Complete statutory library and legal provisions governing Input Tax Credit (ITC), Invoicing, Matching, Reversals and Compliance Deadlines.
+<div class="gst-modal-backdrop" id="modalGstLegal" style="display:none" onclick="if (event.target === this) closeGstLegalLibraryModal()">
+  <div class="gst-modal-card lux-modal">
+    <div class="legal-hero">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px">
+        <div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <h2 style="margin:0;font-size:21px;color:#fff;letter-spacing:-0.01em">⚖️ GST Legal Library &amp; Statutory Compliance Hub</h2>
+            <span class="legal-gold-pill">CGST Act 2017 &bull; Rules &bull; CBIC Circulars</span>
+          </div>
+          <div style="font-size:12.5px;color:rgba(226,232,240,0.85);margin-top:4px;max-width:74ch">
+            Input Tax Credit (ITC), 2B Matching (Rule 36(4)), Blocked Credits Sec 17(5), 180-Day Rule 37, Rule 37A, DRC-01C Rule 88D, RCM &amp; Interest Provisions — saaf structured cards me.
+          </div>
+        </div>
+        <button type="button" class="lux-close-btn" onclick="closeGstLegalLibraryModal()" title="Close (Esc)">&times;</button>
+      </div>
+
+      <div class="legal-hero-controls">
+        <div class="legal-search-box">
+          <span class="legal-search-ico">🔍</span>
+          <input type="search" id="legalSearchInput" placeholder="Search Section, Rule, DRC-01C, 180 days, RCM, 17(5), Interest..." oninput="searchLegalLibrary(this.value)" />
+          <button type="button" id="legalSearchClear" class="legal-search-clr" style="display:none" onclick="clearLegalSearch()" title="Clear search">&times;</button>
+        </div>
+        <a href="https://gstreconciliation.in/gst-act.html" target="_blank" rel="noopener noreferrer" class="legal-portal-btn">
+          Official CGST Act Portal &nearr;
+        </a>
+      </div>
+    </div>
+
+    <div class="lux-modal-body">
+      <div id="legalSearchResults" style="display:none"></div>
+
+      <div class="legal-shell" id="legalMainShell">
+        <!-- Left Interactive Topic Navigator -->
+        <nav class="legal-nav" aria-label="Legal sections">
+          <button type="button" id="tabLegalSec16" class="legal-nav-item active" onclick="switchLegalTab('sec16')">
+            <span class="legal-nav-top"><span>Section 16 (Eligibility)</span><span class="legal-nav-tag">Core ITC</span></span>
+            <span class="legal-nav-sub">16(2)(aa) 2B Rule &bull; 16(4) Cutoff</span>
+          </button>
+          <button type="button" id="tabLegalSec17" class="legal-nav-item" onclick="switchLegalTab('sec17')">
+            <span class="legal-nav-top"><span>Section 17(5)</span><span class="legal-nav-tag" style="background:var(--bad-soft);color:var(--bad-text)">Blocked</span></span>
+            <span class="legal-nav-sub">Ineligible Credit &bull; Table 4(B)(1)</span>
+          </button>
+          <button type="button" id="tabLegalRule36" class="legal-nav-item" onclick="switchLegalTab('rule36')">
+            <span class="legal-nav-top"><span>Rule 36(4) &amp; IMS</span><span class="legal-nav-tag">Matching</span></span>
+            <span class="legal-nav-sub">100% GSTR-2B Restriction &bull; Docs</span>
+          </button>
+          <button type="button" id="tabLegalRule37" class="legal-nav-item" onclick="switchLegalTab('rule37')">
+            <span class="legal-nav-top"><span>Rule 37 (180 Days)</span><span class="legal-nav-tag" style="background:var(--warn-soft);color:var(--warn-text)">Vendor Pay</span></span>
+            <span class="legal-nav-sub">Reversal &amp; Unlimited Reclaim</span>
+          </button>
+          <button type="button" id="tabLegalRule37A" class="legal-nav-item" onclick="switchLegalTab('rule37a')">
+            <span class="legal-nav-top"><span>Rule 37A Default</span><span class="legal-nav-tag" style="background:var(--warn-soft);color:var(--warn-text)">30 Nov</span></span>
+            <span class="legal-nav-sub">Supplier Non-Filing of GSTR-3B</span>
+          </button>
+          <button type="button" id="tabLegalTable4" class="legal-nav-item" onclick="switchLegalTab('table4')">
+            <span class="legal-nav-top"><span>Circular 170 (Table 4)</span><span class="legal-nav-tag" style="background:var(--good-soft);color:var(--good-text)">GSTR-3B</span></span>
+            <span class="legal-nav-sub">4(A), 4(B)(1), 4(B)(2), 4(D)(1)</span>
+          </button>
+          <button type="button" id="tabLegalRule88D" class="legal-nav-item" onclick="switchLegalTab('rule88d')">
+            <span class="legal-nav-top"><span>Rule 88D (DRC-01C)</span><span class="legal-nav-tag" style="background:var(--bad-soft);color:var(--bad-text)">Notice</span></span>
+            <span class="legal-nav-sub">Excess ITC Notice vs GSTR-2B</span>
+          </button>
+          <button type="button" id="tabLegalRcm" class="legal-nav-item" onclick="switchLegalTab('rcm')">
+            <span class="legal-nav-top"><span>Section 9(3) / 9(4) RCM</span><span class="legal-nav-tag">Reverse Chg</span></span>
+            <span class="legal-nav-sub">Self-Invoice &amp; Cash Tax Payment</span>
+          </button>
+          <button type="button" id="tabLegalInterest" class="legal-nav-item" onclick="switchLegalTab('interest')">
+            <span class="legal-nav-top"><span>Sec 50 &amp; Sec 47 Penalty</span><span class="legal-nav-tag">Interest</span></span>
+            <span class="legal-nav-sub">18% / 24% Interest &amp; Late Fees</span>
+          </button>
+        </nav>
+
+        <!-- Right Structured Statutory Reader -->
+        <div class="legal-reader">
+          <div id="legalPaneSec16">
+            <div class="legal-head-banner">
+              <div>
+                <h3 style="color:#2563eb">Section 16: Eligibility &amp; Conditions for Input Tax Credit</h3>
+                <div class="hint">CGST Act, 2017 &mdash; Governing conditions before claiming any purchase credit in GSTR-3B</div>
+              </div>
+              <button type="button" class="ghost sm" onclick="copyLegalCitation('sec16')">📋 Copy Summary</button>
+            </div>
+            <div class="legal-facts-strip">
+              <span class="legal-fact-chip"><b>Clause (aa):</b> Must appear in GSTR-2B</span>
+              <span class="legal-fact-chip"><b>Sec 16(4) Cutoff:</b> 30th November next FY</span>
+              <span class="legal-fact-chip"><b>Core Rule:</b> Business use + Tax paid to Govt</span>
+            </div>
+            <div class="legal-clause-grid">
+              <div class="legal-clause-card"><span class="legal-clause-head">Sec 16(2)(a)</span><div>Valid original <b>Tax Invoice</b> or <b>Debit Note</b> (or RCM self-invoice / Bill of Entry) must be in possession.</div></div>
+              <div class="legal-clause-card"><span class="legal-clause-head">Sec 16(2)(aa)</span><div>Supplier must file invoice in GSTR-1/IFF so it reflects in recipient's auto-drafted <b>GSTR-2B</b>.</div></div>
+              <div class="legal-clause-card"><span class="legal-clause-head">Sec 16(2)(b) &amp; (c)</span><div>Goods or services actually <b>received</b> and tax charged has actually been paid to the Government.</div></div>
+              <div class="legal-clause-card"><span class="legal-clause-head warn">Sec 16(4) Time Limit</span><div>Last date to claim ITC of FY is <b>30th November</b> of next FY or Annual Return filing date, whichever is earlier.</div></div>
+            </div>
+            <div class="legal-erp-tip">
+              <span><b>ERP Action:</b> "Missing in 2B" bills ko Table 4 me hold rakhein aur supplier follow-up karein.</span>
+              <button type="button" class="sm" onclick="jumpFromModalToView('purchase',{statusFilter:'Missing in 2B'})">View Missing in 2B &rarr;</button>
+            </div>
+          </div>
+
+          <div id="legalPaneSec17" hidden>
+            <div class="legal-head-banner">
+              <div>
+                <h3 style="color:#e11d48">Section 17(5): Blocked Credits (Permanently Ineligible ITC)</h3>
+                <div class="hint">CGST Act, 2017 &mdash; Credits disallowed even if invoice appears in GSTR-2B</div>
+              </div>
+              <button type="button" class="ghost sm" onclick="copyLegalCitation('sec17')">📋 Copy Summary</button>
+            </div>
+            <div class="legal-facts-strip">
+              <span class="legal-fact-chip"><b>GSTR-3B Reporting:</b> Table 4(B)(1) Permanent Reversal</span>
+              <span class="legal-fact-chip"><b>Reclaim Allowed?</b> NO (Permanent)</span>
+            </div>
+            <div class="legal-clause-grid">
+              <div class="legal-clause-card"><span class="legal-clause-head bad">17(5)(a) Motor Vehicles</span><div>Passenger motor vehicles (&le;13 seating capacity) blocked unless for resale, passenger transport, or driving training.</div></div>
+              <div class="legal-clause-card"><span class="legal-clause-head bad">17(5)(b) Food &amp; Health</span><div>Food &amp; beverages, outdoor catering, beauty, club/health/fitness membership &amp; travel benefits for employees.</div></div>
+              <div class="legal-clause-card"><span class="legal-clause-head bad">17(5)(c) &amp; (d) Construction</span><div>Works contract &amp; materials used for constructing immovable property (except Plant &amp; Machinery).</div></div>
+              <div class="legal-clause-card"><span class="legal-clause-head bad">17(5)(h) Lost / Gifts</span><div>Goods lost, stolen, destroyed, written off, or distributed as gifts and free samples.</div></div>
+            </div>
+            <div class="legal-erp-tip">
+              <span><b>ERP Action:</b> Blocked ITC items ko Table 4(B)(1) / "Ineligible" mark karein taaki excess claim na ho.</span>
+              <button type="button" class="sm" onclick="jumpFromModalToView('purchase',{statusFilter:'ITC Blocked'})">View ITC Blocked &rarr;</button>
+            </div>
+          </div>
+
+          <div id="legalPaneRule36" hidden>
+            <div class="legal-head-banner">
+              <div>
+                <h3 style="color:#0284c7">Rule 36(4) &amp; IMS: 100% GSTR-2B Restriction &amp; Documentary Proof</h3>
+                <div class="hint">CGST Rules, 2017 &mdash; No provisional/excess 5%/10% buffer allowed anymore</div>
+              </div>
+              <button type="button" class="ghost sm" onclick="copyLegalCitation('rule36')">📋 Copy Summary</button>
+            </div>
+            <div class="legal-facts-strip">
+              <span class="legal-fact-chip"><b>Max Unmatched Claim:</b> 0% (Strict 100% 2B Match)</span>
+              <span class="legal-fact-chip"><b>IMS Portal Actions:</b> Accept / Reject / Pending</span>
+            </div>
+            <div class="legal-clause-grid">
+              <div class="legal-clause-card"><span class="legal-clause-head">Strict 2B Matching</span><div>Since Jan 2022, ZERO provisional credit is permitted over GSTR-2B. Books-only invoices must wait until supplier files GSTR-1.</div></div>
+              <div class="legal-clause-card"><span class="legal-clause-head good">IMS Workflow</span><div>Use IMS <b>Accept</b> (claim in 3B), <b>Pending</b> (defer to future month within 16(4)), or <b>Reject</b> (wrong GSTIN/amount).</div></div>
+            </div>
+            <div class="legal-erp-tip">
+              <span><b>ERP Action:</b> Probable 2B matches aur Amount Mismatches ko Editor se turant resolve karein.</span>
+              <button type="button" class="sm" onclick="jumpFromModalToView('purchase',{statusFilter:'Amount Mismatch'})">Open Matching Workspace &rarr;</button>
+            </div>
+          </div>
+
+          <div id="legalPaneRule37" hidden>
+            <div class="legal-head-banner">
+              <div>
+                <h3 style="color:#d97706">Rule 37: 180-Day Supplier Non-Payment Reversal</h3>
+                <div class="hint">Second Proviso to Section 16(2) &amp; Rule 37 &mdash; Creditor ageing control</div>
+              </div>
+              <button type="button" class="ghost sm" onclick="copyLegalCitation('rule37')">📋 Copy Summary</button>
+            </div>
+            <div class="legal-facts-strip">
+              <span class="legal-fact-chip"><b>Time Limit:</b> 180 Days from Invoice Date</span>
+              <span class="legal-fact-chip"><b>Interest:</b> 18% p.a. (Sec 50) if unpaid</span>
+              <span class="legal-fact-chip"><b>Reclaim:</b> Anytime on Payment (No 16(4) bar)</span>
+            </div>
+            <div class="legal-clause-grid">
+              <div class="legal-clause-card"><span class="legal-clause-head warn">Reversal Trigger</span><div>If supplier value + tax remains unpaid after <b>180 days</b> from invoice date, proportionate ITC must be reversed in <b>Table 4(B)(2)</b>.</div></div>
+              <div class="legal-clause-card"><span class="legal-clause-head good">Unlimited Re-availment</span><div>On subsequent payment to supplier, re-claim full ITC in Table 4(A)(5) &amp; disclose in <b>Table 4(D)(1)</b> — Sec 16(4) time limit does NOT apply to reclaims.</div></div>
+            </div>
+            <div class="legal-erp-tip">
+              <span><b>ERP Action:</b> Unpaid bills par Purchase table me Decision "Reclaim Later" mark karke hold track karein.</span>
+              <button type="button" class="sm" onclick="jumpFromModalToView('home',{genTab:'itctracker'})">Open ITC Tracker &rarr;</button>
+            </div>
+          </div>
+
+          <div id="legalPaneRule37A" hidden>
+            <div class="legal-head-banner">
+              <div>
+                <h3 style="color:#7c3aed">Rule 37A: Reversal When Supplier Fails to File GSTR-3B</h3>
+                <div class="hint">CGST Rules, 2017 &mdash; Safeguard against supplier GSTR-1 filed without GSTR-3B tax payment</div>
+              </div>
+              <button type="button" class="ghost sm" onclick="copyLegalCitation('rule37a')">📋 Copy Summary</button>
+            </div>
+            <div class="legal-facts-strip">
+              <span class="legal-fact-chip"><b>Check Date:</b> 30th September next FY</span>
+              <span class="legal-fact-chip"><b>Reversal Deadline:</b> 30th November next FY</span>
+              <span class="legal-fact-chip"><b>Interest after 30 Nov:</b> 18% p.a. from 1 Dec</span>
+            </div>
+            <div class="legal-clause-grid">
+              <div class="legal-clause-card"><span class="legal-clause-head warn">Supplier 3B Check</span><div>Even if invoice appeared in GSTR-2B, if supplier hasn't filed <b>GSTR-3B by 30 Sept</b> next FY, buyer must reverse ITC by <b>30 Nov</b> in Table 4(B)(2).</div></div>
+              <div class="legal-clause-card"><span class="legal-clause-head good">Post-Filing Reclaim</span><div>Whenever the supplier later files GSTR-3B &amp; pays tax, buyer can re-avail credit immediately in Table 4(A)(5) + 4(D)(1).</div></div>
+            </div>
+            <div class="legal-erp-tip">
+              <span><b>ERP Action:</b> Supplier Filing Compliance Dashboard se non-filer vendors par nazar rakhein.</span>
+              <button type="button" class="sm" onclick="jumpFromModalToView('home',{genTab:'suppliers'})">Check Supplier Status &rarr;</button>
+            </div>
+          </div>
+
+          <div id="legalPaneTable4" hidden>
+            <div class="legal-head-banner">
+              <div>
+                <h3 style="color:#059669">Circular No. 170/02/2022-GST: GSTR-3B Table 4 Structure</h3>
+                <div class="hint">Mandatory CBIC reporting methodology linking GSTR-2B directly to Table 4</div>
+              </div>
+              <button type="button" class="ghost sm" onclick="copyLegalCitation('table4')">📋 Copy Summary</button>
+            </div>
+            <div class="legal-facts-strip">
+              <span class="legal-fact-chip"><b>Base:</b> GSTR-2B Auto-Drafted ITC</span>
+              <span class="legal-fact-chip"><b>Formula:</b> Net 4(C) = 4(A) &minus; 4(B)</span>
+            </div>
+            <div class="legal-clause-grid">
+              <div class="legal-clause-card"><span class="legal-clause-head good">Table 4(A)(5) Gross</span><div>All other ITC auto-populated from GSTR-2B (includes eligible + temporarily held bills).</div></div>
+              <div class="legal-clause-card"><span class="legal-clause-head bad">Table 4(B)(1) Permanent</span><div>Permanent reversals under Sec 17(5), Rule 38, 42, 43 — credit lapses permanently.</div></div>
+              <div class="legal-clause-card"><span class="legal-clause-head warn">Table 4(B)(2) Temporary</span><div>Temporary holds: Rule 37 (180d), Rule 37A, goods in transit. Eligible for future reclaim!</div></div>
+              <div class="legal-clause-card"><span class="legal-clause-head">Table 4(D)(1) Reclaim</span><div>Mandatory disclosure whenever previously 4(B)(2)-reversed credit is re-availed in 4(A)(5).</div></div>
+            </div>
+            <div class="legal-erp-tip">
+              <span><b>ERP Action:</b> Purchase screen par "Auto-Apply 3B ITC Decisions" se live Table 4 scorecard generate karein.</span>
+              <button type="button" class="sm" onclick="jumpFromModalToView('purchase',{})">Open 3B ITC Scorecard &rarr;</button>
+            </div>
+          </div>
+
+          <div id="legalPaneRule88D" hidden>
+            <div class="legal-head-banner">
+              <div>
+                <h3 style="color:#dc2626">Rule 88D (Form DRC-01C): Excess ITC Claim Notice</h3>
+                <div class="hint">Automated GST Portal Intimation when GSTR-3B Table 4(C) exceeds GSTR-2B available ITC</div>
+              </div>
+              <button type="button" class="ghost sm" onclick="copyLegalCitation('rule88d')">📋 Copy Summary</button>
+            </div>
+            <div class="legal-facts-strip">
+              <span class="legal-fact-chip"><b>Reply Window:</b> 7 Days from Intimation</span>
+              <span class="legal-fact-chip"><b>Form:</b> DRC-01C Part B + DRC-03 Pay</span>
+              <span class="legal-fact-chip"><b>Consequence:</b> Next GSTR-1 blocked if unanswered</span>
+            </div>
+            <div class="legal-clause-grid">
+              <div class="legal-clause-card"><span class="legal-clause-head bad">Trigger Threshold</span><div>Portal triggers DRC-01C Part A whenever 3B ITC availed exceeds GSTR-2B credit beyond prescribed percentage/amount limit.</div></div>
+              <div class="legal-clause-card"><span class="legal-clause-head warn">Reply Requirements</span><div>Within <b>7 days</b>, pay excess via DRC-03 with Sec 50 interest OR explain genuine differences (previous month carry-forward, IGST imports, ISD).</div></div>
+            </div>
+            <div class="legal-erp-tip">
+              <span><b>ERP Action:</b> Conflict Matrix aur Notice Register me DRC-01C variances track &amp; reply karein.</span>
+              <button type="button" class="sm" onclick="jumpFromModalToView('home',{genTab:'notices'})">Open Notice Register &rarr;</button>
+            </div>
+          </div>
+
+          <div id="legalPaneRcm" hidden>
+            <div class="legal-head-banner">
+              <div>
+                <h3 style="color:#4f46e5">Section 9(3) &amp; 9(4): Reverse Charge Mechanism (RCM)</h3>
+                <div class="hint">CGST Act, 2017 &mdash; GTA, Legal Services, Security, Import of Services &amp; Unregistered specified purchases</div>
+              </div>
+              <button type="button" class="ghost sm" onclick="copyLegalCitation('rcm')">📋 Copy Summary</button>
+            </div>
+            <div class="legal-facts-strip">
+              <span class="legal-fact-chip"><b>Tax Payment:</b> Cash Ledger Only (Sec 49(4))</span>
+              <span class="legal-fact-chip"><b>Liability Table:</b> GSTR-3B Table 3.1(d)</span>
+              <span class="legal-fact-chip"><b>ITC Table:</b> Table 4(A)(3) same month</span>
+            </div>
+            <div class="legal-clause-grid">
+              <div class="legal-clause-card"><span class="legal-clause-head">Mandatory Cash Payment</span><div>RCM tax CANNOT be paid using Input Tax Credit — must be discharged via <b>Electronic Cash Ledger</b> in Table 3.1(d).</div></div>
+              <div class="legal-clause-card"><span class="legal-clause-head good">Simultaneous ITC &amp; Sec 31(3)(f)</span><div>Once tax is paid, recipient can claim equal ITC in <b>Table 4(A)(3)</b> of the same return (issue self-invoice within 30 days for unregistered RCM).</div></div>
+            </div>
+            <div class="legal-erp-tip">
+              <span><b>ERP Action:</b> RCM Inward Liability vs Table 4(A)(3) ITC cross-check Reports tab me dekhein.</span>
+              <button type="button" class="sm" onclick="jumpFromModalToView('reports',{})">Open GST Reports &rarr;</button>
+            </div>
+          </div>
+
+          <div id="legalPaneInterest" hidden>
+            <div class="legal-head-banner">
+              <div>
+                <h3 style="color:#b45309">Section 50 Interest &amp; Section 47 Late Fees</h3>
+                <div class="hint">CGST Act, 2017 &mdash; Interest on Net Cash Tax vs Wrongly Availed &amp; Utilized ITC</div>
+              </div>
+              <button type="button" class="ghost sm" onclick="copyLegalCitation('interest')">📋 Copy Summary</button>
+            </div>
+            <div class="legal-facts-strip">
+              <span class="legal-fact-chip"><b>Late Tax / Excess ITC Interest:</b> 18% p.a.</span>
+              <span class="legal-fact-chip"><b>GSTR-1/3B Late Fee:</b> ₹50/day (₹20 Nil) capped</span>
+              <span class="legal-fact-chip"><b>Rule 88B Relief:</b> Utilized ITC only!</span>
+            </div>
+            <div class="legal-clause-grid">
+              <div class="legal-clause-card"><span class="legal-clause-head good">Sec 50(1) Net Cash Rule</span><div>For delayed GSTR-3B filing, 18% interest applies only on tax paid through <b>Electronic Cash Ledger</b> (not on ITC set-off, unless Sec 73/74 proceedings apply).</div></div>
+              <div class="legal-clause-card"><span class="legal-clause-head warn">Sec 50(3) Wrong ITC Rule 88B</span><div>18% interest on wrongly availed ITC applies ONLY if credit was both <b>availed AND utilized</b> — unutilized closing credit balance carries NO interest.</div></div>
+            </div>
+            <div class="legal-erp-tip">
+              <span><b>ERP Action:</b> Monthly Net Tax Liability trend aur Conflict Scorecard Dashboard par review karein.</span>
+              <button type="button" class="sm" onclick="jumpFromModalToView('home',{genTab:'conflicts'})">View Conflict Matrix &rarr;</button>
+            </div>
+          </div>
         </div>
       </div>
-      <button type="button" class="ghost sm" onclick="closeGstLegalLibraryModal()" style="font-size:16px;padding:4px 10px">&times;</button>
-    </div>
-
-    <!-- Official Portal External Link Button -->
-    <div style="padding:10px 14px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
-      <div>
-        <b style="color:#1d4ed8;font-size:13px">Official CGST Act &amp; Rules Online Portal:</b>
-        <span style="font-size:12px;color:#1e3a8a"> Access real-time notifications, central tax circulars and updated act text at gstreconciliation.in</span>
-      </div>
-      <a href="https://gstreconciliation.in/gst-act.html" target="_blank" rel="noopener noreferrer" class="btn sm" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px;background:#2563eb;color:#fff;border-radius:8px;padding:6px 14px;font-weight:700">
-        Open GST Legal Library &nearr;
-      </a>
-    </div>
-
-    <!-- Legal Library Sub-Tabs -->
-    <div class="tabs" style="margin-bottom:14px">
-      <button type="button" id="tabLegalSec16" class="active" onclick="switchLegalTab('sec16')">Section 16 (Eligibility)</button>
-      <button type="button" id="tabLegalSec17" onclick="switchLegalTab('sec17')">Section 17(5) (Blocked ITC)</button>
-      <button type="button" id="tabLegalRule37" onclick="switchLegalTab('rule37')">Rule 37 (180 Days)</button>
-      <button type="button" id="tabLegalRule37A" onclick="switchLegalTab('rule37a')">Rule 37A (Supplier Default)</button>
-      <button type="button" id="tabLegalTable4" onclick="switchLegalTab('table4')">GSTR-3B Table 4 Circular</button>
-    </div>
-
-    <div id="legalPaneSec16" class="card" style="margin:0;border:1px solid var(--line);background:var(--panel-2)">
-      <h3 style="margin-top:0;color:#2563eb">Section 16: Eligibility and Conditions for Taking Input Tax Credit</h3>
-      <p style="font-size:13px;line-height:1.6">Every registered person is entitled to take credit of input tax charged on inward supply of goods or services used or intended to be used in the course or furtherance of his business, subject to <b>four essential conditions under Section 16(2)</b>:</p>
-      <ul style="font-size:12.5px;line-height:1.6">
-        <li><b>Clause (a):</b> Possession of a tax invoice or debit note issued by a supplier.</li>
-        <li><b>Clause (aa):</b> The details of the invoice or debit note have been furnished by the supplier in GSTR-1 and communicated to the recipient in <b>GSTR-2B</b>.</li>
-        <li><b>Clause (b):</b> The registered person has received the goods or services.</li>
-        <li><b>Clause (c):</b> The tax charged has actually been paid to the Government (in cash or credit).</li>
-        <li><b>Clause (d):</b> The registered person has furnished the return under Section 39 (GSTR-3B).</li>
-        <li><b>Section 16(4) Time Limit:</b> ITC cannot be availed after the 30th day of November following the end of the financial year to which such invoice pertains, or furnishing of the annual return, whichever is earlier.</li>
-      </ul>
-    </div>
-
-    <div id="legalPaneSec17" class="card" style="margin:0;border:1px solid var(--line);background:var(--panel-2)" hidden>
-      <h3 style="margin-top:0;color:#e11d48">Section 17(5): Blocked Credits (Ineligible ITC)</h3>
-      <p style="font-size:13px;line-height:1.6">Notwithstanding anything contained in Section 16(1), input tax credit <b>shall NOT be available</b> in respect of the following:</p>
-      <ul style="font-size:12.5px;line-height:1.6">
-        <li><b>(a) Motor vehicles</b> for transportation of persons having approved seating capacity of &le;13 persons (unless used for making further taxable supply of such motor vehicles, transportation of passengers, or imparting training).</li>
-        <li><b>(b) Food and beverages, outdoor catering, beauty treatment, health services, cosmetic and plastic surgery</b> (unless used for making an outward taxable supply of the same category).</li>
-        <li><b>(c) Works contract services</b> supplied for construction of an immovable property (other than plant and machinery) except where it is an input service for further supply of works contract.</li>
-        <li><b>(d) Goods or services received by a taxable person for construction of an immovable property</b> on his own account (capitalized to immovable property).</li>
-        <li><b>(h) Goods lost, stolen, destroyed, written off</b> or disposed of by way of gift or free samples.</li>
-      </ul>
-      <div style="font-size:12px;background:#fef2f2;border:1px solid #fecaca;padding:10px 12px;border-radius:8px;color:#991b1b;margin-top:10px">
-        <b>Reporting in GSTR-3B:</b> Reported under Table 4(B)(1) as Ineligible ITC (Permanent reversal).
-      </div>
-    </div>
-
-    <div id="legalPaneRule37" class="card" style="margin:0;border:1px solid var(--line);background:var(--panel-2)" hidden>
-      <h3 style="margin-top:0;color:#d97706">Rule 37: Reversal of Input Tax Credit in the case of Non-Payment within 180 Days</h3>
-      <p style="font-size:13px;line-height:1.6">Under the second proviso to Section 16(2), where a recipient fails to pay the supplier the amount towards the value of supply along with tax within a period of <b>180 days</b> from the date of issue of invoice:</p>
-      <ul style="font-size:12.5px;line-height:1.6">
-        <li>The recipient must reverse an amount equal to the ITC availed, proportional to the unpaid value, in <b>GSTR-3B Table 4(B)(2)</b> for the tax period immediately following the end of 180 days.</li>
-        <li>Applicable interest at <b>18% per annum</b> under Section 50(1) must be paid from the date of availing until the date of reversal.</li>
-        <li><b>Re-availment:</b> Once the payment is subsequently made to the supplier (any time later), the recipient is entitled to re-avail the credit under Table 4(A)(5) and report in Table 4(D)(1) without any time limit!</li>
-      </ul>
-    </div>
-
-    <div id="legalPaneRule37A" class="card" style="margin:0;border:1px solid var(--line);background:var(--panel-2)" hidden>
-      <h3 style="margin-top:0;color:#7c3aed">Rule 37A: Reversal of ITC in Case of Non-Payment of Tax by the Supplier and Subsequent Re-availment</h3>
-      <p style="font-size:13px;line-height:1.6">Where ITC has been availed by a recipient in GSTR-3B based on GSTR-2B, but the supplier has <b>NOT furnished GSTR-3B</b> for the said period till the <b>30th day of September</b> following the end of financial year:</p>
-      <ul style="font-size:12.5px;line-height:1.6">
-        <li>The recipient must reverse such ITC in GSTR-3B on or before the <b>30th day of November</b> following the end of financial year.</li>
-        <li>If not reversed by 30th November, interest at <b>18% p.a.</b> is payable from 1st December until payment.</li>
-        <li><b>Re-availment:</b> Where the defaulting supplier subsequently files GSTR-3B and pays tax, the recipient can immediately re-avail such credit in Table 4(A)(5) of any subsequent month's GSTR-3B.</li>
-      </ul>
-    </div>
-
-    <div id="legalPaneTable4" class="card" style="margin:0;border:1px solid var(--line);background:var(--panel-2)" hidden>
-      <h3 style="margin-top:0;color:#059669">Circular No. 170/02/2022-GST: Mandatory Reporting in GSTR-3B Table 4</h3>
-      <p style="font-size:13px;line-height:1.6">GSTR-2B is the base for Table 4 ITC reporting:</p>
-      <ul style="font-size:12.5px;line-height:1.6">
-        <li><b>Table 4(A)(5):</b> Auto-drafted from GSTR-2B all other ITC (Gross ITC available).</li>
-        <li><b>Table 4(B)(1):</b> Permanent reversals under Rule 38, Rule 42, Rule 43 and Section 17(5) (Ineligible ITC). These credits can NEVER be reclaimed.</li>
-        <li><b>Table 4(B)(2):</b> Temporary reversals under Rule 37 (180 days), Rule 37A, and internal accounting hold. These credits CAN be reclaimed.</li>
-        <li><b>Table 4(C):</b> Net ITC Availed = 4(A) minus 4(B). This amount is credited to the Electronic Credit Ledger.</li>
-        <li><b>Table 4(D)(1):</b> Mandatory disclosure of ITC reclaimed which was earlier reversed under Table 4(B)(2).</li>
-      </ul>
     </div>
   </div>
 </div>
@@ -6423,87 +6926,410 @@ async function runBulkGstinValidation(fromSuppliers) {
 }
 
 // ---------------------------------------------------------------------------
-// GST Compliance Calendar & Deadlines
+// Interactive GST Compliance Calendar & Statutory Countdown Engine
 // ---------------------------------------------------------------------------
-const GST_COMPLIANCE_CALENDAR_DATA = [
-  { date: '10 Nov 2026', compliance: 'GSTR-7 Returns / Statements', applicability: 'GST TDS', review: 'GST TDS return and deducted-tax details.', status: 'Past', type: 'Returns / Statements' },
-  { date: '10 Nov 2026', compliance: 'GSTR-8 Returns / Statements', applicability: 'GST TCS', review: 'GST TCS statement for e-commerce operators.', status: 'Past', type: 'Returns / Statements' },
-  { date: '11 Nov 2026', compliance: 'GSTR-1 Returns / Statements', applicability: 'Regular / Monthly', review: 'Outward supplies, amendments, credit/debit notes and HSN/SAC.', status: 'Past', type: 'Returns / Statements' },
-  { date: '13 Nov 2026', compliance: 'GSTR-6 Returns / Statements', applicability: 'ISD', review: 'Input Service Distributor return.', status: 'Past', type: 'Returns / Statements' },
-  { date: '13 Nov 2026', compliance: 'GSTR-5 Returns / Statements', applicability: 'Special / Other', review: 'Non-resident taxable person return; verify current applicability.', status: 'Past', type: 'Returns / Statements' },
-  { date: '20 Nov 2026', compliance: 'GSTR-3B Returns / Statements', applicability: 'Regular / Monthly', review: 'Summary liability, ITC, reversals, interest/late fee and payment.', status: 'Due soon', type: 'Returns / Statements' },
-  { date: '25 Nov 2026', compliance: 'QRMP PMT-06 Payments', applicability: 'QRMP', review: 'Monthly tax payment for M1/M2 of the quarter, where applicable.', status: 'Normal due', type: 'Payments' },
-];
+const CAL_STATE = { displayMode: 'cards', statusFilter: 'all', selectedDay: null, onlyNext7: false };
+const CAL_MON_FULL = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const CAL_MON_SHORT = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+
+function calMonthFullLabel(ym) {
+  const m = /^(\d{4})-(\d{2})$/.exec(String(ym || ''));
+  if (!m) return ym || '';
+  return (CAL_MON_FULL[Number(m[2]) - 1] || m[2]) + ' ' + m[1];
+}
+
+function calTodayIso() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  return y + '-' + m + '-' + d;
+}
+
+function populateCalMonthsForFy(fy, preferPeriod) {
+  const sel = el('calFilterMonth');
+  if (!sel) return;
+  const ms = monthsOfFy(fy || '2026-27');
+  sel.innerHTML = ms.slice().reverse().map((p) =>
+    '<option value="' + esc(p) + '">' + esc(calMonthFullLabel(p)) + '</option>',
+  ).join('');
+  const todayYm = calTodayIso().slice(0, 7);
+  if (preferPeriod && ms.indexOf(preferPeriod) >= 0) sel.value = preferPeriod;
+  else if (ms.indexOf(todayYm) >= 0) sel.value = todayYm;
+  else if (CTX.period && ms.indexOf(CTX.period) >= 0) sel.value = CTX.period;
+  else if (ms.length) sel.value = ms[ms.length - 1];
+}
+
+function onCalFyChange() {
+  const fy = (el('calFilterFy') && el('calFilterFy').value) || '2026-27';
+  CAL_STATE.selectedDay = null;
+  populateCalMonthsForFy(fy);
+  renderGstCalendar();
+}
+
+function buildGstCalendarItemsForMonth(ym) {
+  const m = /^(\d{4})-(\d{2})$/.exec(String(ym || ''));
+  if (!m) return [];
+  const y = Number(m[1]);
+  const mo = Number(m[2]); // 1..12
+  const monShort = CAL_MON_SHORT[mo - 1] || 'GST';
+  const prevMo = mo === 1 ? 12 : mo - 1;
+  const prevY = mo === 1 ? y - 1 : y;
+  const prevLabel = (CAL_MON_SHORT[prevMo - 1] || '') + '-' + String(prevY).slice(-2);
+  const isQtrEndFiling = (mo === 1 || mo === 4 || mo === 7 || mo === 10);
+  const todayIso = calTodayIso();
+  const todayUtc = Date.UTC(Number(todayIso.slice(0, 4)), Number(todayIso.slice(5, 7)) - 1, Number(todayIso.slice(8, 10)));
+
+  const items = [
+    { day: 10, compliance: 'GSTR-7 (GST TDS Return)', applicability: 'GST TDS', review: 'TDS deducted tax return & payment for ' + prevLabel + '.', type: 'Returns / Statements', view: 'reports' },
+    { day: 10, compliance: 'GSTR-8 (E-Commerce TCS)', applicability: 'GST TCS', review: 'TCS collected statement by e-commerce operators for ' + prevLabel + '.', type: 'Returns / Statements', view: 'reports' },
+    { day: 11, compliance: 'GSTR-1 Outward Supplies (Monthly)', applicability: 'Regular / Monthly', review: 'B2B, B2CL, B2CS, CDNR, Export (6A) & HSN Summary for ' + prevLabel + '.', type: 'Returns / Statements', view: 'outward', btn: 'Open GSTR-1' },
+    { day: 13, compliance: 'GSTR-6 (ISD Input Distribution)', applicability: 'ISD', review: 'Input Service Distributor return for ' + prevLabel + '.', type: 'Returns / Statements', view: 'purchase' },
+    { day: 13, compliance: 'GSTR-5 (Non-Resident Return)', applicability: 'Special / Other', review: 'Monthly return for non-resident taxable person (' + prevLabel + ').', type: 'Returns / Statements' },
+  ];
+
+  if (isQtrEndFiling) {
+    items.push({ day: 13, compliance: 'GSTR-1 Quarterly (QRMP Scheme)', applicability: 'QRMP', review: 'Quarterly outward supply statement for ending quarter.', type: 'Returns / Statements', view: 'outward', btn: 'Open GSTR-1' });
+  } else {
+    items.push({ day: 13, compliance: 'IFF (Invoice Furnishing Facility - QRMP)', applicability: 'QRMP', review: 'Optional B2B invoice upload for M1/M2 so buyers get ITC in 2B.', type: 'Returns / Statements', view: 'outward' });
+  }
+
+  items.push({
+    day: 14,
+    compliance: 'GSTR-2B Auto-Drafted Statement Generated',
+    applicability: 'Regular / Monthly',
+    review: 'Static GSTR-2B ITC statement available on portal — download JSON & match against Books.',
+    type: 'ITC / Reconciliation',
+    view: 'purchase',
+    btn: 'Match 2B vs Books',
+  });
+
+  if (isQtrEndFiling) {
+    items.push({ day: 18, compliance: 'CMP-08 Quarterly Statement & Tax Pay', applicability: 'Special / Other', review: 'Composition taxpayer quarterly turnover tax payment.', type: 'Payments' });
+  }
+
+  items.push({
+    day: 20,
+    compliance: 'GSTR-3B Monthly Return & Tax Payment',
+    applicability: 'Regular / Monthly',
+    review: 'Table 3.1 output liability, Table 4 Net ITC after 2B check, RCM & cash offset for ' + prevLabel + '.',
+    type: 'Returns / Statements',
+    view: 'purchase',
+    btn: 'Open 3B ITC Control',
+  });
+
+  if (isQtrEndFiling) {
+    items.push({ day: 22, compliance: 'GSTR-3B Quarterly QRMP (Cat-X States)', applicability: 'QRMP', review: 'Quarterly 3B filing for Maharashtra, Gujarat, Karnataka, MP & Southern states.', type: 'Returns / Statements', view: 'purchase' });
+    items.push({ day: 24, compliance: 'GSTR-3B Quarterly QRMP (Cat-Y States)', applicability: 'QRMP', review: 'Quarterly 3B filing for Delhi, UP, Rajasthan, Haryana & Northern/Eastern states.', type: 'Returns / Statements', view: 'purchase' });
+  } else {
+    items.push({ day: 25, compliance: 'QRMP PMT-06 Monthly Tax Challan', applicability: 'QRMP', review: '35% Fixed Sum or Self-Assessment tax challan payment for ' + prevLabel + '.', type: 'Payments' });
+  }
+
+  if (mo === 11) {
+    items.push({
+      day: 30,
+      compliance: 'Section 16(4) & Rule 37A Annual Cutoff',
+      applicability: 'Annual / Cutoff',
+      review: 'Last date to claim missed ITC of FY ' + (y - 1) + '-' + String(y).slice(-2) + ' & reverse supplier GSTR-3B defaults.',
+      type: 'ITC / Reconciliation',
+      view: 'purchase',
+      statusFilter: 'Missing in 2B',
+      btn: 'Check Missing 2B',
+    });
+  }
+  if (mo === 12) {
+    items.push({
+      day: 31,
+      compliance: 'GSTR-9 & GSTR-9C Annual Return',
+      applicability: 'Annual / Cutoff',
+      review: 'Annual GST return & reconciliation audit filing due date.',
+      type: 'Returns / Statements',
+      view: 'gstr9',
+      btn: 'Open GSTR-9 & 9C',
+    });
+  }
+
+  return items.map((it) => {
+    const dd = String(it.day).padStart(2, '0');
+    const iso = y + '-' + String(mo).padStart(2, '0') + '-' + dd;
+    const dueUtc = Date.UTC(y, mo - 1, it.day);
+    const daysLeft = Math.round((dueUtc - todayUtc) / 86400000);
+    let status = 'Normal due';
+    let badgeTxt = daysLeft + 'd left';
+    let statusKey = 'normal';
+    if (daysLeft < 0) {
+      status = 'Past';
+      statusKey = 'past';
+      badgeTxt = Math.abs(daysLeft) + 'd ago';
+    } else if (daysLeft <= 7) {
+      status = daysLeft === 0 ? 'Due Today' : 'Due soon';
+      statusKey = 'duesoon';
+      badgeTxt = daysLeft === 0 ? 'TODAY' : daysLeft + 'd left';
+    }
+    return Object.assign({}, it, {
+      iso: iso,
+      dd: dd,
+      monShort: monShort,
+      date: dd + ' ' + (CAL_MON_FULL[mo - 1] || '').slice(0, 3) + ' ' + y,
+      status: status,
+      statusKey: statusKey,
+      badgeTxt: badgeTxt,
+      daysLeft: daysLeft,
+    });
+  }).sort((a, b) => a.day - b.day);
+}
 
 function openGstCalendarModal() {
   const m = el('modalGstCalendar');
-  if (m) { m.style.display = 'flex'; renderGstCalendar(); }
+  if (!m) return;
+  CAL_STATE.selectedDay = null;
+  CAL_STATE.statusFilter = 'all';
+  CAL_STATE.onlyNext7 = false;
+  const fySel = el('calFilterFy');
+  const todayYm = calTodayIso().slice(0, 7);
+  const fyFromToday = fyOfPeriod(todayYm);
+  if (fySel) {
+    const targetFy = fyOptionsFor([CTX.fy, fyFromToday], fyFromToday).includes(CTX.fy) ? CTX.fy : fyFromToday;
+    if (![...fySel.options].some((o) => o.value === targetFy)) {
+      const opt = document.createElement('option');
+      opt.value = targetFy;
+      opt.textContent = 'FY ' + targetFy;
+      fySel.prepend(opt);
+    }
+    fySel.value = targetFy;
+  }
+  populateCalMonthsForFy((fySel && fySel.value) || '2026-27', CTX.period);
+  m.style.display = 'flex';
+  renderGstCalendar();
 }
+
 function closeGstCalendarModal() {
   const m = el('modalGstCalendar');
   if (m) m.style.display = 'none';
 }
+
+function setCalView(v) {
+  CAL_STATE.displayMode = v === 'table' ? 'table' : 'cards';
+  if (el('btnCalViewCards')) el('btnCalViewCards').classList.toggle('active', CAL_STATE.displayMode === 'cards');
+  if (el('btnCalViewTable')) el('btnCalViewTable').classList.toggle('active', CAL_STATE.displayMode === 'table');
+  if (el('calCardsWrap')) el('calCardsWrap').style.display = CAL_STATE.displayMode === 'cards' ? 'grid' : 'none';
+  if (el('calTableWrap')) el('calTableWrap').style.display = CAL_STATE.displayMode === 'table' ? 'block' : 'none';
+}
+
+function setCalKpiFilter(k) {
+  CAL_STATE.onlyNext7 = false;
+  CAL_STATE.statusFilter = k || 'all';
+  renderGstCalendar();
+}
+
+function toggleCalDayFilter(day) {
+  CAL_STATE.selectedDay = (CAL_STATE.selectedDay === day) ? null : day;
+  renderGstCalendar();
+}
+
+function resetCalFilters() {
+  CAL_STATE.statusFilter = 'all';
+  CAL_STATE.selectedDay = null;
+  CAL_STATE.onlyNext7 = false;
+  if (el('calFilterProfile')) el('calFilterProfile').value = 'all';
+  if (el('calFilterType')) el('calFilterType').value = 'all';
+  renderGstCalendar();
+}
+
+function filterCalNext7Days() {
+  CAL_STATE.onlyNext7 = true;
+  CAL_STATE.statusFilter = 'all';
+  CAL_STATE.selectedDay = null;
+  renderGstCalendar(true);
+}
+
 function renderGstCalendar(onlyNext7Days) {
+  const ym = (el('calFilterMonth') && el('calFilterMonth').value) || calTodayIso().slice(0, 7);
   const prof = (el('calFilterProfile') && el('calFilterProfile').value) || 'all';
   const typ = (el('calFilterType') && el('calFilterType').value) || 'all';
-  const mo = (el('calFilterMonth') && el('calFilterMonth').options[el('calFilterMonth').selectedIndex].text) || 'November 2026';
+  const useNext7 = Boolean(onlyNext7Days || CAL_STATE.onlyNext7);
+  const fullMonthName = calMonthFullLabel(ym);
 
-  let list = GST_COMPLIANCE_CALENDAR_DATA.slice();
-  if (prof !== 'all') list = list.filter((x) => x.applicability === prof);
-  if (typ !== 'all') list = list.filter((x) => x.type === typ);
-  if (onlyNext7Days) list = list.filter((x) => x.status === 'Due soon' || x.status === 'Normal due');
+  const allItems = buildGstCalendarItemsForMonth(ym);
+  const nextUpcoming = allItems.find((x) => x.daysLeft >= 0);
+  if (el('calNextDueBanner')) {
+    if (nextUpcoming) {
+      el('calNextDueBanner').innerHTML =
+        '\u23f3 <b>Next Due:</b> ' + esc(nextUpcoming.compliance) + ' &mdash; <b>' + esc(nextUpcoming.date) + '</b> (' + esc(nextUpcoming.badgeTxt) + ')';
+    } else {
+      const upcomingCurMonth = buildGstCalendarItemsForMonth(calTodayIso().slice(0, 7)).find((x) => x.daysLeft >= 0);
+      el('calNextDueBanner').innerHTML = upcomingCurMonth
+        ? '\ud83d\udcc5 <b>Current Month Next Due:</b> ' + esc(upcomingCurMonth.compliance) + ' (' + esc(upcomingCurMonth.date) + ' &bull; ' + esc(upcomingCurMonth.badgeTxt) + ')'
+        : '\u2705 Selected month deadlines completed (' + esc(fullMonthName) + ')';
+    }
+  }
 
-  setHtml('calSummaryText', cnt(list.length) + ' compliance item(s) shown \u2022 ' + esc(mo));
+  let base = allItems.slice();
+  if (prof !== 'all') base = base.filter((x) => x.applicability === prof);
+  if (typ !== 'all') base = base.filter((x) => x.type === typ);
+
+  const cntAll = base.length;
+  const cntSoon = base.filter((x) => x.statusKey === 'duesoon').length;
+  const cntNorm = base.filter((x) => x.statusKey === 'normal').length;
+  const cntPast = base.filter((x) => x.statusKey === 'past').length;
+
+  setHtml('calKpiStrip',
+    '<div class="cal-kpi-card' + (CAL_STATE.statusFilter === 'all' && !useNext7 ? ' active' : '') + '" onclick="setCalKpiFilter(\'all\')">' +
+      '<div class="cal-kpi-lbl">Total Deadlines</div><div class="cal-kpi-val">' + cnt(cntAll) + '</div><div class="cal-kpi-sub">' + esc(fullMonthName) + '</div></div>' +
+    '<div class="cal-kpi-card k-soon' + (CAL_STATE.statusFilter === 'duesoon' ? ' active' : '') + '" onclick="setCalKpiFilter(\'duesoon\')">' +
+      '<div class="cal-kpi-lbl">Due Soon (&le;7d)</div><div class="cal-kpi-val" style="color:var(--warn-text)">' + cnt(cntSoon) + '</div><div class="cal-kpi-sub">Priority action</div></div>' +
+    '<div class="cal-kpi-card k-norm' + (CAL_STATE.statusFilter === 'normal' ? ' active' : '') + '" onclick="setCalKpiFilter(\'normal\')">' +
+      '<div class="cal-kpi-lbl">Upcoming</div><div class="cal-kpi-val" style="color:var(--good-text)">' + cnt(cntNorm) + '</div><div class="cal-kpi-sub">Scheduled ahead</div></div>' +
+    '<div class="cal-kpi-card k-past' + (CAL_STATE.statusFilter === 'past' ? ' active' : '') + '" onclick="setCalKpiFilter(\'past\')">' +
+      '<div class="cal-kpi-lbl">Past Due Date</div><div class="cal-kpi-val" style="color:var(--muted)">' + cnt(cntPast) + '</div><div class="cal-kpi-sub">Already elapsed</div></div>');
+
+  // Render Interactive Mini-Calendar Grid
+  const mParts = /^(\d{4})-(\d{2})$/.exec(ym) || ['2026-11', '2026', '11'];
+  const cy = Number(mParts[1]);
+  const cm = Number(mParts[2]);
+  const firstDow = new Date(Date.UTC(cy, cm - 1, 1)).getUTCDay();
+  const daysInMo = new Date(Date.UTC(cy, cm, 0)).getUTCDate();
+  const todayIso = calTodayIso();
+  const byDay = new Map();
+  for (const it of base) {
+    if (!byDay.has(it.day)) byDay.set(it.day, []);
+    byDay.get(it.day).push(it);
+  }
+  if (el('calMiniTitle')) el('calMiniTitle').textContent = fullMonthName;
+  if (el('btnCalClearDay')) el('btnCalClearDay').style.display = CAL_STATE.selectedDay ? '' : 'none';
+  if (el('calDayFilterHint')) {
+    el('calDayFilterHint').textContent = CAL_STATE.selectedDay
+      ? 'Showing deadlines on ' + String(CAL_STATE.selectedDay).padStart(2, '0') + ' ' + fullMonthName + ' (click Clear Day for all).'
+      : 'Highlighted dates par click karke us din ke deadlines filter karein.';
+  }
+
+  let gridHtml = '';
+  for (let i = 0; i < firstDow; i++) gridHtml += '<div class="cal-day-cell empty"></div>';
+  for (let d = 1; d <= daysInMo; d++) {
+    const dayItems = byDay.get(d) || [];
+    const iso = cy + '-' + String(cm).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+    const isToday = iso === todayIso;
+    const isSel = CAL_STATE.selectedDay === d;
+    let cls = 'cal-day-cell';
+    if (isToday) cls += ' is-today';
+    if (dayItems.length) {
+      cls += ' has-due';
+      if (dayItems.some((x) => x.statusKey === 'duesoon')) cls += ' due-soon';
+      else if (dayItems.some((x) => x.statusKey === 'normal')) cls += ' due-norm';
+      else cls += ' due-past';
+    }
+    if (isSel) cls += ' selected';
+    const dots = dayItems.slice(0, 3).map(() => '<span class="cal-day-dot"></span>').join('');
+    const titleTxt = dayItems.map((x) => x.compliance).join(' | ');
+    const clickAttr = dayItems.length ? ' onclick="toggleCalDayFilter(' + d + ')"' : '';
+    gridHtml += '<div class="' + cls + '"' + clickAttr + ' title="' + esc(titleTxt || iso) + '"><span>' + d + '</span>' +
+      (dots ? '<span class="cal-day-dots">' + dots + '</span>' : '') + '</div>';
+  }
+  setHtml('calMiniGrid', gridHtml);
+
+  let list = base.slice();
+  if (useNext7) list = list.filter((x) => x.daysLeft >= 0 && x.daysLeft <= 7);
+  else if (CAL_STATE.statusFilter !== 'all') list = list.filter((x) => x.statusKey === CAL_STATE.statusFilter);
+  if (CAL_STATE.selectedDay) list = list.filter((x) => x.day === CAL_STATE.selectedDay);
+
+  setHtml('calSummaryText', cnt(list.length) + ' compliance item(s) shown \u2022 ' + esc(fullMonthName));
+
+  // Rich Visual Cards View
+  setHtml('calCardsWrap',
+    list.length
+      ? list.map((it) => {
+          const cardCls = it.statusKey === 'duesoon' ? 'st-soon' : (it.statusKey === 'past' ? 'st-past' : '');
+          const badgeCls = it.statusKey === 'past' ? 'past' : (it.statusKey === 'duesoon' ? 'duesoon' : 'normal');
+          const jumpBtn = it.view
+            ? '<button type="button" class="ghost sm" style="margin-top:6px;padding:3px 9px;font-size:11px" data-v="' + esc(it.view) + '" data-sf="' + esc(it.statusFilter || '') + '" onclick="jumpFromModalToView(this.dataset.v,{statusFilter:this.dataset.sf||undefined})">' + esc(it.btn || 'Open Screen') + ' &rarr;</button>'
+            : '';
+          return '<div class="cal-item-card ' + cardCls + '">' +
+            '<div class="cal-date-tile"><div class="cdt-top">' + esc(it.monShort) + '</div><div class="cdt-day">' + esc(it.dd) + '</div></div>' +
+            '<div style="min-width:0">' +
+              '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
+                '<b style="font-size:13.5px;color:var(--text)">' + esc(it.compliance) + '</b>' +
+                '<span class="pill info" style="font-size:10.5px;padding:2px 8px">' + esc(it.applicability) + '</span>' +
+              '</div>' +
+              '<div style="font-size:12px;color:var(--text-2);margin-top:3px">' + esc(it.review) + '</div>' +
+              jumpBtn +
+            '</div>' +
+            '<div style="text-align:right;white-space:nowrap">' +
+              '<span class="cal-badge ' + badgeCls + '">' + esc(it.status) + '</span>' +
+              '<div class="hint" style="font-size:11px;margin-top:4px;font-weight:700">' + esc(it.badgeTxt) + '</div>' +
+            '</div>' +
+          '</div>';
+        }).join('')
+      : '<div class="hint" style="text-align:center;padding:28px;border:1px dashed var(--line);border-radius:12px">Selected filter par koi deadline nahi mili. "Reset" par click karein.</div>');
+
+  // Table View
   setHtml('calTable',
-    '<thead><tr><th>Date</th><th>Compliance</th><th>Applicability</th><th>What to review</th><th>Planning / status</th></tr></thead><tbody>' +
+    '<thead><tr><th>Date</th><th>Compliance</th><th>Applicability</th><th>Type</th><th>What to review</th><th>Status</th></tr></thead><tbody>' +
     (list.length
       ? list.map((item) => {
-          const badgeCls = item.status === 'Past' ? 'past' : (item.status === 'Due soon' ? 'duesoon' : 'normal');
+          const badgeCls = item.statusKey === 'past' ? 'past' : (item.statusKey === 'duesoon' ? 'duesoon' : 'normal');
           return '<tr>' +
             '<td style="white-space:nowrap;font-weight:700">📅 ' + esc(item.date) + '</td>' +
             '<td><b>' + esc(item.compliance) + '</b></td>' +
             '<td><span class="pill info">' + esc(item.applicability) + '</span></td>' +
+            '<td style="font-size:11.5px">' + esc(item.type) + '</td>' +
             '<td style="font-size:12px;color:var(--text-2)">' + esc(item.review) + '</td>' +
-            '<td><span class="cal-badge ' + badgeCls + '">' + esc(item.status) + '</span></td>' +
+            '<td><span class="cal-badge ' + badgeCls + '">' + esc(item.status) + ' (' + esc(item.badgeTxt) + ')</span></td>' +
             '</tr>';
         }).join('')
-      : '<tr><td colspan="5" class="hint" style="text-align:center;padding:24px">No compliance deadlines found for this filter criteria.</td></tr>') +
+      : '<tr><td colspan="6" class="hint" style="text-align:center;padding:24px">No compliance deadlines found for this filter criteria.</td></tr>') +
     '</tbody>');
+
+  setCalView(CAL_STATE.displayMode);
 }
-function filterCalNext7Days() {
-  renderGstCalendar(true);
-}
+
 function exportGstCalendarCsv() {
+  const ym = (el('calFilterMonth') && el('calFilterMonth').value) || calTodayIso().slice(0, 7);
   const prof = (el('calFilterProfile') && el('calFilterProfile').value) || 'all';
   const typ = (el('calFilterType') && el('calFilterType').value) || 'all';
-  let list = GST_COMPLIANCE_CALENDAR_DATA.slice();
+  let list = buildGstCalendarItemsForMonth(ym);
   if (prof !== 'all') list = list.filter((x) => x.applicability === prof);
   if (typ !== 'all') list = list.filter((x) => x.type === typ);
+  if (CAL_STATE.selectedDay) list = list.filter((x) => x.day === CAL_STATE.selectedDay);
 
-  const csvRows = ['Date,Compliance,Applicability,What to review,Planning / status'];
+  const csvRows = ['Date,Compliance,Applicability,Type,What to review,Status,Countdown'];
   for (const it of list) {
     csvRows.push([
       '"' + it.date + '"',
       '"' + it.compliance + '"',
       '"' + it.applicability + '"',
+      '"' + it.type + '"',
       '"' + it.review.replace(/"/g, '""') + '"',
       '"' + it.status + '"',
+      '"' + it.badgeTxt + '"',
     ].join(','));
   }
   const blob = new Blob([csvRows.join('\r\n')], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'GST_Compliance_Calendar_November_2026.csv';
+  a.download = 'GST_Compliance_Calendar_' + ym + '.csv';
   a.click();
 }
 
 // ---------------------------------------------------------------------------
-// GST Legal Library & Rules Modal
+// Interactive GST Legal Library & Rules Modal (9 Sections + Live Search + Copy)
 // ---------------------------------------------------------------------------
+const LEGAL_INDEX = [
+  { id: 'sec16', tag: 'Core ITC', title: 'Section 16: Eligibility, GSTR-2B Condition & 30 Nov Cutoff', keys: 'section 16 eligibility 16(2)(aa) 16(4) time limit gstr2b 30 november', cite: 'Section 16 CGST Act, 2017: ITC allowed only with valid invoice/DN + GSTR-2B (16(2)(aa)) + goods/services received + tax paid + 3B filed, before 30th Nov of next FY (16(4)).' },
+  { id: 'sec17', tag: 'Blocked ITC', title: 'Section 17(5): Permanently Blocked / Ineligible Credits', keys: 'section 17(5) blocked ineligible motor vehicle food catering health works contract construction gift lost stolen table 4b1', cite: 'Section 17(5) CGST Act, 2017: Motor vehicles (<=13 seats), food/catering, construction/works contract, gifts/lost goods are permanently blocked and reported in GSTR-3B Table 4(B)(1).' },
+  { id: 'rule36', tag: 'Matching', title: 'Rule 36(4) & IMS: Strict 100% GSTR-2B ITC Restriction', keys: 'rule 36(4) ims invoice management system matching provisional credit books only 2b', cite: 'Rule 36(4) CGST Rules: 0% provisional credit allowed above GSTR-2B. Only invoices appearing in GSTR-2B can be claimed; use IMS Accept/Pending/Reject accordingly.' },
+  { id: 'rule37', tag: '180 Days', title: 'Rule 37: 180-Day Supplier Non-Payment ITC Reversal & Reclaim', keys: 'rule 37 180 days non payment vendor creditor interest reclaimable 4d1 4b2', cite: 'Rule 37 CGST Rules: Unpaid supplier invoices >180 days require proportionate ITC reversal in GSTR-3B Table 4(B)(2) + 18% interest; unlimited reclaim allowed on subsequent payment under Table 4(D)(1).' },
+  { id: 'rule37a', tag: '30 Nov Cutoff', title: 'Rule 37A: Reversal for Supplier Non-Filing of GSTR-3B', keys: 'rule 37a supplier default gstr3b not filed 30 september 30 november reclaim', cite: 'Rule 37A CGST Rules: If supplier fails to file GSTR-3B by 30th Sept of next FY, recipient must reverse ITC by 30th Nov (18% interest from 1 Dec if missed); reclaim allowed once supplier files 3B.' },
+  { id: 'table4', tag: 'GSTR-3B', title: 'Circular No. 170/02/2022-GST: Table 4 ITC Reporting Rules', keys: 'circular 170 table 4 4a5 4b1 4b2 4c 4d1 gstr3b reporting', cite: 'Circular 170/02/2022-GST: GSTR-3B Table 4(A) pulls gross 2B ITC; 4(B)(1) permanent reversals; 4(B)(2) temporary reversals; 4(C) Net ITC = 4(A)-4(B); 4(D)(1) reclaims.' },
+  { id: 'rule88d', tag: 'Notice / DRC-01C', title: 'Rule 88D (DRC-01C): Excess ITC Claimed vs GSTR-2B Intimation', keys: 'rule 88d drc-01c drc01c notice excess itc mismatch drc-03 gstr1 blocked 7 days', cite: 'Rule 88D (Form DRC-01C): Automated portal intimation when 3B ITC exceeds GSTR-2B; reply in Part B or pay via DRC-03 within 7 days to avoid blocking of next GSTR-1.' },
+  { id: 'rcm', tag: 'RCM', title: 'Section 9(3) / 9(4): Reverse Charge Cash Payment & ITC', keys: 'rcm reverse charge section 9(3) 9(4) gta legal self invoice cash ledger 3.1d 4a3', cite: 'Sec 9(3)/9(4) & 49(4): RCM tax must be paid via Electronic Cash Ledger in GSTR-3B Table 3.1(d) (cannot use ITC) and can be claimed as ITC in Table 4(A)(3) of the same return.' },
+  { id: 'interest', tag: 'Interest / Fee', title: 'Section 50 Interest & Section 47 Late Fees (Rule 88B)', keys: 'section 50 section 47 interest 18% 24% rule 88b utilized late fee cash ledger', cite: 'Sec 50 & Rule 88B: 18% p.a. interest applies only on net cash tax for late filing, and on wrongly availed ITC only when BOTH availed AND utilized.' },
+];
+
 function openGstLegalLibraryModal(targetTab) {
   const m = el('modalGstLegal');
   if (m) {
     m.style.display = 'flex';
+    clearLegalSearch();
     if (targetTab) switchLegalTab(targetTab);
   }
 }
@@ -6512,27 +7338,85 @@ function closeGstLegalLibraryModal() {
   if (m) m.style.display = 'none';
 }
 function switchLegalTab(tabId) {
-  const tabs = ['sec16', 'sec17', 'rule37', 'rule37a', 'table4'];
   const paneMap = {
     sec16: 'legalPaneSec16',
     sec17: 'legalPaneSec17',
+    rule36: 'legalPaneRule36',
     rule37: 'legalPaneRule37',
     rule37a: 'legalPaneRule37A',
     table4: 'legalPaneTable4',
+    rule88d: 'legalPaneRule88D',
+    rcm: 'legalPaneRcm',
+    interest: 'legalPaneInterest',
   };
   const btnMap = {
     sec16: 'tabLegalSec16',
     sec17: 'tabLegalSec17',
+    rule36: 'tabLegalRule36',
     rule37: 'tabLegalRule37',
     rule37a: 'tabLegalRule37A',
     table4: 'tabLegalTable4',
+    rule88d: 'tabLegalRule88D',
+    rcm: 'tabLegalRcm',
+    interest: 'tabLegalInterest',
   };
-  for (const t of tabs) {
+  const target = paneMap[tabId] ? tabId : 'sec16';
+  for (const t of Object.keys(paneMap)) {
     const pane = el(paneMap[t]);
     const btn = el(btnMap[t]);
-    if (pane) pane.hidden = t !== tabId;
-    if (btn) btn.className = t === tabId ? 'active' : '';
+    if (pane) pane.hidden = t !== target;
+    if (btn) btn.className = 'legal-nav-item' + (t === target ? ' active' : '');
   }
+}
+function searchLegalLibrary(rawQ) {
+  const q = String(rawQ || '').trim().toLowerCase();
+  const resBox = el('legalSearchResults');
+  const shell = el('legalMainShell');
+  const clrBtn = el('legalSearchClear');
+  if (clrBtn) clrBtn.style.display = q ? '' : 'none';
+  if (!q) {
+    if (resBox) resBox.style.display = 'none';
+    if (shell) shell.style.display = '';
+    return;
+  }
+  const hits = LEGAL_INDEX.filter((it) =>
+    (it.title + ' ' + it.tag + ' ' + it.keys + ' ' + it.cite).toLowerCase().includes(q),
+  );
+  if (shell) shell.style.display = 'none';
+  if (resBox) {
+    resBox.style.display = 'block';
+    resBox.innerHTML = hits.length
+      ? '<div class="hint" style="margin-bottom:10px"><b>' + cnt(hits.length) + '</b> statutory match(es) for "<b>' + esc(rawQ) + '</b>" &mdash; click any card to open full provisions:</div>' +
+        hits.map((h) =>
+          '<div class="legal-search-card" onclick="clearLegalSearch();switchLegalTab(\'' + esc(h.id) + '\')">' +
+            '<div><div style="font-weight:700;color:var(--text)">' + esc(h.title) + '</div>' +
+            '<div style="font-size:12px;color:var(--text-2);margin-top:3px">' + esc(h.cite) + '</div></div>' +
+            '<span class="legal-nav-tag">' + esc(h.tag) + '</span>' +
+          '</div>',
+        ).join('')
+      : '<div class="hint" style="padding:24px;text-align:center">No statutory section matched "' + esc(rawQ) + '". Try searching "17(5)", "180", "2B", "DRC-01C", or "RCM".</div>';
+  }
+}
+function clearLegalSearch() {
+  if (el('legalSearchInput')) el('legalSearchInput').value = '';
+  searchLegalLibrary('');
+}
+function copyLegalCitation(tabId) {
+  const item = LEGAL_INDEX.find((x) => x.id === tabId);
+  if (!item) return;
+  try {
+    navigator.clipboard.writeText(item.cite);
+    toast('Copied statutory citation: ' + item.tag, 'ok');
+  } catch (e) {
+    toast(item.cite, 'ok');
+  }
+}
+function jumpFromModalToView(view, opts) {
+  closeGstCalendarModal();
+  closeGstLegalLibraryModal();
+  go(view || 'purchase');
+  if (opts && opts.genTab && typeof switchGenTab === 'function') switchGenTab(opts.genTab);
+  if (opts && opts.statusFilter && typeof filterReconStatus === 'function') filterReconStatus(opts.statusFilter);
 }
 function openGstRuleModal(ruleName) {
   openGstLegalLibraryModal(ruleName);
@@ -7199,7 +8083,11 @@ document.addEventListener('keydown', (e) => {
   const eb = el('modalEditBookLine');
   if (eb && eb.style.display !== 'none') { closeEditBookModal(); return; }
   const mm = el('modalManualMatch');
-  if (mm && mm.style.display !== 'none') { closeManualMatchModal(); }
+  if (mm && mm.style.display !== 'none') { closeManualMatchModal(); return; }
+  const cal = el('modalGstCalendar');
+  if (cal && cal.style.display !== 'none') { closeGstCalendarModal(); return; }
+  const leg = el('modalGstLegal');
+  if (leg && leg.style.display !== 'none') { closeGstLegalLibraryModal(); }
 });
 
 updateThemeBtn();
