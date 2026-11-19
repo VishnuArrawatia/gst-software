@@ -1207,6 +1207,338 @@ export async function reReconcile(
   }
 }
 
+export interface DeduplicateResult {
+  ok: boolean;
+  removedPurchaseRows: number;
+  removedTwobRows: number;
+  touchedPeriods: Array<{ gstin: string; period: string }>;
+  reconciled: ReReconcileResult[];
+  reason?: string;
+}
+
+/**
+ * Safely remove exact duplicate rows created when the same Purchase Register or
+ * GSTR-2B file was uploaded more than once under different filenames (e.g.
+ * "Purchase Register (1).xlsx" / "returns_R2B_... (1).json").
+ *
+ * Safeguards:
+ *  - Locked months (`month_locks WHERE is_locked`) are never modified.
+ *  - Duplicates inside the SAME `source_file` are never touched.
+ *  - On purchase_lines, rows with `recon_edited = true` or non-default
+ *    `itc_decision` are never deleted (the losing batch only drops unedited copies).
+ *  - Re-reconciles affected unlocked `(our_gstin, period)` bundles chronologically.
+ */
+export async function deduplicateUploadedBatches(opts: {
+  gstin?: string;
+  period?: string;
+  changedBy?: string;
+  tolerance?: number;
+  dateWindow?: DateWindow;
+  skipReconcile?: boolean;
+} = {}): Promise<DeduplicateResult> {
+  const actor = opts.changedBy || 'deduplicate';
+  const scopeGstin = opts.gstin ? normGstin(opts.gstin) : '';
+  const scopePeriod = opts.period ? String(opts.period).trim() : '';
+  const out: DeduplicateResult = {
+    ok: false,
+    removedPurchaseRows: 0,
+    removedTwobRows: 0,
+    touchedPeriods: [],
+    reconciled: [],
+  };
+
+  try {
+    const lockedSet = await withClient(async (c) => {
+      const r = await c.query('SELECT our_gstin, period FROM month_locks WHERE is_locked');
+      return new Set<string>(r.rows.map((x: any) => `${normGstin(x.our_gstin)}|${x.period}`));
+    });
+    const touchedSet = new Set<string>();
+
+    // ---- Part A: Deduplicate redundant GSTR-2B re-uploads -----------------
+    const twobPairWhere: string[] = [];
+    const twobPairParams: unknown[] = [];
+    if (scopeGstin) {
+      twobPairParams.push(scopeGstin);
+      twobPairWhere.push(`our_gstin = $${twobPairParams.length}`);
+    }
+    if (scopePeriod) {
+      twobPairParams.push(scopePeriod);
+      twobPairWhere.push(`twob_month = $${twobPairParams.length}`);
+    }
+    const twobPairs = await withClient((c) =>
+      c.query(
+        `SELECT our_gstin, twob_month
+           FROM gstr2b_lines
+           ${twobPairWhere.length ? 'WHERE ' + twobPairWhere.join(' AND ') : ''}
+          GROUP BY our_gstin, twob_month
+         HAVING count(DISTINCT coalesce(source_file, '')) > 1`,
+        twobPairParams,
+      ),
+    );
+
+    for (const pr of twobPairs.rows as Array<{ our_gstin: string; twob_month: string }>) {
+      const g = normGstin(pr.our_gstin);
+      const m = String(pr.twob_month || '');
+      if (!g || !m || lockedSet.has(`${g}|${m}`)) continue;
+
+      await withClient(async (c) => {
+        const rowsRes = await c.query(
+          `SELECT id, line_key, coalesce(source_file, '') AS sf, supplier_gstin, invoice_no, document_type
+             FROM gstr2b_lines
+            WHERE our_gstin = $1 AND twob_month = $2
+            ORDER BY id DESC`,
+          [g, m],
+        );
+        const byFile = new Map<string, { maxId: number; keys: Set<string>; ids: number[]; lineKeys: string[] }>();
+        for (const r of rowsRes.rows as any[]) {
+          const sf = String(r.sf || '');
+          let bucket = byFile.get(sf);
+          if (!bucket) {
+            bucket = { maxId: Number(r.id), keys: new Set<string>(), ids: [], lineKeys: [] };
+            byFile.set(sf, bucket);
+          }
+          bucket.maxId = Math.max(bucket.maxId, Number(r.id));
+          bucket.keys.add(`${normGstin(r.supplier_gstin)}|${normInvoice(r.invoice_no)}|${normDocType(r.document_type)}`);
+          bucket.ids.push(Number(r.id));
+          bucket.lineKeys.push(String(r.line_key));
+        }
+        const orderedFiles = [...byFile.entries()].sort((a, b) => b[1].maxId - a[1].maxId);
+        if (orderedFiles.length < 2) return;
+
+        const keptInvKeys = new Set<string>(orderedFiles[0][1].keys);
+        const idsToDelete: number[] = [];
+        const keysToDelete: string[] = [];
+        const droppedFiles: string[] = [];
+
+        for (let i = 1; i < orderedFiles.length; i++) {
+          const [sf, info] = orderedFiles[i];
+          let overlap = 0;
+          for (const k of info.keys) if (keptInvKeys.has(k)) overlap++;
+          const ratio = info.keys.size > 0 ? overlap / info.keys.size : 0;
+          if (ratio >= 0.5) {
+            idsToDelete.push(...info.ids);
+            keysToDelete.push(...info.lineKeys);
+            droppedFiles.push(sf || '(unnamed)');
+          } else {
+            for (const k of info.keys) keptInvKeys.add(k);
+          }
+        }
+        if (!idsToDelete.length) return;
+
+        await c.query('BEGIN');
+        try {
+          if (keysToDelete.length) {
+            const clr = await c.query(
+              `UPDATE purchase_lines p
+                  SET matched_2b_key = NULL, updated_at = now()
+                WHERE p.our_gstin = $1
+                  AND p.matched_2b_key = ANY($2::text[])
+                  AND NOT EXISTS (
+                    SELECT 1 FROM month_locks ml
+                     WHERE ml.is_locked AND ml.our_gstin = p.our_gstin AND ml.period = p.period
+                  )
+               RETURNING p.our_gstin, p.period`,
+              [g, keysToDelete],
+            );
+            for (const cr of clr.rows as any[]) {
+              touchedSet.add(`${normGstin(cr.our_gstin)}|${cr.period}`);
+            }
+          }
+          await c.query('DELETE FROM gstr2b_lines WHERE id = ANY($1::bigint[])', [idsToDelete]);
+          const hasBook = await c.query(
+            'SELECT 1 FROM purchase_lines WHERE our_gstin = $1 AND period = $2 LIMIT 1',
+            [g, m],
+          );
+          if (hasBook.rowCount) touchedSet.add(`${g}|${m}`);
+          await writeAudit(c, {
+            changedBy: actor,
+            action: 'DEDUPLICATE_2B',
+            our_gstin: g,
+            period: m,
+            financialYear: fyOf(m),
+            field: 'gstr2b_lines',
+            oldValue: String(rowsRes.rows.length),
+            newValue: String(rowsRes.rows.length - idsToDelete.length),
+            reason: `Removed ${idsToDelete.length} redundant GSTR-2B rows from re-uploaded file(s): ${droppedFiles.join(', ')}`,
+            company: null,
+          });
+          await c.query('COMMIT');
+          out.removedTwobRows += idsToDelete.length;
+        } catch (err) {
+          await c.query('ROLLBACK');
+          throw err;
+        }
+      });
+    }
+
+    // ---- Part B: Deduplicate exact cross-file Purchase Register twins -----
+    const purPairWhere: string[] = [];
+    const purPairParams: unknown[] = [];
+    if (scopeGstin) {
+      purPairParams.push(scopeGstin);
+      purPairWhere.push(`our_gstin = $${purPairParams.length}`);
+    }
+    if (scopePeriod) {
+      purPairParams.push(scopePeriod);
+      purPairWhere.push(`period = $${purPairParams.length}`);
+    }
+    const purPairs = await withClient((c) =>
+      c.query(
+        `SELECT our_gstin, period
+           FROM purchase_lines
+           ${purPairWhere.length ? 'WHERE ' + purPairWhere.join(' AND ') : ''}
+          GROUP BY our_gstin, period
+         HAVING count(DISTINCT coalesce(source_file, '')) > 1`,
+        purPairParams,
+      ),
+    );
+
+    for (const pr of purPairs.rows as Array<{ our_gstin: string; period: string }>) {
+      const g = normGstin(pr.our_gstin);
+      const p = String(pr.period || '');
+      if (!g || !p || lockedSet.has(`${g}|${p}`)) continue;
+
+      await withClient(async (c) => {
+        const rowsRes = await c.query(
+          `SELECT id, coalesce(source_file, '') AS sf, book_supplier_gstin, book_invoice_no,
+                  coalesce(book_document_type, 'Tax Invoice') AS doc_type,
+                  book_taxable_value, book_igst, book_cgst, book_sgst, book_cess,
+                  coalesce(recon_edited, false) AS recon_edited,
+                  coalesce(itc_decision, 'Pending Review') AS itc_decision
+             FROM purchase_lines
+            WHERE our_gstin = $1 AND period = $2
+            ORDER BY id ASC`,
+          [g, p],
+        );
+
+        type PurRow = {
+          id: number;
+          sf: string;
+          recon_edited: boolean;
+          itc_decision: string;
+        };
+        const byFp = new Map<string, PurRow[]>();
+        for (const r of rowsRes.rows as any[]) {
+          const fp = [
+            normGstin(r.book_supplier_gstin),
+            normInvoice(r.book_invoice_no),
+            normDocType(r.doc_type),
+            r2(r.book_taxable_value),
+            r2(r.book_igst),
+            r2(r.book_cgst),
+            r2(r.book_sgst),
+            r2(r.book_cess),
+          ].join('|');
+          let list = byFp.get(fp);
+          if (!list) {
+            list = [];
+            byFp.set(fp, list);
+          }
+          list.push({
+            id: Number(r.id),
+            sf: String(r.sf || ''),
+            recon_edited: Boolean(r.recon_edited),
+            itc_decision: String(r.itc_decision || 'Pending Review'),
+          });
+        }
+
+        const purchaseIdsToDelete: number[] = [];
+        for (const list of byFp.values()) {
+          const bySf = new Map<string, { maxId: number; hasUserWork: boolean; rows: PurRow[] }>();
+          for (const item of list) {
+            const userWork = item.recon_edited || item.itc_decision !== 'Pending Review';
+            let gSf = bySf.get(item.sf);
+            if (!gSf) {
+              gSf = { maxId: item.id, hasUserWork: userWork, rows: [] };
+              bySf.set(item.sf, gSf);
+            } else {
+              gSf.maxId = Math.max(gSf.maxId, item.id);
+              if (userWork) gSf.hasUserWork = true;
+            }
+            gSf.rows.push(item);
+          }
+          // Only deduplicate clusters spanning 2+ distinct source_files; never drop intra-file duplicates.
+          if (bySf.size < 2) continue;
+
+          const ranked = [...bySf.entries()].sort((a, b) => {
+            if (a[1].hasUserWork !== b[1].hasUserWork) return a[1].hasUserWork ? -1 : 1;
+            return b[1].maxId - a[1].maxId;
+          });
+          const winSf = ranked[0][0];
+          for (const [sf, info] of ranked) {
+            if (sf === winSf) continue;
+            for (const row of info.rows) {
+              if (!row.recon_edited && row.itc_decision === 'Pending Review') {
+                purchaseIdsToDelete.push(row.id);
+              }
+            }
+          }
+        }
+        if (!purchaseIdsToDelete.length) return;
+
+        await c.query('BEGIN');
+        try {
+          await c.query('DELETE FROM purchase_lines WHERE id = ANY($1::bigint[])', [purchaseIdsToDelete]);
+          touchedSet.add(`${g}|${p}`);
+          await writeAudit(c, {
+            changedBy: actor,
+            action: 'DEDUPLICATE_BOOKS',
+            our_gstin: g,
+            period: p,
+            financialYear: fyOf(p),
+            field: 'purchase_lines',
+            oldValue: String(rowsRes.rows.length),
+            newValue: String(rowsRes.rows.length - purchaseIdsToDelete.length),
+            reason: `Removed ${purchaseIdsToDelete.length} exact duplicate Book rows created by re-uploaded file`,
+            company: null,
+          });
+          await c.query('COMMIT');
+          out.removedPurchaseRows += purchaseIdsToDelete.length;
+        } catch (err) {
+          await c.query('ROLLBACK');
+          throw err;
+        }
+      });
+    }
+
+    // ---- Part C: Chronologically re-reconcile touched (gstin, period) -----
+    const touched = [...touchedSet]
+      .map((k) => {
+        const [gstin, period] = k.split('|');
+        return { gstin, period };
+      })
+      .filter((x) => x.gstin && x.period && !lockedSet.has(`${x.gstin}|${x.period}`))
+      .sort((a, b) => a.gstin.localeCompare(b.gstin) || a.period.localeCompare(b.period));
+    out.touchedPeriods = touched;
+
+    if (!opts.skipReconcile && touched.length > 0) {
+      const twobCache = new Map<string, Gstr2bRecord[]>();
+      for (const t of touched) {
+        let cachedTwob = twobCache.get(t.gstin);
+        if (!cachedTwob) {
+          const bdl = await loadBundleForReconcile(t.gstin, t.period);
+          cachedTwob = bdl.twob;
+          twobCache.set(t.gstin, cachedTwob);
+        }
+        const r = await reReconcile(t.gstin, t.period, {
+          changedBy: actor,
+          reason: 'Post-deduplication re-reconcile',
+          cachedTwob,
+          tolerance: opts.tolerance,
+          dateWindow: opts.dateWindow,
+        });
+        out.reconciled.push(r);
+      }
+    }
+
+    out.ok = true;
+    return out;
+  } catch (e: any) {
+    out.reason = e.message;
+    return out;
+  }
+}
+
 async function statusesFor(gstin: string, period: string): Promise<Array<{ match_status: string | null }>> {
   return withClient((c) =>
     c.query('SELECT match_status FROM purchase_lines WHERE our_gstin = $1 AND period = $2', [normGstin(gstin), period]),
@@ -2317,9 +2649,22 @@ export async function importPastedPurchase(
   });
 
   out.ok = true;
+  // Clean exact unedited duplicate twins from prior filenames in the same
+  // (GSTIN, period) before reconciling so re-uploads never mark the register Duplicate.
+  const targets = out.keys.length ? out.keys : [out.key];
+  for (const k of targets) {
+    if (k.gstin && k.period) {
+      await deduplicateUploadedBatches({
+        gstin: k.gstin,
+        period: k.period,
+        changedBy: opts.by,
+        skipReconcile: true,
+      });
+    }
+  }
+
   // Reconcile every month the batch touched. Cache GSTR-2B per GSTIN so a
   // 12-month or 22-month register loads 2B once per GSTIN instead of 22 times.
-  const targets = out.keys.length ? out.keys : [out.key];
   const twobCache = new Map<string, Gstr2bRecord[]>();
   for (const k of targets) {
     const gKey = normGstin(k.gstin);

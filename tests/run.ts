@@ -4020,6 +4020,42 @@ section('34. Category 1 fixes — 40% slab, 2B JSON edge cases, 3B ITC decisions
     const corrBlock = /const CORRECTION_FIELDS = new Set\(\[([\s\S]*?)\]\);/.exec(storeSrc)?.[1] || '';
     check('store.ts LineEdit supports partyName without adding party_name to CORRECTION_FIELDS',
       storeSrc.includes('partyName?: string;') && !corrBlock.includes("'party_name'"));
+
+    // 13. Multi-upload duplicate 2B protection & deduplicate wiring
+    const dup2b3x = reconcilePurchases(
+      [BILL({ invoice_no: 'INV-DUP-3X', invoice_date: '2026-04-17', taxable_value: 10000, igst: 1800 })],
+      [
+        TWO({ id: 'r2b.json#1', source_file: 'r2b.json', invoice_no: 'INV-DUP-3X', invoice_date: '2026-04-17', taxable_value: 10000, igst: 1800 }),
+        TWO({ id: 'r2b (1).json#1', source_file: 'r2b (1).json', invoice_no: 'INV-DUP-3X', invoice_date: '2026-04-17', taxable_value: 10000, igst: 1800 }),
+        TWO({ id: 'r2b (2).json#1', source_file: 'r2b (2).json', invoice_no: 'INV-DUP-3X', invoice_date: '2026-04-17', taxable_value: 10000, igst: 1800 }),
+      ],
+    );
+    eq('3x re-uploaded 2B source_files never triple amount and claim all redundant copies', [
+      dup2b3x.rows[0]?.status,
+      dup2b3x.rows[0]?.two_b_taxable,
+      dup2b3x.unbooked2b.length,
+    ], ['Matched', 10000, 0]);
+
+    const multiRateSameFile = reconcilePurchases(
+      [BILL({ invoice_no: 'INV-MR-1', invoice_date: '2026-04-17', taxable_value: 10000, igst: 1800 })],
+      [
+        TWO({ id: 'r2b.json#10', source_file: 'r2b.json', invoice_no: 'INV-MR-1', invoice_date: '2026-04-17', taxable_value: 6000, igst: 1080 }),
+        TWO({ id: 'r2b.json#11', source_file: 'r2b.json', invoice_no: 'INV-MR-1', invoice_date: '2026-04-17', taxable_value: 4000, igst: 720 }),
+      ],
+    );
+    eq('Multi-rate slabs within the SAME source_file still sum cleanly', [
+      multiRateSameFile.rows[0]?.status,
+      multiRateSameFile.rows[0]?.two_b_taxable,
+    ], ['Matched', 10000]);
+
+    const serverSrc = fsUi.readFileSync('src/server/server.ts', 'utf8');
+    const dockerInitSrc = fsUi.readFileSync('scripts/docker-init.ts', 'utf8');
+    check('deduplicateUploadedBatches wired across store, server, docker-init, and UI',
+      storeSrc.includes('export async function deduplicateUploadedBatches(') &&
+      serverSrc.includes('/api/recon/purchase/deduplicate') &&
+      dockerInitSrc.includes('deduplicateUploadedBatches(') &&
+      htmlUi.includes('id="reconDupBanner"') &&
+      htmlUi.includes('cleanDuplicateUploads('));
   }
 }
 

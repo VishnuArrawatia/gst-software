@@ -20,6 +20,7 @@ import zlib from 'node:zlib';
 import { Client } from 'pg';
 import { loadEnv, pgConfig } from '../src/config/env';
 import { hashPassword } from '../src/app/auth';
+import { deduplicateUploadedBatches } from '../src/app/store';
 
 loadEnv();
 
@@ -257,6 +258,17 @@ async function main() {
   await restoreBaselineSnapshotIfEmpty();
   runScript('seed:logos');
   await ensureTeamAccounts();
+  try {
+    const dedup = await deduplicateUploadedBatches({ changedBy: 'docker-init' });
+    if (dedup.removedPurchaseRows > 0 || dedup.removedTwobRows > 0) {
+      console.log(
+        `[docker-init] Cleaned duplicate uploads: removed ${dedup.removedPurchaseRows} duplicate book rows, ` +
+        `${dedup.removedTwobRows} duplicate 2B rows; re-reconciled ${dedup.reconciled.length} month(s).`,
+      );
+    }
+  } catch (e: any) {
+    console.warn('[docker-init] Duplicate cleanup warning:', e.message || e);
+  }
   console.log('[docker-init] Initialisation complete.');
 }
 

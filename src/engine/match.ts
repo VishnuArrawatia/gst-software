@@ -323,12 +323,13 @@ export function reconcilePurchases(
       continue;
     }
 
-    // Group candidate 2B lines by (twobMonth, docType) so multi-rate lines of
-    // one invoice in one 2B return sum cleanly without mixing distinct docs.
+    // Group candidate 2B lines by (twobMonth, docType, source_file) so multi-rate
+    // lines of one invoice in one 2B upload sum cleanly without multiplying when
+    // the same GSTR-2B file was uploaded more than once under renamed filenames.
     const groupsByMonthDoc = new Map<string, Gstr2bRecord[]>();
     for (const x of rawBucket) {
       const gm = twobMonthOf(x) || x.period || '';
-      const gk = `${gm}|${twobDocOf(x)}`;
+      const gk = `${gm}|${twobDocOf(x)}|${x.source_file || ''}`;
       if (!groupsByMonthDoc.has(gk)) groupsByMonthDoc.set(gk, []);
       groupsByMonthDoc.get(gk)!.push(x);
     }
@@ -428,7 +429,13 @@ export function reconcilePurchases(
     const group = best.group;
     const primary = group.find((x) => x.invoice_date === mv.invoice_date) || group[0];
     const matched2bMonth = best.month;
-    for (const g of group) claimed.add(twobId(g));
+    const bestDoc = twobDocOf(group[0]);
+    for (const g of rawBucket) {
+      const gm = twobMonthOf(g) || g.period || '';
+      if (gm === matched2bMonth && twobDocOf(g) === bestDoc) {
+        claimed.add(twobId(g));
+      }
+    }
 
     const matchId = twobId(primary);
     const blockedLine = group.find(itcBlocked);
@@ -512,11 +519,23 @@ export function reconcilePurchases(
   }
 
   // ---- 2B lines nobody claimed ------------------------------------------
+  // If the same 2B invoice appears across multiple uploaded source_files, only emit
+  // rows from the newest upload so multi-upload copies never inflate Missing-in-Books.
+  const latestUnbookedSourceByInv = new Map<string, string>();
+  for (const r of twob) {
+    if (claimed.has(twobId(r))) continue;
+    const ik = `${normGstin(r.our_gstin)}|${keyOf(r.supplier_gstin, r.invoice_no)}|${twobMonthOf(r) || r.period || ''}|${twobDocOf(r)}`;
+    latestUnbookedSourceByInv.set(ik, r.source_file || '');
+  }
+
   const unbooked2b: ReconRow[] = [];
   for (let idx = 0; idx < twob.length; idx++) {
     const r = twob[idx];
     const matchId = twobId(r);
     if (claimed.has(matchId)) continue;
+    const ik = `${normGstin(r.our_gstin)}|${keyOf(r.supplier_gstin, r.invoice_no)}|${twobMonthOf(r) || r.period || ''}|${twobDocOf(r)}`;
+    const chosenSrc = latestUnbookedSourceByInv.get(ik);
+    if (chosenSrc !== undefined && (r.source_file || '') !== chosenSrc) continue;
     // If the books had this key at all we already reported it as Missing in 2B
     // is impossible; this branch means the key truly has no book counterpart.
     const itc = taxOf(r);

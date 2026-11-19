@@ -28,6 +28,7 @@ import {
   auditTrail,
   dashboard as phase0Dashboard,
   dbReady,
+  deduplicateUploadedBatches,
   getLine,
   importPastedPurchase,
   isLocked,
@@ -800,12 +801,12 @@ async function loadAggregatedUnbooked2b(
           [normList],
         );
     const tQ = await c.query(
-      `SELECT line_key, our_gstin, twob_month, portal_fp, supplier_gstin, supplier_name,
+      `SELECT id, line_key, our_gstin, twob_month, portal_fp, supplier_gstin, supplier_name,
               invoice_no, invoice_date, document_type, taxable_value, igst, cgst, sgst, cess,
-              itc_availability, reason
+              itc_availability, reason, coalesce(source_file, '') AS source_file
          FROM gstr2b_lines
         WHERE our_gstin = ANY($1::text[])
-        ORDER BY twob_month DESC, id`,
+        ORDER BY twob_month DESC, id ASC`,
       [normList],
     );
     return {
@@ -814,24 +815,32 @@ async function loadAggregatedUnbooked2b(
     };
   });
 
-  const groups = new Map<string, Aggregated2bInvoice & { memberKeys: string[] }>();
+  // Step 1: Aggregate multi-rate slabs strictly WITHIN each uploaded source_file
+  const byFileInv = new Map<string, Aggregated2bInvoice & { canonKey: string; maxId: number; memberKeys: string[] }>();
+  const claimedCanons = new Set<string>();
   for (const r of rows2b as any[]) {
     const ourG = normGstinOf(r.our_gstin);
     const sup = normGstinOf(r.supplier_gstin);
     const inv = String(r.invoice_no ?? '').trim();
     const mo = String(r.portal_fp || r.twob_month || '').slice(0, 7);
     const dType = normDocType(r.document_type);
-    const gk = `${ourG}|${sup}|${normInvoice(inv)}|${mo}|${dType}`;
-    const existing = groups.get(gk);
+    const sf = String(r.source_file ?? '');
+    const canonKey = `${ourG}|${sup}|${normInvoice(inv)}|${mo}|${dType}`;
+    const lk = String(r.line_key);
+    if (claimedKeys.has(lk)) claimedCanons.add(canonKey);
+
+    const fk = `${canonKey}|${sf}`;
+    const existing = byFileInv.get(fk);
     const tax = r2(r.taxable_value);
     const ig = r2(r.igst);
     const cg = r2(r.cgst);
     const sg = r2(r.sgst);
     const ce = r2(r.cess);
     const lineItc = r2(ig + cg + sg + ce);
+    const rowId = Number(r.id ?? 0);
     if (!existing) {
-      groups.set(gk, {
-        line_key: String(r.line_key),
+      byFileInv.set(fk, {
+        line_key: lk,
         our_gstin: ourG,
         twob_month: String(r.twob_month || mo),
         portal_fp: mo,
@@ -850,7 +859,9 @@ async function loadAggregatedUnbooked2b(
         itc: lineItc,
         itc_availability: String(r.itc_availability ?? 'Yes'),
         reason: r.reason ? String(r.reason) : undefined,
-        memberKeys: [String(r.line_key)],
+        canonKey,
+        maxId: rowId,
+        memberKeys: [lk],
       });
     } else {
       existing.taxable_value = r2(existing.taxable_value + tax);
@@ -860,16 +871,21 @@ async function loadAggregatedUnbooked2b(
       existing.cess = r2(existing.cess + ce);
       existing.itc = r2(existing.itc + lineItc);
       existing.polarity = polarityOfRow(existing.doc_type, existing.taxable_value, existing.igst, existing.cgst, existing.sgst, existing.cess);
-      existing.memberKeys.push(String(r.line_key));
+      existing.maxId = Math.max(existing.maxId, rowId);
+      existing.memberKeys.push(lk);
     }
   }
 
-  const out: Aggregated2bInvoice[] = [];
-  for (const g of groups.values()) {
-    if (g.memberKeys.some((k) => claimedKeys.has(k))) continue;
-    out.push(g);
+  // Step 2: Pick only the newest source_file for each unbooked canonical invoice
+  const newestByCanon = new Map<string, Aggregated2bInvoice & { maxId: number }>();
+  for (const g of byFileInv.values()) {
+    if (claimedCanons.has(g.canonKey)) continue;
+    const prev = newestByCanon.get(g.canonKey);
+    if (!prev || g.maxId > prev.maxId) {
+      newestByCanon.set(g.canonKey, g);
+    }
   }
-  return out;
+  return [...newestByCanon.values()];
 }
 
 function parseToleranceArg(raw: unknown): number | undefined {
@@ -946,65 +962,36 @@ app.get('/api/recon/purchase', requirePerm('recon', 'view'), wrap(async (req, re
     periods: targetPeriods,
   });
 
-  // Unbooked 2B lines for the selected period(s) and GSTIN(s)
-  let twoBRows: any[] = [];
-  let twoBTotalCount = 0;
-  if (targetPeriods || targetGstins || str(req.query.gstins).toUpperCase() === 'ALL') {
-    const uParams: unknown[] = [];
-    const uWhere: string[] = [
-      `NOT EXISTS (SELECT 1 FROM purchase_lines p WHERE p.our_gstin = g.our_gstin AND p.matched_2b_key = g.line_key)`,
-    ];
-    if (targetGstins && targetGstins.length) {
-      uParams.push(targetGstins);
-      uWhere.push(`g.our_gstin = ANY($${uParams.length}::text[])`);
-    } else if (singleGstin) {
-      uParams.push(normGstinOf(singleGstin));
-      uWhere.push(`g.our_gstin = $${uParams.length}`);
-    }
-    if (targetPeriods && targetPeriods.length) {
-      uParams.push(targetPeriods);
-      uWhere.push(`g.twob_month = ANY($${uParams.length}::text[])`);
-    } else if (singlePeriod) {
-      uParams.push(singlePeriod);
-      uWhere.push(`g.twob_month = $${uParams.length}`);
-    }
-    const uRes = await withClient((c) =>
-      c.query(
-        `SELECT g.id, g.line_key, g.our_gstin, g.twob_month, g.portal_fp, g.supplier_gstin,
-                g.supplier_name, g.invoice_no, g.invoice_date, g.document_type,
-                g.taxable_value, g.igst, g.cgst, g.sgst, g.cess,
-                (g.igst + g.cgst + g.sgst + g.cess) AS itc,
-                g.itc_availability, g.reason
-           FROM gstr2b_lines g
-          WHERE ${uWhere.join(' AND ')}
-          ORDER BY g.twob_month DESC, g.supplier_name, g.invoice_no
-          LIMIT 2000`,
-        uParams,
-      ),
-    );
-    twoBRows = uRes.rows.map((r: any) => ({
-      ...r,
-      invoice_date: isoDate(r.invoice_date),
-      taxable_value: Number(r.taxable_value ?? 0),
-      itc: r2(Number(r.itc ?? 0)),
-    }));
-    twoBTotalCount = twoBRows.length;
-  } else {
-    const twoB = await runReportNamed('twob-not-in-books', f);
-    twoBRows = (twoB?.rows ?? []).slice(0, 1000);
-    twoBTotalCount = twoB?.rows?.length ?? 0;
-  }
-
-  // Load aggregated cross-month unbooked 2B pool for Probable 2B matching (strictly within same our_gstin!)
+  // Load aggregated, deduplicated unbooked 2B pool for the active GSTIN(s)
   let crossMonth2bPool: Aggregated2bInvoice[] = [];
   try {
-    const poolGstins = targetGstins && targetGstins.length
-      ? targetGstins
-      : singleGstin
-        ? [normGstinOf(singleGstin)]
-        : [...new Set(rows.map((r: any) => normGstinOf(r.our_gstin)).filter(Boolean))];
+    let poolGstins: string[] = [];
+    if (targetGstins && targetGstins.length) {
+      poolGstins = targetGstins;
+    } else if (singleGstin) {
+      poolGstins = [normGstinOf(singleGstin)];
+    } else {
+      const gRows = await withClient((c) => c.query('SELECT DISTINCT our_gstin FROM gstr2b_lines'));
+      poolGstins = gRows.rows.map((x: any) => normGstinOf(x.our_gstin)).filter(Boolean);
+    }
     crossMonth2bPool = await loadAggregatedUnbooked2b(poolGstins);
   } catch { /* fallback empty */ }
+
+  // Unbooked 2B lines for the active period(s), carrying line_key for Match-to-Book
+  const activePeriodSet = targetPeriods && targetPeriods.length
+    ? new Set(targetPeriods)
+    : singlePeriod
+      ? new Set([singlePeriod])
+      : null;
+  const matchedUnbooked = crossMonth2bPool
+    .filter((u) => !activePeriodSet || activePeriodSet.has(u.twob_month) || activePeriodSet.has(u.portal_fp))
+    .sort((a, b) =>
+      b.twob_month.localeCompare(a.twob_month) ||
+      a.supplier_name.localeCompare(b.supplier_name) ||
+      a.invoice_no.localeCompare(b.invoice_no),
+    );
+  const twoBTotalCount = matchedUnbooked.length;
+  const twoBRows = matchedUnbooked.slice(0, 2000);
 
   // Probable 2B Bill suggestion for 'Missing in 2B' rows (strictly same our_gstin + supplier_gstin + polarity) + GSTR-3B Table 4 bucket
   const usedTwoBIdx = new Set<number>();
@@ -1679,6 +1666,27 @@ app.post('/api/recon/purchase/unlink', requirePerm('recon', 'edit'), wrap(async 
   res.json({ ok: true, line: await getLine(lineId), reReconcile: rr });
 }));
 
+/** Clean duplicate re-uploaded Purchase Register / GSTR-2B batches and re-reconcile unlocked months. */
+app.post('/api/recon/purchase/deduplicate', requirePerm('recon', 'rereconcile'), wrap(async (req, res) => {
+  const ready = await dbReady();
+  if (!ready.ok) return res.status(503).json({ error: ready.reason });
+  const gstin = normGstinOf(str(req.body?.gstin));
+  const period = str(req.body?.period);
+  if (gstin && !(await checkGstinAccess(req, res, gstin))) return;
+
+  const tolerance = parseToleranceArg(req.body?.tolerance);
+  const dateWindow = parseDateWindowArg(req.body?.dateWindow);
+  const out = await deduplicateUploadedBatches({
+    gstin: gstin || undefined,
+    period: period || undefined,
+    changedBy: actorOf(req),
+    tolerance,
+    dateWindow,
+  });
+  if (!out.ok) return res.status(400).json(out);
+  res.json(out);
+}));
+
 /** Direct GSTR-2B file preview (.json / .xlsx / .csv) for Bill-to-Bill Input Credit matching. */
 app.post('/api/twob-file/preview', requirePerm('data', 'import_purchase'), wrap(async (req, res) => {
   const name = str(req.body?.name) || 'GSTR2B.xlsx';
@@ -1800,6 +1808,16 @@ app.post('/api/twob-file/import', requirePerm('data', 'import_purchase'), wrap(a
       uploadedBy: actorOf(req),
     });
     if (!saved.ok) return res.status(400).json({ error: saved.reason || 'GSTR-2B save nahi ho saka.' });
+
+    // Remove redundant older copies of the same month's GSTR-2B if re-uploaded under a new filename
+    for (const p of pairMap.values()) {
+      await deduplicateUploadedBatches({
+        gstin: p.gstin,
+        period: p.period,
+        changedBy: actorOf(req),
+        skipReconcile: true,
+      });
+    }
 
     // Re-reconcile every period touched by the 2B file + the currently viewed period + any period of this GSTIN with Missing in 2B rows
     const periodsToReconcile = new Set<string>([...pairMap.values()].map((p) => p.period));

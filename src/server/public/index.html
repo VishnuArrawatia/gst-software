@@ -2322,6 +2322,12 @@ tbody tr:hover td.recon-sticky-act { background: var(--panel-3); }
           </div>
         </div>
 
+        <!-- Duplicate-Upload Fix Banner (shown only when Duplicate rows exist on open month) -->
+        <div id="reconDupBanner" style="display:none;margin-top:10px;padding:10px 14px;border-radius:10px;background:var(--warn-soft);border:1px solid var(--warn);align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div id="reconDupBannerText" style="font-size:12.5px;font-weight:600;color:var(--text)"></div>
+          <button type="button" class="sm" style="background:#d97706;color:#fff" onclick="cleanDuplicateUploads()">🧹 Clean Duplicate Uploads &amp; Re-Match Now</button>
+        </div>
+
         <!-- 1-Click Status Filter Tabs with Live Counts -->
         <div class="recon-tabs" id="reconQuickTabs"></div>
 
@@ -5147,6 +5153,19 @@ function renderRecon() {
   }
   updateReconCfgBadge();
 
+  // Show Duplicate-Upload Fix Banner whenever Duplicate rows are present on an open month
+  const dupBanner = el('reconDupBanner');
+  const dupCountNow = Number(by['Duplicate'] || 0);
+  if (dupBanner) {
+    if (!locked && dupCountNow > 0) {
+      dupBanner.style.display = 'flex';
+      setHtml('reconDupBannerText',
+        '\u26a0\ufe0f <b>' + cnt(dupCountNow) + ' Duplicate bills detect huye hain:</b> Agar same Purchase Register ya GSTR-2B file galti se 2 baar upload ho gayi hai, to 1 click me extra copies hata kar turant re-match karein.');
+    } else {
+      dupBanner.style.display = 'none';
+    }
+  }
+
   // Populate 1-click Status Filter Tabs with full-scope live counts
   const curStatusFilter = (el('reconStatus') && el('reconStatus').value) || '';
   const blockedCnt = Number(by['ITC Blocked'] || by['Blocked'] || 0);
@@ -7145,6 +7164,34 @@ async function resetEditBookModal() {
   const lid = EDIT_BOOK.id;
   closeEditBookModal();
   await unlinkReconRow(lid);
+}
+
+async function cleanDuplicateUploads() {
+  if (reconIsLocked()) return toast('Month locked \u2014 unlock as admin first.', 'err');
+  const cfg = getReconMatchingCfg();
+  note('reconMsg', 'hint', 'Duplicate uploaded batches clean karke GSTR-2B matching chala rahe hain\u2026');
+  try {
+    const out = await postJson('/api/recon/purchase/deduplicate', {
+      gstin: CTX.gstin || '',
+      period: CTX.period || '',
+      tolerance: cfg.tolerance,
+      dateWindow: cfg.dateWindow,
+    });
+    const remB = Number(out.removedPurchaseRows || 0);
+    const rem2 = Number(out.removedTwobRows || 0);
+    if (remB > 0 || rem2 > 0) {
+      toast('Cleaned ' + cnt(remB) + ' duplicate Book rows & ' + cnt(rem2) + ' duplicate 2B rows \u2014 re-matched!', 'ok');
+      note('reconMsg', 'ok', 'Removed ' + cnt(remB) + ' duplicate Book rows & ' + cnt(rem2) + ' duplicate 2B rows & re-reconciled.');
+      await loadRecon();
+      await loadContext();
+    } else {
+      toast('Remaining duplicates same single file ke andar hain \u2014 inko "✏️ Edit Book" se review karein.', 'warn');
+      note('reconMsg', 'warn', 'No cross-file duplicate uploads found; remaining duplicates exist inside the same uploaded file.');
+    }
+  } catch (e) {
+    note('reconMsg', 'err', errText(e));
+    toast(errText(e), 'err');
+  }
 }
 
 document.addEventListener('keydown', (e) => {
