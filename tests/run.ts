@@ -4009,6 +4009,17 @@ section('34. Category 1 fixes — 40% slab, 2B JSON edge cases, 3B ITC decisions
       { tolerance: 5, dateWindow: 'any' },
     );
     eq('Tolerance=5 & dateWindow=any matches bill cleanly', optWinAny.rows[0]?.status, 'Matched');
+
+    // 12. Easy Matching UI & Side-by-Side Book Entry Edit checks
+    const fsUi = await import('node:fs');
+    const htmlUi = fsUi.readFileSync('src/server/public/index.html', 'utf8');
+    check('UI has side-by-side Edit Book modal', htmlUi.includes('id="modalEditBookLine"') && htmlUi.includes('function openEditBookModal(') && htmlUi.includes('function saveEditBookModal('));
+    check('UI has 1-click status filter tabs & collapsible upload drawer & sticky action column',
+      htmlUi.includes('id="reconQuickTabs"') && htmlUi.includes('id="reconUploadDrawer"') && htmlUi.includes('recon-sticky-act'));
+    const storeSrc = fsUi.readFileSync('src/app/store.ts', 'utf8');
+    const corrBlock = /const CORRECTION_FIELDS = new Set\(\[([\s\S]*?)\]\);/.exec(storeSrc)?.[1] || '';
+    check('store.ts LineEdit supports partyName without adding party_name to CORRECTION_FIELDS',
+      storeSrc.includes('partyName?: string;') && !corrBlock.includes("'party_name'"));
   }
 }
 

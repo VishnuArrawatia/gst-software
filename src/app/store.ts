@@ -1273,6 +1273,7 @@ export interface EditResult {
 export interface LineEdit {
   lineId: number;
   recon?: Partial<Record<ReconField, string>>;
+  partyName?: string;
   itc?: { decision?: string; decisionMonth?: string; reason?: string };
   /** E-invoice / e-way bill answers. Absent = leave whatever is recorded. */
   edocs?: Partial<Record<EDocField, boolean | string | null>>;
@@ -1358,7 +1359,7 @@ export async function applyEdits(
 
         const sets: string[] = [];
         const params: unknown[] = [e.lineId];
-        const stampRecon = !!(e.recon && Object.keys(e.recon).length);
+        let stampRecon = false;
         const stampDecision = !!(e.itc && e.itc.decision !== undefined);
         let wroteAnything = false;
 
@@ -1372,8 +1373,22 @@ export async function applyEdits(
           params.push(next);
           sets.push(`${f} = $${params.length}`);
           wroteAnything = true;
+          stampRecon = true;
           r.changed.push(f);
           r.diff!.push({ field: f, from: prev, to: next });
+        }
+
+        // ---- party / vendor display name (non-trigger-locked) ----------
+        if (e.partyName !== undefined) {
+          const next = String(e.partyName).trim();
+          const prev = fieldText(row.party_name);
+          if (next && next !== prev) {
+            params.push(next);
+            sets.push(`party_name = $${params.length}`);
+            wroteAnything = true;
+            r.changed.push('party_name');
+            r.diff!.push({ field: 'party_name', from: prev, to: next });
+          }
         }
 
         // ---- e-invoice / e-way bill ------------------------------------
@@ -1503,7 +1518,7 @@ export async function applyEdits(
           }
           await writeAudit(c, {
             changedBy: opts.by,
-            action: (RECON_FIELDS as readonly string[]).includes(d.field)
+            action: ((RECON_FIELDS as readonly string[]).includes(d.field) || d.field === 'party_name')
               ? 'EDIT'
               : (E_DOC_FIELDS as readonly string[]).includes(d.field)
                 ? 'E DOC'
@@ -1548,7 +1563,7 @@ export async function applyEdits(
 export async function updateRecon(
   lineId: number,
   patch: Partial<Record<ReconField, string>>,
-  opts: { changedBy: string; reason?: string },
+  opts: { changedBy: string; reason?: string; partyName?: string; remarks?: string },
 ): Promise<EditResult> {
   const out: EditResult = { ok: false, changed: [] };
 
@@ -1565,7 +1580,14 @@ export async function updateRecon(
     }
   }
 
-  const bulk = await applyEdits([{ lineId, recon: patch }], { by: opts.changedBy, reason: opts.reason, atomic: true });
+  const edit: LineEdit = {
+    lineId,
+    ...(Object.keys(patch).length ? { recon: patch } : {}),
+    ...(opts.partyName !== undefined ? { partyName: opts.partyName } : {}),
+    ...(opts.remarks !== undefined ? { followUp: { remarks: opts.remarks } } : {}),
+  };
+
+  const bulk = await applyEdits([edit], { by: opts.changedBy, reason: opts.reason, atomic: true });
   const row = bulk.rows[0];
   out.ok = bulk.ok && !!row?.ok;
   out.changed = row?.changed ?? [];

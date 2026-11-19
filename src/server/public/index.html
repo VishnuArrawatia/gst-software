@@ -1074,6 +1074,70 @@ tr.clickable { cursor: default; }
 [data-theme="dark"] .cal-badge.duesoon { background: #78350f; color: #fde68a; border-color: #92400e; }
 [data-theme="dark"] .cal-badge.normal { background: #064e3b; color: #6ee7b7; border-color: #047857; }
 
+/* ---- Easy Matching Workspace, Sticky Actions & Side-by-Side Book Editor ---- */
+.recon-tabs {
+  display: flex; flex-wrap: wrap; gap: 7px; margin: 12px 0 10px;
+}
+.recon-tab {
+  background: var(--panel-3); color: var(--text-2); border: 1px solid var(--line);
+  border-radius: 999px; padding: 6px 13px; cursor: pointer; font: inherit;
+  font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;
+  transition: all 0.14s ease; box-shadow: none;
+}
+.recon-tab:hover { color: var(--text); border-color: var(--accent); transform: translateY(-1px); }
+.recon-tab.active {
+  background: var(--accent-grad); color: #fff; border-color: transparent;
+  box-shadow: 0 4px 12px -4px rgba(79, 70, 229, 0.45);
+}
+.recon-tab .rt-cnt {
+  padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 700;
+  background: rgba(15, 23, 42, 0.08);
+}
+[data-theme="dark"] .recon-tab .rt-cnt { background: rgba(255, 255, 255, 0.12); }
+.recon-tab.active .rt-cnt { background: rgba(255, 255, 255, 0.24); color: #fff; }
+.recon-tab.warn-tab .rt-cnt { background: var(--warn-soft); color: var(--warn-text); }
+.recon-tab.bad-tab .rt-cnt { background: var(--bad-soft); color: var(--bad-text); }
+.recon-tab.good-tab .rt-cnt { background: var(--good-soft); color: var(--good-text); }
+.recon-tab.active .rt-cnt { background: rgba(255, 255, 255, 0.24); color: #fff; }
+
+th.recon-sticky-act, td.recon-sticky-act {
+  position: sticky; right: 0; z-index: 2;
+  background: var(--panel);
+  box-shadow: -6px 0 12px -4px rgba(15, 23, 42, 0.08);
+  border-left: 1px solid var(--line);
+}
+thead th.recon-sticky-act { background: var(--thead-bg); z-index: 3; }
+tbody tr:nth-child(even) td.recon-sticky-act { background: var(--panel); }
+tbody tr:hover td.recon-sticky-act { background: var(--panel-3); }
+[data-theme="dark"] th.recon-sticky-act,
+[data-theme="dark"] td.recon-sticky-act {
+  box-shadow: -6px 0 14px -4px rgba(0, 0, 0, 0.45);
+}
+
+.eb-compare-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px; margin-bottom: 14px;
+}
+.eb-box {
+  background: var(--panel-3); border: 1px solid var(--line); border-radius: 12px;
+  padding: 12px 14px; font-size: 12.5px; line-height: 1.5;
+}
+.eb-box.twob { border-left: 4px solid #2563eb; }
+.eb-box.book { border-left: 4px solid var(--muted); }
+.eb-box-title {
+  font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--muted); margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;
+}
+.eb-form-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+.eb-form-grid label { display: block; font-size: 11.5px; font-weight: 700; color: var(--text-2); margin-bottom: 4px; }
+.eb-form-grid input, .eb-form-grid select { width: 100%; }
+.recon-toolbar-btn.open {
+  background: var(--accent-soft); color: var(--accent); border-color: var(--accent);
+}
+
 /* ------------------------------------------------------------------ print */
 @media print {
   .sidebar, header.topbar, nav, .toast, .login-hero, button { display: none !important; }
@@ -1972,26 +2036,28 @@ tr.clickable { cursor: default; }
 
     <!-- ============================= PURCHASE REGISTER ===================== -->
     <section class="view" id="viewPurchase" hidden>
-      <!-- ====== MULTI-MONTH & MULTI-GSTIN SCOPE CONTROL BAR (Master Prompt §2, §3, §6) ====== -->
+      <!-- ====== MULTI-MONTH & MULTI-GSTIN SCOPE & QUICK WORKSPACE BAR ====== -->
       <div class="card" style="border-left:4px solid #1a73e8;background:linear-gradient(135deg,#f8fbff 0%,#ffffff 100%)">
         <div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
           <div>
-            <h2 style="margin:0;color:#0f2942">Purchase Register vs GSTR-2B — Multi-Month &amp; Cross-FY Reconciliation Suite</h2>
+            <h2 style="margin:0;color:#0f2942">GSTR-2B vs Books — Invoice-to-Invoice Matching Workspace</h2>
             <div class="hint" style="margin-top:4px">
-              <b>🔒 GSTR-2B Portal Source is 100% Immutable (Read-Only):</b> Portal invoice no, date, GSTIN &amp; tax values are never modified. All manual &amp; auto corrections happen strictly on <b>Books Reconciliation Columns</b> with full audit trail.
+              <b>🔒 Original Books &amp; GSTR-2B 100% Immutable:</b> Mismatched ya missing entry par sidha <b>✏️ Edit Book</b> ya <b>🔗 Match 2B</b> dabayein — sirf reconciliation columns update hote hain, audit trail ke saath.
             </div>
           </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <span class="pill good">🔒 GSTR-2B Immutable</span>
-            <span class="pill info">✏️ Books-Only Recon Override</span>
-            <span class="pill warn">±Sign: Inv/DN (+) · CN (−)</span>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <button type="button" class="sm" onclick="rerunMonth()" style="background:#2563eb;color:#fff">▶ Run Reconciliation</button>
+            <button type="button" class="ghost sm recon-toolbar-btn" id="btnToggleReconUpload" onclick="toggleReconDrawer('reconUploadDrawer','btnToggleReconUpload')">📤 Upload Purchase / 2B</button>
+            <button type="button" class="ghost sm recon-toolbar-btn" id="btnToggleReconCfg" onclick="toggleReconDrawer('reconConfigDrawer','btnToggleReconCfg')">⚙️ Match Settings (<span id="reconCfgBadge">Tol ₹2 · Any date</span>)</button>
+            <button type="button" class="ghost sm recon-toolbar-btn" id="btnToggleRecon3b" onclick="toggleReconDrawer('recon3bDrawer','btnToggleRecon3b')">📊 GSTR-3B ITC</button>
+            <button type="button" class="ghost sm recon-toolbar-btn" id="btnToggleReconHelp" onclick="toggleReconDrawer('reconHelpDrawer','btnToggleReconHelp')">📘 Guide &amp; Rules</button>
           </div>
         </div>
 
-        <div class="row" style="margin-top:14px;padding-top:12px;border-top:1px solid #e2e8f0;align-items:flex-end;flex-wrap:wrap;gap:14px">
+        <div class="row" style="margin-top:12px;padding-top:10px;border-top:1px solid #e2e8f0;align-items:flex-end;flex-wrap:wrap;gap:12px">
           <div>
             <label for="reconPeriodMode">Period Selection Mode (§3)</label>
-            <select id="reconPeriodMode" onchange="setReconPeriodMode(this.value)" style="min-width:230px;font-weight:600">
+            <select id="reconPeriodMode" onchange="setReconPeriodMode(this.value)" style="min-width:220px;font-weight:600">
               <option value="single">A. Single Month (Header Month)</option>
               <option value="range">B. Continuous Month Range (From → To)</option>
               <option value="multi">C. Multiple Selected Months (Custom Pick)</option>
@@ -2009,7 +2075,7 @@ tr.clickable { cursor: default; }
           </div>
           <div>
             <label for="reconGstinScope">GST Registration Scope (§2)</label>
-            <select id="reconGstinScope" onchange="applyReconPeriodScope()" style="min-width:260px;font-weight:600">
+            <select id="reconGstinScope" onchange="applyReconPeriodScope()" style="min-width:240px;font-weight:600">
               <option value="single">Single Selected GSTIN (Separate View)</option>
               <option value="ALL">Consolidated Multi-GSTIN View (All Registrations)</option>
             </select>
@@ -2030,182 +2096,187 @@ tr.clickable { cursor: default; }
         </div>
       </div>
 
-      <!-- ============ HOW RECONCILIATION WORKS (CLEAR-TAX STEPPER) ============ -->
-      <div class="reco-workflow-card">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
-          <div>
-            <h2 style="margin:0;font-size:16.5px;color:var(--text)">How the reconciliation works</h2>
-            <div style="font-size:12px;color:var(--muted);margin-top:2px">A practical view of what happens between file upload and the final workpaper.</div>
-          </div>
-          <button type="button" class="ghost sm" onclick="el('recoWorkflowCollapse').hidden = !el('recoWorkflowCollapse').hidden">Toggle Guide</button>
-        </div>
-        <div id="recoWorkflowCollapse">
-          <div class="reco-workflow-steps">
-            <div class="reco-wf-step">
-              <div style="display:flex;align-items:center;gap:8px">
-                <span class="reco-wf-num">1</span>
-                <span class="reco-wf-title">Source records are read</span>
-              </div>
-              <div class="reco-wf-desc">The tool reads the uploaded Purchase Register, DN/CN and GSTR-2B workbooks and identifies the relevant transaction table or sheets.</div>
-              <ul class="reco-wf-list">
-                <li>Supplier GSTIN &amp; Our GSTIN</li>
-                <li>Invoice / document number</li>
-                <li>Document type and date</li>
-                <li>Taxable value and GST components</li>
-              </ul>
+      <!-- ============ COLLAPSIBLE GUIDE & RULES DRAWER ============ -->
+      <div id="reconHelpDrawer" hidden>
+        <div class="reco-workflow-card">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+            <div>
+              <h2 style="margin:0;font-size:16.5px;color:var(--text)">How the reconciliation works</h2>
+              <div style="font-size:12px;color:var(--muted);margin-top:2px">A practical view of what happens between file upload and the final workpaper.</div>
             </div>
-            <div class="reco-wf-step">
-              <div style="display:flex;align-items:center;gap:8px">
-                <span class="reco-wf-num">2</span>
-                <span class="reco-wf-title">Records are compared</span>
+            <button type="button" class="ghost sm" onclick="el('recoWorkflowCollapse').hidden = !el('recoWorkflowCollapse').hidden">Toggle Guide</button>
+          </div>
+          <div id="recoWorkflowCollapse" hidden>
+            <div class="reco-workflow-steps">
+              <div class="reco-wf-step">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span class="reco-wf-num">1</span>
+                  <span class="reco-wf-title">Source records are read</span>
+                </div>
+                <div class="reco-wf-desc">The tool reads the uploaded Purchase Register, DN/CN and GSTR-2B workbooks and identifies the relevant transaction table or sheets.</div>
+                <ul class="reco-wf-list">
+                  <li>Supplier GSTIN &amp; Our GSTIN</li>
+                  <li>Invoice / document number</li>
+                  <li>Document type and date</li>
+                  <li>Taxable value and GST components</li>
+                </ul>
               </div>
-              <div class="reco-wf-desc">Invoice-level candidates are evaluated using supplier GSTIN, normalised document numbers, document type, dates and configured value/tax tolerances.</div>
-              <ul class="reco-wf-list">
-                <li>Exact / strong matches</li>
-                <li>Partial or probable relationships</li>
-                <li>Missing-side records (2B or Books)</li>
-                <li>Duplicate protection across batches</li>
-              </ul>
-            </div>
-            <div class="reco-wf-step">
-              <div style="display:flex;align-items:center;gap:8px">
-                <span class="reco-wf-num">3</span>
-                <span class="reco-wf-title">Exceptions become actionable</span>
+              <div class="reco-wf-step">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span class="reco-wf-num">2</span>
+                  <span class="reco-wf-title">Records are compared</span>
+                </div>
+                <div class="reco-wf-desc">Invoice-level candidates are evaluated using supplier GSTIN, normalised document numbers, document type, dates and configured value/tax tolerances.</div>
+                <ul class="reco-wf-list">
+                  <li>Exact / strong matches</li>
+                  <li>Partial or probable relationships</li>
+                  <li>Missing-side records (2B or Books)</li>
+                  <li>Duplicate protection across batches</li>
+                </ul>
               </div>
-              <div class="reco-wf-desc">Instead of only showing a match percentage, the result separates records into categories that can be reviewed by accounts and tax teams.</div>
-              <ul class="reco-wf-list">
-                <li>Vendor follow-up &amp; delay notices</li>
-                <li>Book correction review (Books-only)</li>
-                <li>GSTR-2B timing checks</li>
-                <li>Supporting-document review</li>
-              </ul>
+              <div class="reco-wf-step">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span class="reco-wf-num">3</span>
+                  <span class="reco-wf-title">Exceptions become actionable</span>
+                </div>
+                <div class="reco-wf-desc">Instead of only showing a match percentage, the result separates records into categories that can be reviewed by accounts and tax teams.</div>
+                <ul class="reco-wf-list">
+                  <li>Vendor follow-up &amp; delay notices</li>
+                  <li>Book correction review (Books-only)</li>
+                  <li>GSTR-2B timing checks</li>
+                  <li>Supporting-document review</li>
+                </ul>
+              </div>
+            </div>
+            <div class="reco-decision-point">
+              <b>Important decision point:</b> GSTR-2B is a static, auto-drafted ITC statement. Reconciliation is a control over differences; it does not by itself establish that every credit is legally eligible. Final ITC decisions should consider the GST law, invoice/supporting documents, reversals and other applicable conditions.
             </div>
           </div>
-          <div class="reco-decision-point">
-            <b>Important decision point:</b> GSTR-2B is a static, auto-drafted ITC statement. Reconciliation is a control over differences; it does not by itself establish that every credit is legally eligible. Final ITC decisions should consider the GST law, invoice/supporting documents, reversals and other applicable conditions.
+        </div>
+
+        <div class="reco-resources-card">
+          <div class="reco-resources-title">Practical GST ITC reconciliation resources</div>
+          <div class="reco-resources-sub">After completing the reconciliation, use the related GST learning resources and statutory rules to understand the treatment of unmatched ITC and the next compliance step:</div>
+          <div class="reco-resources-strip">
+            <button type="button" class="reco-resource-pill" onclick="go('home'); switchGenTab('conflicts')">GSTR-3B vs GSTR-1 vs GSTR-2B Reconciliation</button>
+            <button type="button" class="reco-resource-pill" onclick="filterReconStatus('Missing in 2B')">ITC Not Appearing in GSTR-2B</button>
+            <button type="button" class="reco-resource-pill" onclick="openGstRuleModal('rule37a')">Rule 37A ITC Reversal &amp; Re-availment</button>
+            <button type="button" class="reco-resource-pill" onclick="openGstRuleModal('rule37')">180-Day ITC Payment Rule (Rule 37)</button>
+            <button type="button" class="reco-resource-pill" onclick="filterReconStatus('ITC Blocked')">Blocked ITC under Section 17(5)</button>
+            <button type="button" class="reco-resource-pill" onclick="window.open('https://gstreconciliation.in/gst-act.html', '_blank')" style="background:#eff6ff;color:#1e40af;border-color:#93c5fd" title="Open Official CGST Act &amp; Rules Library">⚖️ GST Legal Library | CGST Act &amp; Rules &nearr;</button>
+            <button type="button" class="reco-resource-pill" onclick="openGstCalendarModal()" style="background:#ecfdf5;color:#047857;border-color:#a7f3d0" title="Open GST Compliance Deadlines Calendar">📅 GST Compliance Calendar</button>
           </div>
         </div>
       </div>
 
-      <!-- ============ MATCHING CONFIGURATION (Image 3) ============ -->
-      <div class="matching-config-bar">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
-          <div>
-            <div class="matching-config-title">Matching Configuration</div>
-            <div class="matching-config-sub">Set the tolerance and date window used by the reconciliation engine.</div>
+      <!-- ============ COLLAPSIBLE MATCHING CONFIGURATION DRAWER ============ -->
+      <div id="reconConfigDrawer" hidden>
+        <div class="matching-config-bar">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+            <div>
+              <div class="matching-config-title">Matching Configuration</div>
+              <div class="matching-config-sub">Set the tolerance and date window used by the reconciliation engine.</div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button type="button" class="sm" onclick="rerunMonth()" style="background:#2563eb;color:#fff">▶ Run Reconciliation</button>
+              <button type="button" class="ghost sm" onclick="resetMatchingConfig()">↺ Reset</button>
+            </div>
           </div>
-          <div style="display:flex;gap:8px">
-            <button type="button" class="sm" onclick="rerunMonth()" style="background:#2563eb;color:#fff">▶ Run Reconciliation</button>
-            <button type="button" class="ghost sm" onclick="resetMatchingConfig()">↺ Reset</button>
-          </div>
-        </div>
-        <div class="matching-config-inputs">
-          <div>
-            <label for="cfgTaxTolerance">Tax amount tolerance (₹)</label>
-            <input type="number" id="cfgTaxTolerance" value="2" min="0" max="100" style="width:110px" />
-          </div>
-          <div>
-            <label for="cfgDateMatching">Invoice date matching</label>
-            <select id="cfgDateMatching" style="min-width:190px">
-              <option value="any" selected>Any date (Prefer closest)</option>
-              <option value="exact">Exact date</option>
-              <option value="2days">&plusmn;2 days window</option>
-              <option value="5days">&plusmn;5 days window</option>
-              <option value="month">Same month</option>
-            </select>
-          </div>
-          <div>
-            <label for="cfgInvMatching">Invoice number</label>
-            <input type="text" id="cfgInvMatching" value="Enabled" readonly style="width:120px;background:var(--panel-3);color:var(--text)" />
-          </div>
-          <div>
-            <label for="cfgGstinMatching">Supplier GSTIN</label>
-            <input type="text" id="cfgGstinMatching" value="Enabled" readonly style="width:120px;background:var(--panel-3);color:var(--text)" />
-          </div>
-          <div style="font-size:11px;color:var(--muted);align-self:center;margin-top:16px">
-            The configured tolerance is applied to taxable value and individual GST components. Date matching is controlled separately.
+          <div class="matching-config-inputs">
+            <div>
+              <label for="cfgTaxTolerance">Tax amount tolerance (₹)</label>
+              <input type="number" id="cfgTaxTolerance" value="2" min="0" max="100" style="width:110px" onchange="updateReconCfgBadge()" />
+            </div>
+            <div>
+              <label for="cfgDateMatching">Invoice date matching</label>
+              <select id="cfgDateMatching" style="min-width:190px" onchange="updateReconCfgBadge()">
+                <option value="any" selected>Any date (Prefer closest)</option>
+                <option value="exact">Exact date</option>
+                <option value="2days">&plusmn;2 days window</option>
+                <option value="5days">&plusmn;5 days window</option>
+                <option value="month">Same month</option>
+              </select>
+            </div>
+            <div>
+              <label for="cfgInvMatching">Invoice number</label>
+              <input type="text" id="cfgInvMatching" value="Enabled" readonly style="width:120px;background:var(--panel-3);color:var(--text)" />
+            </div>
+            <div>
+              <label for="cfgGstinMatching">Supplier GSTIN</label>
+              <input type="text" id="cfgGstinMatching" value="Enabled" readonly style="width:120px;background:var(--panel-3);color:var(--text)" />
+            </div>
+            <div style="font-size:11px;color:var(--muted);align-self:center;margin-top:16px">
+              The configured tolerance is applied to taxable value and individual GST components. Date matching is controlled separately.
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- ============ PRACTICAL GST ITC RECONCILIATION RESOURCES (Image 1) ============ -->
-      <div class="reco-resources-card">
-        <div class="reco-resources-title">Practical GST ITC reconciliation resources</div>
-        <div class="reco-resources-sub">After completing the reconciliation, use the related GST learning resources and statutory rules to understand the treatment of unmatched ITC and the next compliance step:</div>
-        <div class="reco-resources-strip">
-          <button type="button" class="reco-resource-pill" onclick="go('home'); switchGenTab('conflicts')">GSTR-3B vs GSTR-1 vs GSTR-2B Reconciliation</button>
-          <button type="button" class="reco-resource-pill" onclick="filterReconStatus('Missing in 2B')">ITC Not Appearing in GSTR-2B</button>
-          <button type="button" class="reco-resource-pill" onclick="openGstRuleModal('rule37a')">Rule 37A ITC Reversal &amp; Re-availment</button>
-          <button type="button" class="reco-resource-pill" onclick="openGstRuleModal('rule37')">180-Day ITC Payment Rule (Rule 37)</button>
-          <button type="button" class="reco-resource-pill" onclick="filterReconStatus('ITC Blocked')">Blocked ITC under Section 17(5)</button>
-          <button type="button" class="reco-resource-pill" onclick="window.open('https://gstreconciliation.in/gst-act.html', '_blank')" style="background:#eff6ff;color:#1e40af;border-color:#93c5fd" title="Open Official CGST Act &amp; Rules Library">⚖️ GST Legal Library | CGST Act &amp; Rules &nearr;</button>
-          <button type="button" class="reco-resource-pill" onclick="openGstCalendarModal()" style="background:#ecfdf5;color:#047857;border-color:#a7f3d0" title="Open GST Compliance Deadlines Calendar">📅 GST Compliance Calendar</button>
-        </div>
-      </div>
-
-      <div class="card">
-        <h2>Purchase register, Debit Note &amp; Credit Note upload — ITC Books side (§3, §4, §5)</h2>
-        <div class="hint">
-          Supports <b>Single-month</b> or <b>Multi-month</b> Purchase Register, <b>Separate Debit Note Register (+)</b>, <b>Separate Credit Note Register (−)</b>, or <b>Combined Register</b>, and <b>Multiple files in one batch</b>. Original source values are preserved and sign is applied once automatically.
-        </div>
-        <div class="row" style="margin-top:12px">
-          <button class="ghost" onclick="download('/api/template/purchase-register.xlsx','Purchase Register Template.xlsx')">Purchase template (.xlsx)</button>
-          <button class="ghost" onclick="download('/api/template/purchase-register.csv','Purchase Register Template.csv')">Purchase template (.csv)</button>
-          <button class="ghost" onclick="downloadTwobRecon(false)">2B vs Books reco sheet (.xlsx)</button>
-          <button class="ghost" onclick="downloadTwobRecon(true)">Blank reco template (.xlsx)</button>
-        </div>
-
-        <!-- Pre-Import Authorized Mapping & Separate DN/CN Register Bar -->
-        <div class="row" style="margin-top:12px;padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;gap:14px;flex-wrap:wrap">
-          <div>
-            <label for="purForceDocType">Register / Document Type Mode (§5)</label>
-            <select id="purForceDocType" style="min-width:250px">
-              <option value="">Auto-Detect from File (Combined Invoice / DN / CN)</option>
-              <option value="Tax Invoice">Separate Tax Invoice Register (+ Positive)</option>
-              <option value="Debit Note">Separate Debit Note Register (+ Positive)</option>
-              <option value="Credit Note">Separate Credit Note Register (− Negative)</option>
-            </select>
+      <!-- ============ COLLAPSIBLE PURCHASE & GSTR-2B UPLOAD DRAWER ============ -->
+      <div id="reconUploadDrawer" hidden>
+        <div class="card">
+          <h2>Purchase register, Debit Note &amp; Credit Note upload — ITC Books side (§3, §4, §5)</h2>
+          <div class="hint">
+            Supports <b>Single-month</b> or <b>Multi-month</b> Purchase Register, <b>Separate Debit Note Register (+)</b>, <b>Separate Credit Note Register (−)</b>, or <b>Combined Register</b>, and <b>Multiple files in one batch</b>. Original source values are preserved and sign is applied once automatically.
           </div>
-          <div>
-            <label for="purFallbackGstin">Default / Fallback Our GSTIN (if blank in file)</label>
-            <input type="text" id="purFallbackGstin" placeholder="26AALCS9985J1ZC" style="min-width:190px;font-family:monospace" />
+          <div class="row" style="margin-top:12px">
+            <button class="ghost" onclick="download('/api/template/purchase-register.xlsx','Purchase Register Template.xlsx')">Purchase template (.xlsx)</button>
+            <button class="ghost" onclick="download('/api/template/purchase-register.csv','Purchase Register Template.csv')">Purchase template (.csv)</button>
+            <button class="ghost" onclick="downloadTwobRecon(false)">2B vs Books reco sheet (.xlsx)</button>
+            <button class="ghost" onclick="downloadTwobRecon(true)">Blank reco template (.xlsx)</button>
           </div>
-          <div>
-            <label for="purOverridePeriod">Optional Period Override (leave blank for Auto-Detect)</label>
-            <input type="text" id="purOverridePeriod" placeholder="Auto from Document Date" style="min-width:180px" />
-          </div>
-        </div>
 
-        <div class="drop" id="purchaseDrop" style="margin-top:14px">
-          Drop one or multiple Purchase / DN / CN register files (.xlsx/.xlsm/.xlsb/.csv) here
-          <div class="hint">or click to choose single or multiple files</div>
-          <input type="file" id="purchaseFile" hidden multiple accept=".xlsx,.xlsm,.xlsb,.xls,.csv" />
+          <div class="row" style="margin-top:12px;padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;gap:14px;flex-wrap:wrap">
+            <div>
+              <label for="purForceDocType">Register / Document Type Mode (§5)</label>
+              <select id="purForceDocType" style="min-width:250px">
+                <option value="">Auto-Detect from File (Combined Invoice / DN / CN)</option>
+                <option value="Tax Invoice">Separate Tax Invoice Register (+ Positive)</option>
+                <option value="Debit Note">Separate Debit Note Register (+ Positive)</option>
+                <option value="Credit Note">Separate Credit Note Register (− Negative)</option>
+              </select>
+            </div>
+            <div>
+              <label for="purFallbackGstin">Default / Fallback Our GSTIN (if blank in file)</label>
+              <input type="text" id="purFallbackGstin" placeholder="26AALCS9985J1ZC" style="min-width:190px;font-family:monospace" />
+            </div>
+            <div>
+              <label for="purOverridePeriod">Optional Period Override (leave blank for Auto-Detect)</label>
+              <input type="text" id="purOverridePeriod" placeholder="Auto from Document Date" style="min-width:180px" />
+            </div>
+          </div>
+
+          <div class="drop" id="purchaseDrop" style="margin-top:14px">
+            Drop one or multiple Purchase / DN / CN register files (.xlsx/.xlsm/.xlsb/.csv) here
+            <div class="hint">or click to choose single or multiple files</div>
+            <input type="file" id="purchaseFile" hidden multiple accept=".xlsx,.xlsm,.xlsb,.xls,.csv" />
+          </div>
+          <div class="row" style="margin-top:12px">
+            <button onclick="purchaseImport()">Upload &amp; Reconcile Purchase Register</button>
+            <button class="ghost" onclick="purchasePreview()">Preview file(s)</button>
+            <button class="ghost" id="purchaseImportBtn" onclick="purchaseImport()">Confirm import &amp; reconcile</button>
+            <span class="hint" id="purchaseMsg" style="flex:1;min-width:200px"></span>
+          </div>
         </div>
-        <div class="row" style="margin-top:12px">
-          <button onclick="purchaseImport()">Upload &amp; Reconcile Purchase Register</button>
-          <button class="ghost" onclick="purchasePreview()">Preview file(s)</button>
-          <button class="ghost" id="purchaseImportBtn" onclick="purchaseImport()">Confirm import &amp; reconcile</button>
-          <span class="hint" id="purchaseMsg" style="flex:1;min-width:200px"></span>
+        <div class="card" id="purchasePreviewCard" style="display:none">
+          <h2>Purchase register preview (Auto-detected Periods, GSTINs, Sign &amp; Validation)</h2>
+          <div id="purchasePreview"></div>
         </div>
-      </div>
-      <div class="card" id="purchasePreviewCard" style="display:none">
-        <h2>Purchase register preview (Auto-detected Periods, GSTINs, Sign &amp; Validation)</h2>
-        <div id="purchasePreview"></div>
-      </div>
-      <div class="card">
-        <h2>GSTR-2B file(s) — Single or Multiple Portal JSON, CSV or Excel (§3, §6)</h2>
-        <div class="hint">
-          Upload one or multiple GSTR-2B files downloaded from the GST Portal — <b>.json</b> (original portal format),
-          <b>.csv</b> or <b>.xlsx</b> covering single or multiple months. Original GSTR-2B records are stored <b>100% immutable</b> and immediately reconciled against Books across months.
+        <div class="card">
+          <h2>GSTR-2B file(s) — Single or Multiple Portal JSON, CSV or Excel (§3, §6)</h2>
+          <div class="hint">
+            Upload one or multiple GSTR-2B files downloaded from the GST Portal — <b>.json</b> (original portal format),
+            <b>.csv</b> or <b>.xlsx</b> covering single or multiple months. Original GSTR-2B records are stored <b>100% immutable</b> and immediately reconciled against Books across months.
+          </div>
+          <div class="row" style="margin-top:12px">
+            <div><label for="twobFile">GSTR-2B file(s) (.json/.csv/.xlsx — multiple allowed)</label><input type="file" id="twobFile" multiple accept=".json,.csv,.xlsx,.xlsm,.xlsb,.xls" onchange="preview2b()" /></div>
+            <button onclick="upload2b(true)">Upload + reconcile</button>
+            <button class="ghost" onclick="preview2b()">Preview 2B file(s)</button>
+            <button class="ghost" onclick="upload2b(false)">Upload only</button>
+            <span class="hint" id="twobMsg" style="flex:1;min-width:200px"></span>
+          </div>
+          <div id="twobPreviewBox" style="margin-top:12px;display:none"></div>
         </div>
-        <div class="row" style="margin-top:12px">
-          <div><label for="twobFile">GSTR-2B file(s) (.json/.csv/.xlsx — multiple allowed)</label><input type="file" id="twobFile" multiple accept=".json,.csv,.xlsx,.xlsm,.xlsb,.xls" onchange="preview2b()" /></div>
-          <button onclick="upload2b(true)">Upload + reconcile</button>
-          <button class="ghost" onclick="preview2b()">Preview 2B file(s)</button>
-          <button class="ghost" onclick="upload2b(false)">Upload only</button>
-          <span class="hint" id="twobMsg" style="flex:1;min-width:200px"></span>
-        </div>
-        <div id="twobPreviewBox" style="margin-top:12px;display:none"></div>
       </div>
 
       <!-- ============ SEPARATE GSTIN-WISE BREAKDOWN (Master Prompt §2) ========= -->
@@ -2215,39 +2286,47 @@ tr.clickable { cursor: default; }
         <div class="scroll" style="margin-top:10px"><table id="reconGstinBreakdownTable"></table></div>
       </div>
 
-      <!-- ============ INVOICE-LEVEL RECONCILIATION (books vs 2B) ========= -->
-      <div class="card">
-        <h2>GSTR-3B Table 4 — Input Credit (ITC) Live Scorecard (Bill-to-Bill Roll-up)</h2>
-        <div class="hint">
-          Live GSTR-3B Table 4 calculation derived from each bill's <b>ITC Decision</b> in Purchase Register vs GSTR-2B.
-          Clicking <b>Auto-Apply 3B ITC Decisions</b> sets Matched bills to <code>4(A)(5) Claim Now</code>, Missing in 2B bills to <code>Carry Forward (Hold)</code>, and Sec 17(5) bills to <code>4(B)(1) Blocked</code>.
+      <!-- ============ COLLAPSIBLE GSTR-3B TABLE 4 SCORECARD ========= -->
+      <div id="recon3bDrawer" hidden>
+        <div class="card">
+          <h2>GSTR-3B Table 4 — Input Credit (ITC) Live Scorecard (Bill-to-Bill Roll-up)</h2>
+          <div class="hint">
+            Live GSTR-3B Table 4 calculation derived from each bill's <b>ITC Decision</b> in Purchase Register vs GSTR-2B.
+            Clicking <b>Auto-Apply 3B ITC Decisions</b> sets Matched bills to <code>4(A)(5) Claim Now</code>, Missing in 2B bills to <code>Carry Forward (Hold)</code>, and Sec 17(5) bills to <code>4(B)(1) Blocked</code>.
+          </div>
+          <div class="row" style="margin-top:10px">
+            <button onclick="autoDecideItc()">Auto-Apply 3B ITC Decisions (Bill-to-Bill)</button>
+            <button class="ghost" onclick="autoLinkProbable2b()">🔗 Auto-Link Probable 2B Bills (Books-Only)</button>
+            <button class="ghost" onclick="downloadTwobRecon(false)">Download 2B vs Books Bill-to-Bill Sheet (.xlsx)</button>
+            <button class="ghost" onclick="shareWhatsAppSummary('purchase')">📲 Send ITC Summary via WhatsApp</button>
+          </div>
+          <div class="tiles" id="gstr3bItcTiles" style="margin-top:12px"></div>
         </div>
-        <div class="row" style="margin-top:10px">
-          <button onclick="autoDecideItc()">Auto-Apply 3B ITC Decisions (Bill-to-Bill)</button>
-          <button class="ghost" onclick="autoLinkProbable2b()">🔗 Auto-Link Probable 2B Bills (Books-Only)</button>
-          <button class="ghost" onclick="downloadTwobRecon(false)">Download 2B vs Books Bill-to-Bill Sheet (.xlsx)</button>
-          <button class="ghost" onclick="shareWhatsAppSummary('purchase')">📲 Send ITC Summary via WhatsApp</button>
-        </div>
-        <div class="tiles" id="gstr3bItcTiles" style="margin-top:12px"></div>
       </div>
 
-      <div class="card">
+      <!-- ============ MAIN INVOICE-TO-INVOICE MATCHING WORKSPACE ========= -->
+      <div class="card" id="reconDocCard">
         <div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap">
           <div>
-            <h2 style="margin:0">Purchase register vs GSTR-2B — invoice level (§6, §7 Books-Only Correction)</h2>
+            <h2 style="margin:0">Purchase register vs GSTR-2B — Invoice-to-Invoice Matching</h2>
             <div class="hint" id="reconCtx" style="margin-top:4px">&mdash;</div>
           </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
             <div style="display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden">
               <button type="button" id="btnRecoDocView" class="sm" onclick="switchRecoView('doc')" style="border-radius:0;background:#2563eb;color:#fff">📄 Document View</button>
               <button type="button" id="btnRecoVendorView" class="ghost sm" onclick="switchRecoView('vendor')" style="border-radius:0">👤 Vendor View</button>
             </div>
             <button type="button" class="ghost sm" id="btnFastEditMode" onclick="toggleReconFastEdit()">⚡ Excel Fast-Edit Mode (Books-Only)</button>
             <button type="button" class="ghost sm" onclick="autoLinkProbable2b()">🔗 Auto-Link Probable 2B Bills</button>
+            <button type="button" class="ghost sm" onclick="downloadTwobRecon(false)">⬇ Export Excel</button>
           </div>
         </div>
-        <div class="row" style="margin-top:12px;gap:10px;align-items:center;flex-wrap:wrap">
-          <button onclick="rerunMonth()">Re-reconcile active scope</button>
+
+        <!-- 1-Click Status Filter Tabs with Live Counts -->
+        <div class="recon-tabs" id="reconQuickTabs"></div>
+
+        <div class="row" style="margin-top:8px;gap:10px;align-items:center;flex-wrap:wrap">
+          <button onclick="rerunMonth()">▶ Re-reconcile</button>
           <button class="ghost" onclick="loadRecon()">Refresh</button>
           <select id="reconStatus" onchange="loadRecon()" title="Filter by match status">
             <option value="">All statuses</option>
@@ -2257,7 +2336,7 @@ tr.clickable { cursor: default; }
             <option value="Duplicate">Duplicate protection</option>
             <option value="ITC Blocked">ITC Blocked / Sec 17(5)</option>
           </select>
-          <input type="search" id="reconSearch" placeholder="Invoice no, supplier GSTIN or vendor"
+          <input type="search" id="reconSearch" placeholder="Search Invoice no, Supplier GSTIN or Vendor..."
                  style="flex:1;min-width:200px" onkeydown="if (event.key === 'Enter') loadRecon()" />
           <span class="hint" id="reconMsg" style="flex:1;min-width:160px"></span>
         </div>
@@ -2280,12 +2359,12 @@ tr.clickable { cursor: default; }
           <span id="bulkRecoCountMsg" style="font-size:11.5px;color:var(--muted)"></span>
         </div>
 
-        <div class="tiles" id="reconTiles"></div>
+        <div class="tiles" id="reconTiles" style="margin-top:12px"></div>
         <div class="scroll" id="reconDocTableWrap" style="margin-top:12px"><table id="reconTable"></table></div>
         <div class="scroll" id="reconVendorTableWrap" style="margin-top:12px;display:none"><table id="reconVendorTable"></table></div>
       </div>
 
-      <div class="card">
+      <div class="card" id="reconTwoBCard">
         <h2>In GSTR-2B, missing in Books</h2>
         <div class="hint">
           Filed by the supplier, not yet recorded in our Books. Needs invoice booking —
@@ -2670,6 +2749,83 @@ tr.clickable { cursor: default; }
 
     <div id="mmStatusMsg" class="hint" style="margin-bottom:8px"></div>
     <div class="scroll" style="max-height:380px"><table id="mmCandidatesTable"></table></div>
+  </div>
+</div>
+
+<!-- ===================== SIDE-BY-SIDE BOOK ENTRY EDIT MODAL ===================== -->
+<div class="gst-modal-backdrop" id="modalEditBookLine" style="display:none" onclick="if (event.target === this) closeEditBookModal()">
+  <div class="gst-modal-card" style="max-width:880px;width:96%">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px">
+      <div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <h2 style="margin:0;font-size:19px;color:var(--text)">✏️ Edit Book Entry — Books-Only Correction</h2>
+          <span id="ebStatusPill"></span>
+        </div>
+        <div class="hint" id="ebSubTitle" style="margin-top:4px">Edit Invoice No, Date, Party GSTIN, Our GSTIN ya Vendor Name — original Book &amp; GSTR-2B records hamesha immutable rehte hain.</div>
+      </div>
+      <button type="button" class="ghost sm" onclick="closeEditBookModal()" style="font-size:16px;padding:4px 10px">&times;</button>
+    </div>
+
+    <div class="eb-compare-grid">
+      <div class="eb-box book" id="ebOrigCard"></div>
+      <div class="eb-box twob" id="ebTwoBCard"></div>
+    </div>
+
+    <div class="eb-form-grid">
+      <div>
+        <label for="eb_inv">Invoice / Document No</label>
+        <input type="text" id="eb_inv" placeholder="e.g. INV/25-26/001" style="font-family:monospace;font-weight:600" />
+      </div>
+      <div>
+        <label for="eb_dt">Invoice Date</label>
+        <input type="date" id="eb_dt" />
+      </div>
+      <div>
+        <label for="eb_sup">Party / Supplier GSTIN <span id="eb_sup_hint" style="font-weight:500"></span></label>
+        <input type="text" id="eb_sup" maxlength="15" oninput="validateEditBookGstin()" placeholder="15-digit Supplier GSTIN" style="font-family:monospace;text-transform:uppercase" />
+      </div>
+      <div>
+        <label for="eb_our">Our GSTIN (Company Unit)</label>
+        <select id="eb_our"></select>
+      </div>
+      <div>
+        <label for="eb_party">Party / Vendor Name</label>
+        <input type="text" id="eb_party" placeholder="Vendor / Party Name" />
+      </div>
+      <div>
+        <label for="eb_itc">ITC Decision (GSTR-3B)</label>
+        <select id="eb_itc">
+          <option value="Pending Review">Pending Review</option>
+          <option value="Claim">Claim — GSTR-3B Table 4(A) me lo</option>
+          <option value="Reclaim Later">Reclaim Later — Hold for Next Month</option>
+          <option value="Query Vendor">Query Vendor — Supplier follow-up / Hold</option>
+          <option value="Ineligible">Ineligible — Sec 17(5) Blocked / Table 4(B)</option>
+          <option value="Reversed">Reversed — Reversed in Table 4(B)</option>
+          <option value="Do Not Claim">Do Not Claim — Duplicate / Exclude from 3B</option>
+        </select>
+      </div>
+      <div>
+        <label for="eb_claim">Claim Month (YYYY-MM)</label>
+        <input type="text" id="eb_claim" placeholder="YYYY-MM" />
+      </div>
+      <div>
+        <label for="eb_remarks">Remarks / Note</label>
+        <input type="text" id="eb_remarks" placeholder="Optional follow-up / note" />
+      </div>
+      <div style="grid-column:1 / -1">
+        <label for="eb_why">Audit Reason (Logged in Correction History)</label>
+        <input type="text" id="eb_why" value="Corrected Book entry for GSTR-2B matching" placeholder="e.g. Supplier invoice no / date / GSTIN corrected" />
+      </div>
+    </div>
+
+    <div id="ebMsg" class="hint" style="margin-top:10px"></div>
+
+    <div class="row" style="margin-top:14px;gap:8px;flex-wrap:wrap;align-items:center">
+      <button type="button" id="ebSaveBtn" onclick="saveEditBookModal()" style="background:#2563eb;color:#fff">💾 Save &amp; Re-Match Now</button>
+      <button type="button" class="ghost" id="ebResetBtn" onclick="resetEditBookModal()" style="display:none">↩ Reset to Original Book</button>
+      <button type="button" class="ghost" onclick="if (EDIT_BOOK.id) { const lid = EDIT_BOOK.id; closeEditBookModal(); reconHistory(lid); }">📜 Audit Log</button>
+      <button type="button" class="ghost" onclick="closeEditBookModal()" style="margin-left:auto">Cancel</button>
+    </div>
   </div>
 </div>
 
@@ -4659,7 +4815,7 @@ async function purchaseImport() {
     await loadContext();
     renderReconMultiMonthPills();
     await loadRecon();
-    const reconCard = el('gstr3bItcTiles') || el('reconTable');
+    const reconCard = el('reconDocCard') || el('gstr3bItcTiles') || el('reconTable');
     if (reconCard && reconCard.scrollIntoView) reconCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (e) {
     showInline('purchaseMsg', 'err', errText(e));
@@ -4756,7 +4912,7 @@ async function upload2b(andReconcile) {
     renderReconMultiMonthPills();
     await loadRecon();
     if (andReconcile) {
-      const reconCard = el('gstr3bItcTiles') || el('reconTable');
+      const reconCard = el('reconDocCard') || el('gstr3bItcTiles') || el('reconTable');
       if (reconCard && reconCard.scrollIntoView) reconCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
     return lastImp;
@@ -4838,6 +4994,7 @@ const RECON = {
   loaded: false,
   editing: null,
   fastEdit: false,
+  uploadOpen: undefined,
   periodMode: 'single',
   gstinScope: 'single',
   selectedMonths: [],
@@ -4903,7 +5060,7 @@ const RECON_COLS = [
   ['twob_taxable_value', '2B taxable'], ['twob_itc', '2B ITC'],
   ['taxable_difference', 'Taxable diff'], ['itc_difference', 'ITC diff'],
   ['twoB', '2B month'], ['status', 'Status'], ['itc', 'ITC decision'],
-  ['gstr3b_bucket', '3B Input Credit'], ['suggested_2b', 'Probable 2B Bill'], ['edit', ''],
+  ['gstr3b_bucket', '3B Input Credit'], ['suggested_2b', 'Probable 2B Bill'], ['edit', 'Actions'],
 ];
 
 const RECON_NUM = new Set([
@@ -4968,17 +5125,47 @@ function renderRecon() {
   }
 
   setHtml('reconTiles',
-    '<div class="tile"><div class="k">Books lines</div><div class="v">' + cnt(s.lines) + '</div></div>' +
-    '<div class="tile good"><div class="k">Matched</div><div class="v">' + cnt(by['Matched']) + '</div></div>' +
-    '<div class="tile ' + (by['Missing in 2B'] ? 'bad' : 'good') + '"><div class="k">Missing in 2B</div><div class="v">' + cnt(by['Missing in 2B']) + '</div></div>' +
-    '<div class="tile ' + (by['Amount Mismatch'] ? 'warn' : 'good') + '"><div class="k">Amount mismatch</div><div class="v">' + cnt(by['Amount Mismatch']) + '</div></div>' +
-    '<div class="tile ' + (by['Duplicate'] ? 'bad' : 'good') + '"><div class="k">Duplicate</div><div class="v">' + cnt(by['Duplicate']) + '</div></div>' +
-    '<div class="tile ' + (by['Blocked'] ? 'bad' : 'good') + '"><div class="k">ITC blocked</div><div class="v">' + cnt(by['Blocked']) + '</div></div>' +
-    '<div class="tile ' + (out.twoBTotal ? 'warn' : 'good') + '"><div class="k">2B not in books</div><div class="v">' + cnt(out.twoBTotal) + '</div></div>' +
+    '<div class="tile" style="cursor:pointer" onclick="filterReconStatus(\'\')"><div class="k">Books lines</div><div class="v">' + cnt(s.lines) + '</div></div>' +
+    '<div class="tile good" style="cursor:pointer" onclick="filterReconStatus(\'Matched\')"><div class="k">Matched</div><div class="v">' + cnt(by['Matched']) + '</div></div>' +
+    '<div class="tile ' + (by['Missing in 2B'] ? 'bad' : 'good') + '" style="cursor:pointer" onclick="filterReconStatus(\'Missing in 2B\')"><div class="k">Missing in 2B</div><div class="v">' + cnt(by['Missing in 2B']) + '</div></div>' +
+    '<div class="tile ' + (by['Amount Mismatch'] ? 'warn' : 'good') + '" style="cursor:pointer" onclick="filterReconStatus(\'Amount Mismatch\')"><div class="k">Amount mismatch</div><div class="v">' + cnt(by['Amount Mismatch']) + '</div></div>' +
+    '<div class="tile ' + (by['Duplicate'] ? 'bad' : 'good') + '" style="cursor:pointer" onclick="filterReconStatus(\'Duplicate\')"><div class="k">Duplicate</div><div class="v">' + cnt(by['Duplicate']) + '</div></div>' +
+    '<div class="tile ' + ((by['ITC Blocked'] || by['Blocked']) ? 'bad' : 'good') + '" style="cursor:pointer" onclick="filterReconStatus(\'ITC Blocked\')"><div class="k">ITC blocked</div><div class="v">' + cnt(by['ITC Blocked'] || by['Blocked']) + '</div></div>' +
+    '<div class="tile ' + (out.twoBTotal ? 'warn' : 'good') + '" style="cursor:pointer" onclick="scrollToUnbooked2b()"><div class="k">2B not in books</div><div class="v">' + cnt(out.twoBTotal) + '</div></div>' +
     '<div class="tile"><div class="k">2B lines stored</div><div class="v">' + cnt(s.twobLines) + '</div></div>' +
     '<div class="tile"><div class="k">Gross taxable</div><div class="v" style="font-size:15px">' + money(n(s.taxableGross)) + '</div></div>' +
     '<div class="tile ' + (n(s.taxableCredit) ? 'warn' : '') + '"><div class="v" style="font-size:15px">' + money(n(s.taxableCredit)) + '</div><div class="k">Credit notes (−)</div></div>' +
     '<div class="tile good"><div class="k">Net taxable</div><div class="v" style="font-size:15px">' + money(n(s.taxableNet)) + '</div></div>');
+
+  // Auto-open Upload drawer only when current scope has no Purchase lines yet (unless user manually toggled it)
+  const upDrawer = el('reconUploadDrawer');
+  const upBtn = el('btnToggleReconUpload');
+  if (upDrawer) {
+    const showUp = RECON.uploadOpen !== undefined ? RECON.uploadOpen : (Number(s.lines || 0) === 0);
+    upDrawer.hidden = !showUp;
+    if (upBtn) upBtn.classList.toggle('open', showUp);
+  }
+  updateReconCfgBadge();
+
+  // Populate 1-click Status Filter Tabs with full-scope live counts
+  const curStatusFilter = (el('reconStatus') && el('reconStatus').value) || '';
+  const blockedCnt = Number(by['ITC Blocked'] || by['Blocked'] || 0);
+  const tabDefs = [
+    ['', 'All Books', s.lines || 0, ''],
+    ['Matched', '\u2705 Matched', by['Matched'] || 0, 'good-tab'],
+    ['Amount Mismatch', '\u26a0\ufe0f Amount Mismatch', by['Amount Mismatch'] || 0, 'warn-tab'],
+    ['Missing in 2B', '\u274c Missing in 2B', by['Missing in 2B'] || 0, 'bad-tab'],
+    ['Duplicate', '\ud83d\udd01 Duplicate', by['Duplicate'] || 0, ''],
+    ['ITC Blocked', '\ud83d\udeab Blocked', blockedCnt, ''],
+  ];
+  setHtml('reconQuickTabs',
+    tabDefs.map((t) =>
+      '<button type="button" class="recon-tab ' + t[3] + (curStatusFilter === t[0] ? ' active' : '') +
+      '" onclick="filterReconStatus(\'' + t[0] + '\')">' +
+      esc(t[1]) + ' <span class="rt-cnt">' + cnt(t[2]) + '</span></button>',
+    ).join('') +
+    '<button type="button" class="recon-tab warn-tab" onclick="scrollToUnbooked2b()" title="Jump to GSTR-2B bills not yet booked in Books">' +
+    '\ud83d\udce5 Only in GSTR-2B <span class="rt-cnt">' + cnt(out.twoBTotal || 0) + '</span></button>');
 
   const g3b = out.gstr3bItc || {};
   setHtml('gstr3bItcTiles',
@@ -4992,7 +5179,7 @@ function renderRecon() {
 
   // ---- the invoice table ----
   const head = '<thead><tr>' + RECON_COLS.map((c) =>
-    '<th class="' + (RECON_NUM.has(c[0]) ? 'num' : '') + '">' + esc(c[1]) + '</th>').join('') + '</tr></thead>';
+    '<th class="' + (RECON_NUM.has(c[0]) ? 'num' : (c[0] === 'edit' ? 'recon-sticky-act' : '')) + '">' + esc(c[1]) + '</th>').join('') + '</tr></thead>';
 
   let body;
   if (!RECON.rows.length) {
@@ -5000,12 +5187,13 @@ function renderRecon() {
     const why = (RECON.data && RECON.data.total)
       ? 'No rows match this filter.'
       : twoBCnt > 0
-        ? '\u2705 GSTR-2B ke ' + cnt(twoBCnt) + ' bills is month (' + monthLabel(CTX.period) + ') me import ho chuke hain (niche "In GSTR-2B, missing in Books" table me dekhein). Is month ka Purchase Register abhi Books me upload nahi hua hai \u2014 upar Purchase Register upload karein ya top header se wo Month select karein jiska Purchase Register aapne upload kiya hai.'
-        : 'No purchase lines for this GSTIN and month. Pehle register upload karo, phir 2B, phir "Upload + reconcile".';
+        ? '\u2705 GSTR-2B ke ' + cnt(twoBCnt) + ' bills is month (' + monthLabel(CTX.period) + ') me import ho chuke hain (niche "In GSTR-2B, missing in Books" table me dekhein). Is month ka Purchase Register abhi Books me upload nahi hua hai \u2014 upar "Upload Purchase / 2B" dabayein.'
+        : 'No purchase lines for this GSTIN and month. Upar "Upload Purchase / 2B" se Register aur 2B upload karein.';
     body = '<tbody><tr><td colspan="' + RECON_COLS.length + '" class="hint">' + esc(why) + '</td></tr></tbody>';
   } else {
     body = '<tbody>' + RECON.rows.map((r) => {
       const open = String(RECON.editing) === String(r.id);
+      const isActionable = r.match_status === 'Missing in 2B' || r.match_status === 'Amount Mismatch' || r.match_status === 'Duplicate';
       const cells = RECON_COLS.map((c) => {
         const k = c[0];
         if (k === 'sel') {
@@ -5017,20 +5205,24 @@ function renderRecon() {
             ? '<button type="button" class="sm" style="background:#2563eb;color:#fff" onclick="openManualMatchModal(' + r.id + ')" title="Select &amp; link to GSTR-2B invoice">🔗 Match 2B</button>'
             : '';
           const unlinkBtn = (!locked && r.recon_edited)
-            ? '<button type="button" class="ghost sm" onclick="unlinkReconRow(' + r.id + ')" title="Unlink &amp; restore original Book values">&#8617;</button>'
+            ? '<button type="button" class="ghost sm" onclick="unlinkReconRow(' + r.id + ')" title="Reset recon override back to original Book values">&#8617;</button>'
+            : '';
+          const editBtnStyle = isActionable ? ' style="background:#f59e0b;color:#fff;font-weight:700"' : '';
+          const editBtnCls = isActionable ? 'sm' : 'ghost sm';
+          const editBtn = !locked
+            ? '<button type="button" class="' + editBtnCls + '"' + editBtnStyle + ' onclick="openEditBookModal(' + r.id + ')" title="Edit Book Inv No, Date, Party GSTIN, Our GSTIN, Vendor">✏️ Edit Book</button>'
             : '';
           if (RECON.fastEdit && !locked) {
-            return '<td class="row-actions" style="white-space:nowrap">' +
+            return '<td class="row-actions recon-sticky-act" style="white-space:nowrap">' +
               '<button type="button" class="sm" onclick="saveFastReconRow(' + r.id + ')">\ud83d\udcbe Save</button>' +
               matchBtn + unlinkBtn +
-              '<button type="button" class="ghost sm" onclick="reconEdit(' + r.id + ')">Full</button>' +
+              '<button type="button" class="ghost sm" onclick="openEditBookModal(' + r.id + ')" title="Side-by-side Full Edit Modal">Full</button>' +
               '<button type="button" class="ghost sm" onclick="reconHistory(' + r.id + ')" title="Correction history">Log</button>' +
               '</td>';
           }
-          return '<td class="row-actions" style="white-space:nowrap">' +
-            matchBtn + unlinkBtn +
-            '<button class="ghost sm" onclick="reconEdit(' + r.id + ')">Edit</button>' +
-            '<button class="ghost sm" onclick="reconHistory(' + r.id + ')" title="Correction history">Log</button>' +
+          return '<td class="row-actions recon-sticky-act" style="white-space:nowrap">' +
+            editBtn + matchBtn + unlinkBtn +
+            '<button type="button" class="ghost sm" onclick="reconHistory(' + r.id + ')" title="Correction history">Log</button>' +
             '</td>';
         }
         if (k === 'twob_doc') {
@@ -5045,16 +5237,16 @@ function renderRecon() {
         if (RECON.fastEdit && !locked) {
           if (k === 'supplier_gstin') {
             const curSup = r.recon_supplier_gstin || r.book_supplier_gstin || '';
-            return '<td><input id="fe_sup_' + r.id + '" type="text" value="' + esc(curSup) + '" style="width:142px;font-family:monospace;font-size:12px;padding:3px 6px" title="Orig Book GSTIN: ' + esc(r.book_supplier_gstin || '') + '" /></td>';
+            return '<td><input id="fe_sup_' + r.id + '" type="text" value="' + esc(curSup) + '" onkeydown="if(event.key===&quot;Enter&quot;)saveFastReconRow(' + r.id + ')" style="width:142px;font-family:monospace;font-size:12px;padding:3px 6px" title="Orig Book GSTIN: ' + esc(r.book_supplier_gstin || '') + '" /></td>';
           }
           if (k === 'invoice_no') {
             const curInv = r.recon_invoice_no || r.book_invoice_no || '';
-            return '<td><input id="fe_inv_' + r.id + '" type="text" value="' + esc(curInv) + '" style="width:130px;font-family:monospace;font-size:12px;padding:3px 6px" title="Orig Book No: ' + esc(r.book_invoice_no || '') + '" />' +
+            return '<td><input id="fe_inv_' + r.id + '" type="text" value="' + esc(curInv) + '" onkeydown="if(event.key===&quot;Enter&quot;)saveFastReconRow(' + r.id + ')" style="width:130px;font-family:monospace;font-size:12px;padding:3px 6px" title="Orig Book No: ' + esc(r.book_invoice_no || '') + '" />' +
               (r.recon_edited ? '<div class="hint" style="font-size:10px">Orig: ' + esc(r.book_invoice_no) + '</div>' : '') + '</td>';
           }
           if (k === 'invoice_date') {
             const curDt = String(r.recon_invoice_date || r.book_invoice_date || '').slice(0, 10);
-            return '<td><input id="fe_dt_' + r.id + '" type="date" value="' + esc(curDt) + '" style="width:124px;font-size:12px;padding:3px 5px" title="Orig Book Date: ' + esc(fmtDmy(r.book_invoice_date)) + '" /></td>';
+            return '<td><input id="fe_dt_' + r.id + '" type="date" value="' + esc(curDt) + '" onkeydown="if(event.key===&quot;Enter&quot;)saveFastReconRow(' + r.id + ')" style="width:124px;font-size:12px;padding:3px 5px" title="Orig Book Date: ' + esc(fmtDmy(r.book_invoice_date)) + '" /></td>';
           }
           if (k === 'itc') {
             const curDec = r.itc_decision || 'Pending Review';
@@ -5066,8 +5258,21 @@ function renderRecon() {
         }
         if (k === 'status') {
           const st = r.match_status || 'Not reconciled';
+          let subNote = '';
+          if (st === 'Amount Mismatch') {
+            const td = Number(r.taxable_difference || 0);
+            const idf = Number(r.itc_difference || 0);
+            subNote = '<div class="hint" style="font-size:10px;color:var(--warn-text)">' +
+              (Math.abs(td) > 0.01 ? 'Taxable ' + (td > 0 ? '+' : '') + money(td) : '') +
+              (Math.abs(td) > 0.01 && Math.abs(idf) > 0.01 ? ' · ' : '') +
+              (Math.abs(idf) > 0.01 ? 'ITC ' + (idf > 0 ? '+' : '') + money(idf) : '') + '</div>';
+          } else if (st === 'Missing in 2B' && r.suggested_2b_supplier_gstin &&
+            String(r.suggested_2b_supplier_gstin).toUpperCase() !== String(r.recon_supplier_gstin || r.book_supplier_gstin || '').toUpperCase()) {
+            subNote = '<div class="hint" style="font-size:10px;color:var(--warn-text)">2B GSTIN differs</div>';
+          }
           return '<td><span class="pill ' + pillClass(slug(st)) + '">' + esc(st) + '</span>' +
-            (r.recon_edited ? ' <span class="pill info" title="Books recon values were corrected (2B untouched)">edited</span>' : '') + '</td>';
+            (r.recon_edited ? ' <span class="pill info" title="Books recon values were corrected (2B untouched)">edited</span>' : '') +
+            subNote + '</td>';
         }
         if (k === 'itc') return '<td>' + (r.itc_decision ? esc(r.itc_decision) : '<span class="hint">Pending Review</span>') + '</td>';
         if (k === 'gstr3b_bucket') {
@@ -5078,8 +5283,11 @@ function renderRecon() {
         if (k === 'suggested_2b') {
           if (r.suggested_2b_invoice_no) {
             const mTag = r.suggested_2b_month ? ' [' + esc(monthLabel(r.suggested_2b_month)) + ']' : '';
-            return '<td><span class="pill warn" style="cursor:pointer" onclick="quickApplyProbable2b(' + r.id + ',\'' + esc(r.suggested_2b_invoice_no) + '\',\'' + esc(r.suggested_2b_date || '') + '\')" title="Click to apply to Books Recon columns (GSTR-2B stays immutable)">' +
-              '\u26a1 ' + esc(r.suggested_2b_invoice_no) + (r.suggested_2b_date ? ' (' + esc(fmtDmy(r.suggested_2b_date)) + ')' : '') + mTag + '</span></td>';
+            const curSup = String(r.recon_supplier_gstin || r.book_supplier_gstin || '').toUpperCase();
+            const sugSup = String(r.suggested_2b_supplier_gstin || '').toUpperCase();
+            const diffGstinTag = sugSup && sugSup !== curSup ? ' · Diff GSTIN' : '';
+            return '<td><span class="pill warn" style="cursor:pointer" onclick="quickApplyProbable2b(' + r.id + ')" title="Click to review/apply 2B details into Books Recon columns (GSTR-2B stays immutable)">' +
+              '\u26a1 ' + esc(r.suggested_2b_invoice_no) + (r.suggested_2b_date ? ' (' + esc(fmtDmy(r.suggested_2b_date)) + ')' : '') + mTag + esc(diffGstinTag) + '</span></td>';
           }
           return '<td>&mdash;</td>';
         }
@@ -5103,14 +5311,19 @@ function renderRecon() {
         }
         if (k === 'supplier_gstin') {
           const dispSup = r.recon_supplier_gstin || r.book_supplier_gstin || r.supplier_gstin;
-          return '<td>' + esc(dispSup || '') + '</td>';
+          const origSupDiff = r.recon_edited && r.book_supplier_gstin && r.book_supplier_gstin !== dispSup;
+          return '<td>' + esc(dispSup || '') +
+            (origSupDiff ? '<div class="hint" style="font-size:10px" title="Original Book Supplier GSTIN">Book: ' + esc(r.book_supplier_gstin) + '</div>' : '') + '</td>';
         }
         const v = r[k];
         return '<td>' + (v === null || v === undefined || v === '' ? '&mdash;' : esc(v)) + '</td>';
       }).join('');
       const cls = (open ? 'editing' : '') + (r.mismatch_reason || r.suggested_action ? ' clickable' : '');
-      const row = '<tr class="' + (cls || '') + '" title="' +
-        esc([r.mismatch_reason, r.suggested_action].filter(Boolean).join(' \u2014 ')) + '">' + cells + '</tr>';
+      const dbl = (!RECON.fastEdit && !locked)
+        ? ' ondblclick="if(!/BUTTON|INPUT|SELECT|A|LABEL/.test(event.target.tagName))openEditBookModal(' + r.id + ')"'
+        : '';
+      const row = '<tr class="' + (cls || '') + '"' + dbl + ' title="' +
+        esc([r.mismatch_reason, r.suggested_action, !locked ? 'Double-click to Edit Book Entry' : ''].filter(Boolean).join(' \u2014 ')) + '">' + cells + '</tr>';
       return open ? row + reconEditRow(r) : row;
     }).join('') + '</tbody>';
   }
@@ -5142,14 +5355,18 @@ function toggleReconFastEdit() {
 }
 
 async function quickApplyProbable2b(id, inv, dt) {
+  const row = RECON.rows.find((r) => String(r.id) === String(id));
+  const sInv = inv || (row && row.suggested_2b_invoice_no) || '';
+  const sDt = dt || (row && row.suggested_2b_date) || '';
+  const sSup = (row && row.suggested_2b_supplier_gstin) || '';
   if (RECON.fastEdit && el('fe_inv_' + id)) {
-    el('fe_inv_' + id).value = inv;
-    if (el('fe_dt_' + id) && dt) el('fe_dt_' + id).value = String(dt).slice(0, 10);
-    await saveFastReconRow(id, 'Matched to Probable 2B Invoice ' + inv + ' (Books-only override)');
+    if (sInv) el('fe_inv_' + id).value = sInv;
+    if (el('fe_dt_' + id) && sDt) el('fe_dt_' + id).value = String(sDt).slice(0, 10);
+    if (el('fe_sup_' + id) && sSup) el('fe_sup_' + id).value = sSup;
+    await saveFastReconRow(id, 'Matched to Probable 2B Invoice ' + sInv + ' (Books-only override)');
     return;
   }
-  reconEdit(id);
-  applyProbable2b(inv, dt);
+  openEditBookModal(id);
 }
 
 async function saveFastReconRow(id, customReason) {
@@ -5340,26 +5557,27 @@ async function reconSave(id) {
   const t3bChanged = t3b && t3b !== String(row.return_classification || 'Pending Review');
 
   if (!Object.keys(patch).length && !moves && !itcChanged && !t3bChanged) return toast('No changes made.', 'warn');
-  if ((Object.keys(patch).length || moves) && !why) return toast('Invoice/GSTIN badalne par Reason likhna zaroori hai \u2014 wahi audit trail me jaata hai.', 'err');
+  const effectiveWhy = why || 'Corrected Book entry for GSTR-2B matching';
 
   note('reconMsg', 'hint', 'saving\u2026');
   try {
     let changed = [];
     if (Object.keys(patch).length) {
       const cfg = getReconMatchingCfg();
-      const out = await postJson('/api/lines/' + id + '/recon', Object.assign({ reason: why, tolerance: cfg.tolerance, dateWindow: cfg.dateWindow }, patch));
+      const out = await postJson('/api/lines/' + id + '/recon', Object.assign({ reason: effectiveWhy, tolerance: cfg.tolerance, dateWindow: cfg.dateWindow }, patch));
       changed = changed.concat(out.changed || []);
     }
     if (moves) {
-      const out = await postJson('/api/lines/' + id + '/our-gstin', { gstin: our, reason: why });
+      const cfg = getReconMatchingCfg();
+      const out = await postJson('/api/lines/' + id + '/our-gstin', { gstin: our, reason: effectiveWhy, tolerance: cfg.tolerance, dateWindow: cfg.dateWindow });
       changed = changed.concat(out.changed || []);
     }
     if (itcChanged && itcDec) {
-      await postJson('/api/lines/' + id + '/itc', { decision: itcDec, decisionMonth: claimMo, reason: why || 'Updated from Bill-to-Bill UI' });
+      await postJson('/api/lines/' + id + '/itc', { decision: itcDec, decisionMonth: claimMo, reason: effectiveWhy });
       changed.push('itc_decision=' + itcDec);
     }
     if (t3bChanged) {
-      await postJson('/api/lines/' + id + '/classify', { value: t3b, reason: why || 'Classified from Bill-to-Bill UI' });
+      await postJson('/api/lines/' + id + '/classify', { value: t3b, reason: effectiveWhy });
       changed.push('table3b=' + t3b);
     }
     RECON.editing = null;
@@ -6402,6 +6620,7 @@ function filterReconStatus(status) {
 function resetMatchingConfig() {
   if (el('cfgTaxTolerance')) el('cfgTaxTolerance').value = '2';
   if (el('cfgDateMatching')) el('cfgDateMatching').value = 'any';
+  updateReconCfgBadge();
   toast('Matching configuration reset to defaults (\u20b92 tolerance, Any date - Prefer closest).', 'ok');
 }
 
@@ -6650,6 +6869,291 @@ async function unlinkReconRow(lineId) {
     toast(errText(e), 'err');
   }
 }
+
+// ---------------------------------------------------------------------------
+// Easy Matching Toolbar Drawers & Side-by-Side "Edit Book Entry" Modal
+// ---------------------------------------------------------------------------
+function toggleReconDrawer(drawerId, btnId) {
+  const d = el(drawerId);
+  if (!d) return;
+  d.hidden = !d.hidden;
+  const open = !d.hidden;
+  if (drawerId === 'reconUploadDrawer') RECON.uploadOpen = open;
+  if (btnId && el(btnId)) el(btnId).classList.toggle('open', open);
+  if (open && d.scrollIntoView) d.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function updateReconCfgBadge() {
+  const b = el('reconCfgBadge');
+  if (!b) return;
+  const cfg = getReconMatchingCfg();
+  const winMap = {
+    any: 'Any date',
+    exact: 'Exact date',
+    '2days': '\u00b12d',
+    '5days': '\u00b15d',
+    month: 'Same month',
+  };
+  b.textContent = 'Tol \u20b9' + cfg.tolerance + ' \u00b7 ' + (winMap[cfg.dateWindow] || cfg.dateWindow);
+}
+
+function scrollToUnbooked2b() {
+  const card = el('reconTwoBCard') || el('reconTwoBTable');
+  if (card && card.scrollIntoView) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const q = el('twobFilterQ');
+  if (q) setTimeout(() => q.focus(), 250);
+}
+
+const EDIT_BOOK = { id: null, row: null, initClaim: '' };
+
+function closeEditBookModal() {
+  const m = el('modalEditBookLine');
+  if (m) m.style.display = 'none';
+}
+
+function validateEditBookGstin() {
+  const supEl = el('eb_sup');
+  const hintEl = el('eb_sup_hint');
+  if (!supEl || !hintEl) return true;
+  const v = String(supEl.value || '').trim().toUpperCase();
+  if (!v) {
+    hintEl.textContent = '(Required)';
+    hintEl.style.color = 'var(--warn-text)';
+    return false;
+  }
+  const ok = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(v);
+  hintEl.textContent = ok ? '\u2713 Valid 15-char GSTIN' : '\u26a0 Invalid GSTIN format';
+  hintEl.style.color = ok ? 'var(--good-text)' : 'var(--bad-text)';
+  return ok;
+}
+
+function copyTwoBIntoEditBook(inv, dt, sup) {
+  if (inv && el('eb_inv')) el('eb_inv').value = inv;
+  if (dt && el('eb_dt')) el('eb_dt').value = String(dt).slice(0, 10);
+  if (sup && el('eb_sup')) {
+    el('eb_sup').value = String(sup).trim().toUpperCase();
+    validateEditBookGstin();
+  }
+  if (el('eb_why')) el('eb_why').value = 'Matched Book details with GSTR-2B (' + (inv || sup || '2B') + ')';
+  toast('GSTR-2B details copied into Book edit form \u2014 ab "Save & Re-Match Now" dabayein!', 'ok');
+}
+
+function openEditBookModal(lineId) {
+  const r = RECON.rows.find((x) => String(x.id) === String(lineId));
+  if (!r) return toast('Selected Book row not found.', 'warn');
+  const locked = reconIsLocked();
+  EDIT_BOOK.id = r.id;
+  EDIT_BOOK.row = r;
+
+  const st = r.match_status || 'Not reconciled';
+  setHtml('ebStatusPill',
+    '<span class="pill ' + pillClass(slug(st)) + '">' + esc(st) + '</span>' +
+    (r.recon_edited ? ' <span class="pill info">edited</span>' : ''));
+
+  const bookItc = r.itc_amount != null ? r.itc_amount : r.book_itc;
+  setHtml('ebOrigCard',
+    '<div class="eb-box-title"><span>Original Book Entry (Immutable)</span><span>#' + esc(r.id) + ' \u00b7 ' + esc(monthLabel(r.period)) + '</span></div>' +
+    '<div><b>Inv No:</b> <code>' + esc(r.book_invoice_no || '') + '</code> &nbsp; <b>Date:</b> ' + esc(fmtDmy(r.book_invoice_date)) + '</div>' +
+    '<div><b>Party GSTIN:</b> <code>' + esc(r.book_supplier_gstin || '') + '</code></div>' +
+    '<div><b>Our GSTIN:</b> <code>' + esc(r.our_gstin || '') + '</code> &nbsp; <b>Type:</b> ' + esc(r.book_document_type || 'Tax Invoice') + '</div>' +
+    '<div><b>Vendor:</b> ' + esc(r.party_name || '\u2014') + '</div>' +
+    '<div style="margin-top:4px"><b>Taxable:</b> ' + money(r.book_taxable_value) + ' &nbsp;|&nbsp; <b>Book ITC:</b> ' + money(bookItc) + '</div>' +
+    '<div class="hint" style="font-size:11px;margin-top:2px">IGST ' + money(r.book_igst) + ' \u00b7 CGST ' + money(r.book_cgst) + ' \u00b7 SGST ' + money(r.book_sgst) +
+      (Number(r.book_cess || 0) ? ' \u00b7 Cess ' + money(r.book_cess) : '') + '</div>');
+
+  const curSup = String(r.recon_supplier_gstin || r.book_supplier_gstin || '').toUpperCase();
+  const curInv = String(r.recon_invoice_no || r.book_invoice_no || '');
+  const curDt = String(r.recon_invoice_date || r.book_invoice_date || '').slice(0, 10);
+
+  if (r.matched_2b_key || r.twob_invoice_no) {
+    const tInv = r.twob_invoice_no || '';
+    const tDt = r.twob_invoice_date ? String(r.twob_invoice_date).slice(0, 10) : '';
+    const tSup = String(r.twob_supplier_gstin || curSup || '').toUpperCase();
+    const differs = tInv !== curInv || (tDt && tDt !== curDt) || (tSup && tSup !== curSup);
+    const copyBtn = (!locked && differs)
+      ? '<button type="button" class="sm" data-inv="' + esc(tInv) + '" data-dt="' + esc(tDt) + '" data-sup="' + esc(tSup) + '" onclick="copyTwoBIntoEditBook(this.dataset.inv,this.dataset.dt,this.dataset.sup)">\ud83d\udccb Copy 2B Details</button>'
+      : '';
+    const swapBtn = !locked
+      ? '<button type="button" class="ghost sm" onclick="closeEditBookModal();openManualMatchModal(' + r.id + ')">\ud83d\udd17 Match Different 2B</button>'
+      : '';
+    setHtml('ebTwoBCard',
+      '<div class="eb-box-title"><span>Matched GSTR-2B Entry (Read-Only)</span><span>' + esc(r.matched_2b_month ? monthLabel(r.matched_2b_month) : '') + '</span></div>' +
+      '<div><b>2B Inv No:</b> <code>' + esc(tInv || '\u2014') + '</code> &nbsp; <b>Date:</b> ' + esc(tDt ? fmtDmy(tDt) : '\u2014') + '</div>' +
+      '<div><b>2B Party GSTIN:</b> <code>' + esc(tSup || '\u2014') + '</code>' + (tSup && tSup !== curSup ? ' <span class="pill warn">Diff GSTIN</span>' : '') + '</div>' +
+      '<div style="margin-top:4px"><b>2B Taxable:</b> ' + money(r.twob_taxable_value) + ' &nbsp;|&nbsp; <b>2B ITC:</b> ' + money(r.twob_itc) + '</div>' +
+      '<div class="hint" style="font-size:11px;margin-top:2px">Taxable diff: ' + money(r.taxable_difference) + ' \u00b7 ITC diff: ' + money(r.itc_difference) +
+        (r.mismatch_reason ? ' \u00b7 ' + esc(r.mismatch_reason) : '') + '</div>' +
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">' + copyBtn + swapBtn + '</div>');
+  } else if (r.suggested_2b_invoice_no) {
+    const sInv = r.suggested_2b_invoice_no || '';
+    const sDt = r.suggested_2b_date ? String(r.suggested_2b_date).slice(0, 10) : '';
+    const sSup = String(r.suggested_2b_supplier_gstin || curSup || '').toUpperCase();
+    const diffSup = sSup && sSup !== curSup;
+    const copyBtn = !locked
+      ? '<button type="button" class="sm" style="background:#2563eb;color:#fff" data-inv="' + esc(sInv) + '" data-dt="' + esc(sDt) + '" data-sup="' + esc(sSup) + '" onclick="copyTwoBIntoEditBook(this.dataset.inv,this.dataset.dt,this.dataset.sup)">\ud83d\udccb Copy 2B Details (Inv + Date + GSTIN)</button>'
+      : '';
+    const browseBtn = !locked
+      ? '<button type="button" class="ghost sm" onclick="closeEditBookModal();openManualMatchModal(' + r.id + ')">\ud83d\udd17 Browse All 2B</button>'
+      : '';
+    setHtml('ebTwoBCard',
+      '<div class="eb-box-title"><span>Probable GSTR-2B Match Found</span><span>' + esc(r.suggested_2b_month ? monthLabel(r.suggested_2b_month) : '') + '</span></div>' +
+      '<div><b>2B Inv No:</b> <code>' + esc(sInv) + '</code> &nbsp; <b>Date:</b> ' + esc(sDt ? fmtDmy(sDt) : '\u2014') + '</div>' +
+      '<div><b>2B Party GSTIN:</b> <code>' + esc(sSup || '\u2014') + '</code>' + (diffSup ? ' <span class="pill warn">Diff Party GSTIN</span>' : '') + '</div>' +
+      (r.suggested_2b_supplier_name ? '<div><b>2B Supplier:</b> ' + esc(r.suggested_2b_supplier_name) + '</div>' : '') +
+      '<div style="margin-top:4px"><b>2B Taxable:</b> ' + money(r.suggested_2b_taxable) + ' &nbsp;|&nbsp; <b>2B ITC:</b> ' + money(r.suggested_2b_itc) + '</div>' +
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">' + copyBtn + browseBtn + '</div>');
+  } else {
+    const pickBtn = !locked
+      ? '<button type="button" class="sm" style="background:#2563eb;color:#fff;margin-top:8px" onclick="closeEditBookModal();openManualMatchModal(' + r.id + ')">\ud83d\udd17 Search &amp; Pick from GSTR-2B List</button>'
+      : '';
+    setHtml('ebTwoBCard',
+      '<div class="eb-box-title"><span>GSTR-2B Reference</span><span>Unmatched</span></div>' +
+      '<div class="hint">' + esc(r.mismatch_reason || 'Abhi koi GSTR-2B bill is Book entry se match nahi hua hai.') +
+      (r.suggested_action ? '<br /><b>Hint:</b> ' + esc(r.suggested_action) : '') + '</div>' +
+      pickBtn);
+  }
+
+  if (el('eb_inv')) el('eb_inv').value = curInv;
+  if (el('eb_dt')) el('eb_dt').value = curDt;
+  if (el('eb_sup')) el('eb_sup').value = curSup;
+  if (el('eb_party')) el('eb_party').value = r.party_name || '';
+  if (el('eb_itc')) el('eb_itc').value = r.itc_decision || 'Pending Review';
+  const initClaim = r.itc_decision_month || r.period || CTX.period || '';
+  EDIT_BOOK.initClaim = initClaim;
+  if (el('eb_claim')) el('eb_claim').value = initClaim;
+  if (el('eb_remarks')) el('eb_remarks').value = r.remarks || '';
+  if (el('eb_why')) el('eb_why').value = 'Corrected Book entry for GSTR-2B matching';
+
+  const ourSel = el('eb_our');
+  const curOur = String(r.our_gstin || '').toUpperCase();
+  if (ourSel) {
+    const seen = new Set();
+    const opts = [];
+    for (const g of (CTX.gstins || [])) {
+      const code = String(g.gstin || '').toUpperCase();
+      if (!code || seen.has(code)) continue;
+      seen.add(code);
+      opts.push({ code: code, label: code + (g.unit ? ' \u00b7 ' + dispUnit(g.unit) : '') });
+    }
+    if (curOur && !seen.has(curOur)) {
+      opts.unshift({ code: curOur, label: curOur });
+    }
+    ourSel.innerHTML = opts.map((o) =>
+      '<option value="' + esc(o.code) + '"' + (o.code === curOur ? ' selected' : '') + '>' + esc(o.label) + '</option>',
+    ).join('');
+    ourSel.value = curOur;
+  }
+
+  validateEditBookGstin();
+  if (el('ebSaveBtn')) el('ebSaveBtn').disabled = !!locked;
+  if (el('ebResetBtn')) el('ebResetBtn').style.display = (!locked && r.recon_edited) ? '' : 'none';
+  setHtml('ebMsg', locked
+    ? '<span class="bad">Month LOCKED hai \u2014 unlock as admin before saving edits.</span>'
+    : 'Original Book &amp; GSTR-2B values remain 100% immutable.');
+
+  if (el('modalEditBookLine')) el('modalEditBookLine').style.display = 'flex';
+  const invEl = el('eb_inv');
+  if (invEl) { setTimeout(() => { invEl.focus(); invEl.select(); }, 30); }
+}
+
+async function saveEditBookModal() {
+  const r = EDIT_BOOK.row;
+  if (!r || !EDIT_BOOK.id) return;
+  if (reconIsLocked()) return toast('Month locked \u2014 unlock as admin first.', 'err');
+
+  const id = EDIT_BOOK.id;
+  const inv = reconVal('eb_inv');
+  const dt = reconVal('eb_dt');
+  const sup = reconVal('eb_sup').toUpperCase();
+  const our = reconVal('eb_our').toUpperCase();
+  const party = reconVal('eb_party');
+  const itcDec = reconVal('eb_itc');
+  const claimMo = reconVal('eb_claim');
+  const remarks = reconVal('eb_remarks');
+  const why = reconVal('eb_why') || 'Corrected Book entry for GSTR-2B matching';
+
+  if (sup && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(sup)) {
+    setHtml('ebMsg', '<span class="bad">Party GSTIN 15 characters ka valid GSTIN hona chahiye (e.g. 24AABCU9603R1ZM).</span>');
+    if (el('eb_sup')) el('eb_sup').focus();
+    return;
+  }
+
+  const patch = {};
+  if (inv && inv !== String(r.recon_invoice_no || r.book_invoice_no || '')) patch.recon_invoice_no = inv;
+  if (dt && dt !== String(r.recon_invoice_date || r.book_invoice_date || '').slice(0, 10)) patch.recon_invoice_date = dt;
+  if (sup && sup !== String(r.recon_supplier_gstin || r.book_supplier_gstin || '').toUpperCase()) patch.recon_supplier_gstin = sup;
+
+  const partyChanged = party !== '' && party !== String(r.party_name || '').trim();
+  const remarksChanged = remarks !== String(r.remarks || '').trim();
+  const moves = !!our && our !== String(r.our_gstin || '').toUpperCase();
+  const itcChanged = (itcDec && itcDec !== String(r.itc_decision || 'Pending Review')) ||
+    (claimMo !== String(EDIT_BOOK.initClaim || ''));
+
+  const hasReconBody = Object.keys(patch).length > 0 || partyChanged || remarksChanged;
+  if (!hasReconBody && !moves && !itcChanged) {
+    return toast('Koi change nahi kiya gaya hai.', 'warn');
+  }
+
+  const btn = el('ebSaveBtn');
+  if (btn) btn.disabled = true;
+  setHtml('ebMsg', 'Saving Book entry edits &amp; re-running GSTR-2B matcher\u2026');
+  try {
+    const cfg = getReconMatchingCfg();
+    let finalStatus = r.match_status || '';
+    if (hasReconBody) {
+      const payload = Object.assign({
+        reason: why,
+        tolerance: cfg.tolerance,
+        dateWindow: cfg.dateWindow,
+      }, patch);
+      if (partyChanged) payload.party_name = party;
+      if (remarksChanged) payload.remarks = remarks;
+      const out = await postJson('/api/lines/' + id + '/recon', payload);
+      if (out && out.line && out.line.match_status) finalStatus = out.line.match_status;
+    }
+    if (moves) {
+      const outG = await postJson('/api/lines/' + id + '/our-gstin', {
+        gstin: our,
+        reason: why,
+        tolerance: cfg.tolerance,
+        dateWindow: cfg.dateWindow,
+      });
+      if (outG && outG.line && outG.line.match_status) finalStatus = outG.line.match_status;
+    }
+    if (itcChanged && itcDec) {
+      await postJson('/api/lines/' + id + '/itc', {
+        decision: itcDec,
+        decisionMonth: claimMo || r.period || CTX.period,
+        reason: why,
+      });
+    }
+    closeEditBookModal();
+    toast('Book entry saved & re-matched! Status: ' + (finalStatus || 'Updated'), 'ok');
+    note('reconMsg', 'ok', 'Book entry #' + id + ' saved & re-reconciled (' + (finalStatus || 'Updated') + ').');
+    await loadRecon();
+    await loadContext();
+  } catch (e) {
+    setHtml('ebMsg', '<span class="bad">' + esc(errText(e)) + '</span>');
+    toast(errText(e), 'err');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function resetEditBookModal() {
+  if (!EDIT_BOOK.id) return;
+  const lid = EDIT_BOOK.id;
+  closeEditBookModal();
+  await unlinkReconRow(lid);
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  const eb = el('modalEditBookLine');
+  if (eb && eb.style.display !== 'none') { closeEditBookModal(); return; }
+  const mm = el('modalManualMatch');
+  if (mm && mm.style.display !== 'none') { closeManualMatchModal(); }
+});
 
 updateThemeBtn();
 boot();

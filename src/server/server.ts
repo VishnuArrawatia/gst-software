@@ -1040,14 +1040,19 @@ app.get('/api/recon/purchase', requirePerm('recon', 'view'), wrap(async (req, re
       const u = crossMonth2bPool[i];
       // NEVER cross GST registrations or polarities during Probable 2B matching
       if (ourG && u.our_gstin !== ourG) continue;
-      if (u.supplier_gstin !== sup) continue;
       if (u.polarity !== bPol) continue;
+      const sameSup = u.supplier_gstin === sup;
       const amtOk = Math.abs(bTax - u.taxable_value) <= 2 && Math.abs(bItc - u.itc) <= 2;
       const sim = invoiceSimScore(inv, u.invoice_no);
       const dDiff = daysDiffIso(bDt, u.invoice_date);
-      if (!amtOk && !(sim >= 85 && dDiff <= 90)) continue;
+      if (sameSup) {
+        if (!amtOk && !(sim >= 85 && dDiff <= 90)) continue;
+      } else {
+        // Cross-supplier hint only when amount + (invoice no or exact date) strongly match
+        if (!(amtOk && (sim >= 85 || (dDiff <= 2 && Math.abs(bTax) >= 100)))) continue;
+      }
       const mDiff = monthDiffIso(r.period, u.twob_month);
-      const score = (amtOk ? 100000 : 0) + sim * 500 - dDiff * 10 - mDiff * 50;
+      const score = (sameSup ? 200000 : 0) + (amtOk ? 100000 : 0) + sim * 500 - dDiff * 10 - mDiff * 50;
       if (score > bestScore) {
         bestScore = score;
         bestIdx = i;
@@ -1057,6 +1062,8 @@ app.get('/api/recon/purchase', requirePerm('recon', 'view'), wrap(async (req, re
       const u = crossMonth2bPool[bestIdx];
       usedTwoBIdx.add(bestIdx);
       r.suggested_2b_key = u.line_key;
+      r.suggested_2b_supplier_gstin = u.supplier_gstin;
+      r.suggested_2b_supplier_name = u.supplier_name || '';
       r.suggested_2b_invoice_no = u.invoice_no;
       r.suggested_2b_date = u.invoice_date;
       r.suggested_2b_month = u.twob_month || '';
@@ -1921,16 +1928,23 @@ app.post('/api/lines/:id/recon', requirePerm('recon', 'edit'), wrap(async (req, 
   for (const f of ['recon_supplier_gstin', 'recon_invoice_no', 'recon_invoice_date'] as const) {
     if (req.body?.[f] !== undefined) patch[f] = str(req.body[f]);
   }
+  const partyName = req.body?.party_name !== undefined ? str(req.body.party_name) : undefined;
+  const remarks = req.body?.remarks !== undefined ? str(req.body.remarks) : undefined;
   const by = actorOf(req);
   const reason = str(req.body?.reason) || undefined;
 
-  const edit = await updateRecon(id, patch, { changedBy: by, reason });
+  const edit = await updateRecon(id, patch, { changedBy: by, reason, partyName, remarks });
   if (!edit.ok) return res.status(edit.locked ? 423 : 400).json(edit);
+
+  const auditedPayload: Record<string, unknown> = { ...patch };
+  if (partyName !== undefined) auditedPayload.party_name = partyName;
+  if (remarks !== undefined) auditedPayload.remarks = remarks;
+  const auditedFields = (edit.changed && edit.changed.length ? edit.changed : Object.keys(auditedPayload)).join(', ') || null;
 
   await audit(req.user, {
     action: 'RECON_EDIT', module: 'Reconciliation', lineId: id,
-    field: Object.keys(patch).join(', ') || null,
-    oldValue: null, newValue: JSON.stringify(patch),
+    field: auditedFields,
+    oldValue: null, newValue: JSON.stringify(auditedPayload),
     reason: reason || null,
   });
   const line = await getLine(id);
@@ -1979,10 +1993,14 @@ app.post('/api/lines/:id/our-gstin', requirePerm('recon', 'edit'), wrap(async (r
 
   const rereconciled: Array<Record<string, unknown>> = [];
   if (out.movedFrom && out.movedTo) {
+    const tolerance = parseToleranceArg(req.body?.tolerance);
+    const dateWindow = parseDateWindowArg(req.body?.dateWindow);
     for (const g of [out.movedFrom, out.movedTo]) {
       const r = await reReconcile(g, String(before.period), {
         changedBy: by,
         reason: `Own GSTIN corrected ${out.movedFrom} -> ${out.movedTo}`,
+        tolerance,
+        dateWindow,
       });
       rereconciled.push({ gstin: g, ...r });
     }
