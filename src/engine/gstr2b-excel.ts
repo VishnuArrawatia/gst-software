@@ -15,6 +15,7 @@ import {
   docAmount,
   fyOf,
   inferDocType,
+  isUtWithoutLegislature,
   isValidGstin,
   labelOf,
   normDate,
@@ -313,6 +314,7 @@ type FieldKey =
   | 'igst'
   | 'cgst'
   | 'sgst'
+  | 'utgst'
   | 'cess'
   | 'period'
   | 'filing_date'
@@ -337,6 +339,7 @@ const PORTAL_HEADER_MAP: Array<[RegExp, FieldKey]> = [
   [/^(integrated\s*tax|igst|igst\s*amount)(\s*₹)?$/, 'igst'],
   [/^(central\s*tax|cgst|cgst\s*amount)(\s*₹)?$/, 'cgst'],
   [/^(state\s*\/?\s*ut\s*tax|sgst(\s*\/\s*utgst)?|sgst\s*amount)(\s*₹)?$/, 'sgst'],
+  [/^(utgst(\s*amount|\s*amt|\s*input)?|union\s*territory\s*tax|ut\s*tax)(\s*₹)?$/, 'utgst'],
   [/^(cess|cess\s*amount)(\s*₹)?$/, 'cess'],
   [/^(2b\s*-?\s*month|return\s*period|tax\s*period|gstr\s*-?\s*1\s*\/?\s*iff\s*\/?\s*gstr\s*-?\s*5\s*period|gstr\s*1\s*iff\s*period|period|month)$/, 'period'],
   [/^(gstr\s*-?\s*1\s*[/-]?\s*iff\s*[/-]?\s*gstr\s*-?\s*5\s*filing\s*date|gstr\s*-?\s*1\s*filing\s*date|filing\s*date|gstr\s*-?\s*6\s*filing\s*date)$/, 'filing_date'],
@@ -400,7 +403,7 @@ function detectSheetHeaderRow(rows: unknown[][]): {
 /** Deterministic content fingerprint used for intra-file, intra-batch & cross-batch duplicate detection. */
 export function fingerprintOfGstr2bRecord(r: Pick<
   Gstr2bRecord,
-  'our_gstin' | 'supplier_gstin' | 'invoice_no' | 'invoice_type' | 'period' | 'portal_fp' | 'invoice_date' | 'taxable_value' | 'igst' | 'cgst' | 'sgst' | 'cess'
+  'our_gstin' | 'supplier_gstin' | 'invoice_no' | 'invoice_type' | 'period' | 'portal_fp' | 'invoice_date' | 'taxable_value' | 'igst' | 'cgst' | 'sgst' | 'utgst' | 'cess'
 > & { doc_category?: string }): string {
   const docT = normDocType(r.invoice_type);
   const per = (r.portal_fp || r.period || '').slice(0, 7);
@@ -416,6 +419,7 @@ export function fingerprintOfGstr2bRecord(r: Pick<
     r2(r.igst).toFixed(2),
     r2(r.cgst).toFixed(2),
     r2(r.sgst).toFixed(2),
+    r2(r.utgst ?? 0).toFixed(2),
     r2(r.cess).toFixed(2),
   ].join('|');
 }
@@ -552,9 +556,10 @@ export function parseGstr2bExcelBatch(
         const rawIg = numCell(colGet('igst'));
         const rawCg = numCell(colGet('cgst'));
         const rawSg = numCell(colGet('sgst'));
+        const rawUt = numCell(colGet('utgst'));
         const rawCe = numCell(colGet('cess'));
         const rawIv = numCell(colGet('invoice_value'));
-        if (!invStr && !rawSupGstin && rawTx === 0 && rawIg === 0 && rawCg === 0 && rawSg === 0) continue;
+        if (!invStr && !rawSupGstin && rawTx === 0 && rawIg === 0 && rawCg === 0 && rawSg === 0 && rawUt === 0) continue;
 
         totalRecords++;
 
@@ -654,13 +659,16 @@ export function parseGstr2bExcelBatch(
               ? 'IMPG'
               : 'Regular');
 
-        const docType = inferDocType(hintedType, [rawTx, rawIg, rawCg, rawSg, rawCe]);
+        const docType = inferDocType(hintedType, [rawTx, rawIg, rawCg, rawSg, rawUt, rawCe]);
+        const posVal = String(colGet('place_of_supply') ?? (isImport ? portCode : '')).trim();
+        const useUtgst = !colMap.has('utgst') && rawUt === 0 && rawSg !== 0 && isUtWithoutLegislature(posVal || rowOurGstin);
         const taxable_value = docAmount(docType, rawTx);
         const igst = docAmount(docType, rawIg);
         const cgst = docAmount(docType, rawCg);
-        const sgst = docAmount(docType, rawSg);
+        const sgst = useUtgst ? 0 : docAmount(docType, rawSg);
+        const utgst = useUtgst ? docAmount(docType, rawSg) : docAmount(docType, rawUt);
         const cess = docAmount(docType, rawCe);
-        const computedVal = r2(taxable_value + taxOf({ igst, cgst, sgst, cess }));
+        const computedVal = r2(taxable_value + taxOf({ igst, cgst, sgst, utgst, cess }));
         const invoice_value = rawIv !== 0 ? docAmount(docType, rawIv) : computedVal;
 
         const storedDocType =
@@ -677,12 +685,13 @@ export function parseGstr2bExcelBatch(
           invoice_type: storedDocType,
           invoice_date: invDate,
           invoice_value,
-          place_of_supply: String(colGet('place_of_supply') ?? (isImport ? portCode : '')).trim(),
+          place_of_supply: posVal,
           reverse_charge: boolCell(colGet('reverse_charge')),
           taxable_value,
           igst,
           cgst,
           sgst,
+          utgst,
           cess,
           period: actualPeriod,
           portal_fp: actualPeriod,
@@ -691,11 +700,14 @@ export function parseGstr2bExcelBatch(
           reason: String(colGet('reason') ?? '').trim() || undefined,
           applicable_pct: String(colGet('applicable_pct') ?? '').trim() || undefined,
           doc_category: effectiveCat,
+          original_doc_no: String(colGet('amendment_no') ?? '').trim() || undefined,
+          original_doc_date: normDate(colGet('amendment_date')) || undefined,
           financial_year: fy,
           source_taxable_value: rawTx,
           source_igst: rawIg,
           source_cgst: rawCg,
           source_sgst: rawSg,
+          source_utgst: rawUt,
           source_cess: rawCe,
           source_file: file.name,
           source_row: r + 1,

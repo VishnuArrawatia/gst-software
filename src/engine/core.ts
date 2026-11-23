@@ -25,9 +25,9 @@ export function r2(n: unknown): number {
   return Math.round((v + Number.EPSILON) * 100) / 100;
 }
 
-/** Total tax on a document = igst + cgst + sgst + cess. */
-export function taxOf(d: { igst?: number; cgst?: number; sgst?: number; cess?: number }): number {
-  return r2(r2(d.igst) + r2(d.cgst) + r2(d.sgst) + r2(d.cess));
+/** Total tax on a document = igst + cgst + sgst + utgst + cess. */
+export function taxOf(d: { igst?: number; cgst?: number; sgst?: number; utgst?: number; cess?: number }): number {
+  return r2(r2(d.igst) + r2(d.cgst) + r2(d.sgst) + r2(d.utgst) + r2(d.cess));
 }
 
 /** True when two amounts agree within a rupee tolerance. */
@@ -54,6 +54,27 @@ export function isValidGstin(v: unknown): boolean {
 /** GST state code = the first two digits. */
 export function stateOf(gstin: unknown): string {
   return normGstin(gstin).slice(0, 2);
+}
+
+/**
+ * Union Territories without legislature under the UTGST Act, 2017:
+ *   04 Chandigarh
+ *   26 Dadra and Nagar Haveli and Daman and Diu
+ *   31 Lakshadweep
+ *   35 Andaman and Nicobar Islands
+ *   38 Ladakh
+ * (Delhi 07, Puducherry 34, and Jammu & Kashmir 01 have legislatures and levy SGST.)
+ */
+export const UT_NO_LEGISLATURE_CODES = new Set(['04', '26', '31', '35', '38']);
+
+export function isUtWithoutLegislature(codeOrGstinOrPos: unknown): boolean {
+  const s = String(codeOrGstinOrPos ?? '').trim();
+  if (!s) return false;
+  if (/^\d{2}$/.test(s)) return UT_NO_LEGISLATURE_CODES.has(s);
+  const st = stateOf(s);
+  if (st.length === 2 && /^\d{2}$/.test(st)) return UT_NO_LEGISLATURE_CODES.has(st);
+  const pos = normPos(s);
+  return pos ? UT_NO_LEGISLATURE_CODES.has(pos) : false;
 }
 
 /**
@@ -593,6 +614,7 @@ export interface PurchaseBill {
   source_igst?: number;
   source_cgst?: number;
   source_sgst?: number;
+  source_utgst?: number;
   source_cess?: number;
   /**
    * PO / GRN / your-reference number carried alongside the invoice.
@@ -626,6 +648,7 @@ export interface PurchaseBill {
   igst: number;
   cgst: number;
   sgst: number;
+  utgst?: number;
   cess: number;
   invoice_total?: number;
   reverse_charge?: boolean;
@@ -646,6 +669,16 @@ export interface PurchaseBill {
   recon_supplier_gstin?: string;
   recon_invoice_no?: string;
   recon_invoice_date?: string;
+  // ---- reconciliation additional charges overlay (Freight / Other Charges) ----
+  // Added to book_* during GSTR-2B amount comparison when freight/other charges
+  // were booked in a separate ledger; original book_* values remain immutable.
+  recon_extra_charges_type?: string;
+  recon_extra_taxable?: number;
+  recon_extra_igst?: number;
+  recon_extra_cgst?: number;
+  recon_extra_sgst?: number;
+  recon_extra_utgst?: number;
+  recon_extra_cess?: number;
 }
 
 /** A GSTR-2B line as downloaded from the GST portal. */
@@ -664,6 +697,7 @@ export interface Gstr2bRecord {
   igst: number;
   cgst: number;
   sgst: number;
+  utgst?: number;
   cess: number;
   period: string;
   filing_date?: string;
@@ -674,10 +708,13 @@ export interface Gstr2bRecord {
   reason?: string;
   applicable_pct?: string;
   doc_category?: string;
+  original_doc_no?: string;
+  original_doc_date?: string;
   source_taxable_value?: number;
   source_igst?: number;
   source_cgst?: number;
   source_sgst?: number;
+  source_utgst?: number;
   source_cess?: number;
   source_file?: string;
   source_row?: number;
@@ -713,6 +750,7 @@ export interface SalesItem {
   igst: number;
   cgst: number;
   sgst: number;
+  utgst?: number;
   cess: number;
   /** Break-up of `taxable_value`, not an amount on top of it. */
   freight?: number;
@@ -744,6 +782,7 @@ export interface SalesInvoice {
   igst: number;
   cgst: number;
   sgst: number;
+  utgst?: number;
   cess: number;
   invoice_value: number;
   hsn?: string;
@@ -825,12 +864,20 @@ export type DetailedReconStatus =
   | 'PENDING MANUAL REVIEW';
 
 export interface ReconRow {
+  book_line_id?: string;
   status: ReconStatus;
   detailed_status?: DetailedReconStatus;
   match_type?: string;
   subsequent_month_match?: boolean;
   cross_fy_match?: boolean;
   matched_after_books_correction?: boolean;
+  recon_extra_charges_type?: string;
+  recon_extra_taxable?: number;
+  recon_extra_igst?: number;
+  recon_extra_cgst?: number;
+  recon_extra_sgst?: number;
+  recon_extra_utgst?: number;
+  recon_extra_cess?: number;
   date_diff_days?: number;
   doc_no_diff?: string;
   duplicate_ref?: string;
@@ -848,6 +895,7 @@ export interface ReconRow {
   igst: number;
   cgst: number;
   sgst: number;
+  utgst?: number;
   cess: number;
   itc: number;
   /** Populated when a 2B line was found. */
@@ -860,6 +908,7 @@ export interface ReconRow {
   two_b_igst?: number;
   two_b_cgst?: number;
   two_b_sgst?: number;
+  two_b_utgst?: number;
   two_b_cess?: number;
   sec16_4_barred?: boolean;
   suggested_2b_invoice_no?: string;

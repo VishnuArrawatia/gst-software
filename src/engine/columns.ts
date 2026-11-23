@@ -76,7 +76,10 @@ export const FIELD_ALIASES: Record<string, string[]> = {
   cgst: ['central tax(₹)', 'central tax', 'cgst', 'cgst amount', 'cgst amt', 'cgst input'],
   sgst: [
     'state/ut tax(₹)', 'state/ut tax', 'sgst/utgst', 'sgst', 'sgst amount', 'sgst amt',
-    'utgst input', 'utgst', 'utgst amt', 'state tax',
+    'state tax',
+  ],
+  utgst: [
+    'utgst input', 'utgst', 'utgst amt', 'utgst amount', 'union territory tax', 'ut tax',
   ],
   cess: ['cess(₹)', 'cess', 'cess amount', 'cess amt'],
 
@@ -273,7 +276,7 @@ const PROFILE_NAME_REMAP: Record<HeaderContext['profile'], Record<string, string
 const PROFILE_FIELD_REMAP: Record<HeaderContext['profile'], Record<string, string>> = {
   purchase: {},
   twob: {},
-  sales: { applicable_pct: 'gst_rate' },
+  sales: { applicable_pct: 'gst_rate', utgst: 'sgst' },
 };
 
 /** Map a single header cell to a canonical field, or null if unknown. */

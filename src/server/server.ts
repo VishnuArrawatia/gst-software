@@ -772,7 +772,7 @@ function daysDiffIso(a?: string, b?: string): number {
   if (!ma || !mb) return 9999;
   return Math.round(
     Math.abs(Date.UTC(Number(ma[1]), Number(ma[2]) - 1, Number(ma[3])) - Date.UTC(Number(mb[1]), Number(mb[2]) - 1, Number(mb[3]))) /
-      86400000,
+    86400000,
   );
 }
 
@@ -834,18 +834,18 @@ async function loadAggregatedUnbooked2b(
   const { rows2b, claimedKeys } = await withClient(async (c) => {
     const claimedQ = excludeLineId
       ? await c.query(
-          `SELECT matched_2b_key FROM purchase_lines
+        `SELECT matched_2b_key FROM purchase_lines
             WHERE our_gstin = ANY($1::text[]) AND matched_2b_key IS NOT NULL AND id <> $2`,
-          [normList, excludeLineId],
-        )
+        [normList, excludeLineId],
+      )
       : await c.query(
-          `SELECT matched_2b_key FROM purchase_lines
+        `SELECT matched_2b_key FROM purchase_lines
             WHERE our_gstin = ANY($1::text[]) AND matched_2b_key IS NOT NULL`,
-          [normList],
-        );
+        [normList],
+      );
     const tQ = await c.query(
       `SELECT id, line_key, our_gstin, twob_month, portal_fp, supplier_gstin, supplier_name,
-              invoice_no, invoice_date, document_type, taxable_value, igst, cgst, sgst, cess,
+              invoice_no, invoice_date, document_type, taxable_value, igst, cgst, sgst, utgst, cess,
               itc_availability, reason, coalesce(source_file, '') AS source_file
          FROM gstr2b_lines
         WHERE our_gstin = ANY($1::text[])
@@ -878,8 +878,9 @@ async function loadAggregatedUnbooked2b(
     const ig = r2(r.igst);
     const cg = r2(r.cgst);
     const sg = r2(r.sgst);
+    const ut = r2(r.utgst ?? 0);
     const ce = r2(r.cess);
-    const lineItc = r2(ig + cg + sg + ce);
+    const lineItc = r2(ig + cg + sg + ut + ce);
     const rowId = Number(r.id ?? 0);
     if (!existing) {
       byFileInv.set(fk, {
@@ -1276,10 +1277,18 @@ app.post('/api/recon/purchase/auto-decide', requirePerm('itc', 'decide'), wrap(a
 }));
 
 /**
- * Books-Only Probable 2B Auto-Linker (Sections 6 & 7 of Master Prompt):
- * Copies matched Probable 2B Invoice No & Date into the Books reconciliation override columns
- * (`recon_invoice_no`, `recon_invoice_date`) via `applyEdits`, leaving both `book_*` and `gstr2b_lines`
- * 100% immutable, logs full correction history & audit trail, and re-reconciles immediately.
+ * Probable 2B Suggestion & User-Confirmed Linker (Phase 1 Strict Control):
+ *
+ * Probable invoice suggestions are NEVER auto-linked without explicit user
+ * confirmation (`confirm === true` + explicit `approvedLinks` array).
+ *
+ * - Default call (preview mode): computes high-confidence candidates strictly
+ *   requiring exact `our_gstin`, exact `supplier_gstin`, exact `document_type`
+ *   (Tax Invoice / Debit Note / Credit Note never cross-linked), AND invoice
+ *   similarity >= 75, returning `{ ok: true, mode: 'preview', requiresConfirmation: true, suggestions, linked: 0 }`.
+ * - Confirmed call (`confirm: true` with `approvedLinks: [{ lineId, twobLineKey }]`):
+ *   validates each approved pair for GSTIN isolation, strict document_type equality,
+ *   and 1:1 2B exclusivity, writes Books-only `recon_*` overrides, and re-reconciles.
  */
 app.post('/api/recon/purchase/auto-link-probable', requirePerm('recon', 'edit'), wrap(async (req, res) => {
   const ready = await dbReady();
@@ -1289,10 +1298,125 @@ app.post('/api/recon/purchase/auto-link-probable', requirePerm('recon', 'edit'),
   const rawPeriods: string[] = Array.isArray(req.body?.periods)
     ? req.body.periods.map((p: any) => String(p).trim()).filter(Boolean)
     : period ? [period] : [];
-  if (!gstin && !rawPeriods.length) {
+  const confirm = req.body?.confirm === true;
+  const approvedLinks: Array<{ lineId: number; twobLineKey: string; syncDate?: boolean }> = Array.isArray(req.body?.approvedLinks)
+    ? req.body.approvedLinks
+    : [];
+
+  if (!confirm && !gstin && !rawPeriods.length) {
     return res.status(400).json({ error: 'GSTIN ya period select karein.' });
   }
+
   const actor = actorOf(req);
+  const tolerance = parseToleranceArg(req.body?.tolerance);
+  const dateWindow = parseDateWindowArg(req.body?.dateWindow);
+
+  // ---- Confirmed Mode: apply ONLY explicitly user-approved links ---------
+  if (confirm) {
+    if (!approvedLinks.length) {
+      return res.status(400).json({
+        error: 'Explicit user confirmation required: approvedLinks list khali hai.',
+        requiresConfirmation: true,
+      });
+    }
+    const edits: any[] = [];
+    const rejected: Array<{ lineId: number; twobLineKey: string; reason: string }> = [];
+    const touchedPairs = new Set<string>();
+    const claimedKeysInBatch = new Set<string>();
+
+    for (const item of approvedLinks) {
+      const lid = Number(item?.lineId);
+      const tKey = str(item?.twobLineKey);
+      if (!Number.isFinite(lid) || lid <= 0 || !tKey) {
+        rejected.push({ lineId: lid, twobLineKey: tKey, reason: 'Invalid lineId or twobLineKey' });
+        continue;
+      }
+      if (claimedKeysInBatch.has(tKey)) {
+        rejected.push({ lineId: lid, twobLineKey: tKey, reason: 'Duplicate 2B target in same confirmation batch' });
+        continue;
+      }
+      const bookLine = await getLine(lid);
+      if (!bookLine) {
+        rejected.push({ lineId: lid, twobLineKey: tKey, reason: 'Book line not found' });
+        continue;
+      }
+      const ourG = normGstinOf(bookLine.our_gstin);
+      if (!(await checkGstinAccess(req, res, ourG))) return;
+
+      const tRes = await withClient((c) =>
+        c.query(
+          `SELECT line_key, our_gstin, supplier_gstin, invoice_no, invoice_date, document_type, twob_month
+             FROM gstr2b_lines WHERE line_key = $1`,
+          [tKey],
+        ),
+      );
+      if (!tRes.rowCount) {
+        rejected.push({ lineId: lid, twobLineKey: tKey, reason: 'Target GSTR-2B line not found' });
+        continue;
+      }
+      const twob: any = tRes.rows[0];
+      if (normGstinOf(twob.our_gstin) !== ourG) {
+        rejected.push({ lineId: lid, twobLineKey: tKey, reason: 'Cross-GSTIN linking is not allowed' });
+        continue;
+      }
+      if (normDocType(bookLine.book_document_type) !== normDocType(twob.document_type)) {
+        rejected.push({
+          lineId: lid,
+          twobLineKey: tKey,
+          reason: `Strict Document Type mismatch: Books ${normDocType(bookLine.book_document_type)} vs GSTR-2B ${normDocType(twob.document_type)}`,
+        });
+        continue;
+      }
+      const alreadyClaimed = await withClient((c) =>
+        c.query(
+          `SELECT id FROM purchase_lines WHERE our_gstin = $1 AND matched_2b_key = $2 AND id <> $3 LIMIT 1`,
+          [ourG, tKey, lid],
+        ),
+      );
+      if (alreadyClaimed.rowCount) {
+        rejected.push({ lineId: lid, twobLineKey: tKey, reason: 'GSTR-2B document already matched to another Books line' });
+        continue;
+      }
+
+      claimedKeysInBatch.add(tKey);
+      const reconPatch: Record<string, string> = {
+        recon_supplier_gstin: normGstinOf(twob.supplier_gstin),
+        recon_invoice_no: String(twob.invoice_no ?? '').trim(),
+      };
+      if (item.syncDate === true && twob.invoice_date) {
+        reconPatch.recon_invoice_date = isoDate(twob.invoice_date);
+      }
+      edits.push({ lineId: lid, recon: reconPatch });
+      touchedPairs.add(`${ourG}|${bookLine.period}`);
+    }
+
+    if (!edits.length) {
+      return res.status(400).json({ ok: false, linked: 0, rejected, error: 'Koi valid confirmed link apply nahi ho saka.' });
+    }
+
+    const bulk = await applyEdits(edits, {
+      by: actor,
+      reason: 'User-confirmed Probable 2B Link (Books-only overlay, GSTR-2B untouched)',
+    });
+    const reconciled: any[] = [];
+    const twobCache = new Map<string, any[]>();
+    for (const pair of touchedPairs) {
+      const [g, p] = pair.split('|');
+      let cachedTwob = twobCache.get(g);
+      if (!cachedTwob) {
+        cachedTwob = (await loadBundleForReconcile(g, p)).twob;
+        twobCache.set(g, cachedTwob);
+      }
+      reconciled.push(await reReconcile(g, p, { changedBy: actor, reason: 'User-confirmed Probable 2B Link', cachedTwob, tolerance, dateWindow }));
+    }
+    await audit(req.user, {
+      action: 'RECON_PROBABLE_2B_CONFIRMED_LINK', module: 'Reconciliation',
+      details: { gstin, periods: [...touchedPairs], linked: bulk.changedLines, rejectedCount: rejected.length },
+    });
+    return res.json({ ok: true, mode: 'confirmed', linked: bulk.changedLines, rejected, reconciled });
+  }
+
+  // ---- Preview Mode (Default): NEVER auto-write; return ranked suggestions for user confirmation ----
   const { rows } = await listLines({
     gstin: gstin || undefined,
     periods: rawPeriods.length ? rawPeriods : undefined,
@@ -1300,16 +1424,16 @@ app.post('/api/recon/purchase/auto-link-probable', requirePerm('recon', 'edit'),
     limit: 5000,
   });
   if (!rows.length) {
-    return res.json({ ok: true, linked: 0, message: 'Koi Missing in 2B bill nahi mila.' });
+    return res.json({
+      ok: true, mode: 'preview', requiresConfirmation: true, linked: 0, suggestions: [],
+      message: 'Koi Missing in 2B bill nahi mila.',
+    });
   }
 
-  // Load aggregated unbooked 2B lines for the active GSTIN(s)
   const activeGstins = [...new Set(rows.map((r: any) => normGstinOf(r.our_gstin)).filter(Boolean))];
   const pool = await loadAggregatedUnbooked2b(activeGstins);
-
   const usedIdx = new Set<number>();
-  const edits: any[] = [];
-  const touchedPairs = new Set<string>();
+  const suggestions: Array<Record<string, unknown>> = [];
 
   for (const r of rows as any[]) {
     const ourG = normGstinOf(r.our_gstin);
@@ -1318,20 +1442,21 @@ app.post('/api/recon/purchase/auto-link-probable', requirePerm('recon', 'edit'),
     const bDt = isoDate(r.recon_invoice_date || r.book_invoice_date);
     const bTax = Number(r.book_taxable_value ?? 0);
     const bItc = Number(r.itc_amount ?? r.book_itc ?? 0);
-    const bPol = polarityOfRow(r.book_document_type, bTax, r.book_igst, r.book_cgst, r.book_sgst, r.book_cess);
+    const bDoc = normDocType(r.book_document_type);
 
     let bestIdx = -1;
     let bestScore = -1e9;
     for (let i = 0; i < pool.length; i++) {
       if (usedIdx.has(i)) continue;
       const u = pool[i];
-      if (u.our_gstin !== ourG) continue; // Never cross GST registrations
-      if (u.supplier_gstin !== sup) continue;
-      if (u.polarity !== bPol) continue; // Never match Tax Invoice with Credit Note polarity
-      if (Math.abs(bTax - u.taxable_value) > 2 || Math.abs(bItc - u.itc) > 2) continue;
+      if (u.our_gstin !== ourG) continue; // Never cross Our GSTIN
+      if (u.supplier_gstin !== sup) continue; // Never cross Supplier GSTIN
+      if (u.doc_type !== bDoc) continue; // Strict document_type equality
       const sim = invoiceSimScore(inv, u.invoice_no);
+      if (sim < 75) continue; // NEVER match based solely on amount!
+      if (Math.abs(bTax - u.taxable_value) > 2 || Math.abs(bItc - u.itc) > 2) continue;
       const dDiff = daysDiffIso(bDt, u.invoice_date);
-      if (dDiff > 180 && dDiff < 9999 && sim < 70) continue; // Guard against cross-FY collisions
+      if (dDiff > 180 && dDiff < 9999) continue;
       const mDiff = monthDiffIso(r.period, u.twob_month);
       const score = sim * 500 - dDiff * 10 - mDiff * 50;
       if (score > bestScore) {
@@ -1342,45 +1467,35 @@ app.post('/api/recon/purchase/auto-link-probable', requirePerm('recon', 'edit'),
     if (bestIdx >= 0) {
       const u = pool[bestIdx];
       usedIdx.add(bestIdx);
-      edits.push({
+      suggestions.push({
         lineId: r.id,
-        recon: {
-          recon_invoice_no: String(u.invoice_no),
-          recon_invoice_date: String(u.invoice_date || '').slice(0, 10),
-        },
+        period: r.period,
+        document_type: bDoc,
+        book_invoice_no: r.book_invoice_no,
+        book_invoice_date: bDt,
+        book_taxable: bTax,
+        book_itc: bItc,
+        twobLineKey: u.line_key,
+        twob_invoice_no: u.invoice_no,
+        twob_invoice_date: u.invoice_date,
+        twob_month: u.twob_month,
+        twob_taxable: u.taxable_value,
+        twob_itc: u.itc,
+        similarity: invoiceSimScore(inv, u.invoice_no),
       });
-      touchedPairs.add(`${ourG}|${r.period}`);
     }
   }
 
-  if (!edits.length) {
-    return res.json({ ok: true, linked: 0, message: 'Koi Probable 2B match (same Supplier GSTIN + Polarity + Taxable/ITC) nahi mila.' });
-  }
-
-  const bulk = await applyEdits(edits, {
-    by: actor,
-    reason: 'Books-only Probable 2B Auto-Link (GSTR-2B source untouched)',
+  res.json({
+    ok: true,
+    mode: 'preview',
+    requiresConfirmation: true,
+    linked: 0,
+    suggestions,
+    message: suggestions.length
+      ? `${suggestions.length} probable suggestion(s) mili hain — auto-link disabled hai; review & confirm karein.`
+      : 'Koi high-confidence Probable 2B suggestion (same GSTIN + Document Type + Invoice Similarity >= 75%) nahi mili.',
   });
-
-  const tolerance = parseToleranceArg(req.body?.tolerance);
-  const dateWindow = parseDateWindowArg(req.body?.dateWindow);
-  const reconciled: any[] = [];
-  const twobCache = new Map<string, any[]>();
-  for (const pair of touchedPairs) {
-    const [g, p] = pair.split('|');
-    let cachedTwob = twobCache.get(g);
-    if (!cachedTwob) {
-      cachedTwob = (await loadBundleForReconcile(g, p)).twob;
-      twobCache.set(g, cachedTwob);
-    }
-    reconciled.push(await reReconcile(g, p, { changedBy: actor, reason: 'Books-only Probable 2B Auto-Link', cachedTwob, tolerance, dateWindow }));
-  }
-
-  await audit(req.user, {
-    action: 'RECON_PROBABLE_2B_AUTOLINK', module: 'Reconciliation',
-    details: { gstin, periods: [...touchedPairs], linked: bulk.changedLines },
-  });
-  res.json({ ok: true, linked: bulk.changedLines, reconciled });
 }));
 
 /**
@@ -1629,18 +1744,11 @@ app.post('/api/recon/purchase/manual-link', requirePerm('recon', 'edit'), wrap(a
     });
   }
 
-  const bPol = polarityOfRow(
-    bookLine.book_document_type,
-    bookLine.book_taxable_value,
-    bookLine.book_igst,
-    bookLine.book_cgst,
-    bookLine.book_sgst,
-    bookLine.book_cess,
-  );
-  const tPol = polarityOfRow(twob.document_type, twob.taxable_value, twob.igst, twob.cgst, twob.sgst, twob.cess);
-  if (bPol !== tPol) {
+  const bDoc = normDocType(bookLine.book_document_type);
+  const tDoc = normDocType(twob.document_type);
+  if (bDoc !== tDoc) {
     return res.status(400).json({
-      error: `Polarity mismatch: positive ${bPol} document ko negative ${tPol} note se link nahi kar sakte.`,
+      error: `Strict Document Type mismatch: Books "${bDoc}" ko GSTR-2B "${tDoc}" se link nahi kar sakte.`,
     });
   }
 
@@ -1650,8 +1758,9 @@ app.post('/api/recon/purchase/manual-link', requirePerm('recon', 'edit'), wrap(a
     recon_supplier_gstin: normGstinOf(twob.supplier_gstin),
     recon_invoice_no: String(twob.invoice_no ?? '').trim(),
   };
+  // Preserve real invoice date differences unless user explicitly opts in (`syncDate: true`).
   const twobDt = isoDate(twob.invoice_date);
-  if (twobDt) patch.recon_invoice_date = twobDt;
+  if (req.body?.syncDate === true && twobDt) patch.recon_invoice_date = twobDt;
 
   const edit = await updateRecon(lineId, patch, { changedBy: actor, reason });
   if (!edit.ok) return res.status(edit.locked ? 423 : 400).json(edit);
@@ -1991,15 +2100,45 @@ app.post('/api/lines/:id/recon', requirePerm('recon', 'edit'), wrap(async (req, 
   }
   const partyName = req.body?.party_name !== undefined ? str(req.body.party_name) : undefined;
   const remarks = req.body?.remarks !== undefined ? str(req.body.remarks) : undefined;
+  const extraCharges: { type?: string | null; taxable?: number; igst?: number; cgst?: number; sgst?: number; utgst?: number; cess?: number } = {};
+  if (req.body?.recon_extra_charges_type !== undefined) {
+    extraCharges.type = str(req.body.recon_extra_charges_type) || null;
+  }
+  const parseExtraNum = (v: unknown): number | undefined => {
+    if (v === undefined || v === null || v === '') return undefined;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : undefined;
+  };
+  const exTx = parseExtraNum(req.body?.recon_extra_taxable);
+  const exIg = parseExtraNum(req.body?.recon_extra_igst);
+  const exCg = parseExtraNum(req.body?.recon_extra_cgst);
+  const exSg = parseExtraNum(req.body?.recon_extra_sgst);
+  const exUt = parseExtraNum(req.body?.recon_extra_utgst);
+  const exCe = parseExtraNum(req.body?.recon_extra_cess);
+  if (exTx !== undefined) extraCharges.taxable = exTx;
+  if (exIg !== undefined) extraCharges.igst = exIg;
+  if (exCg !== undefined) extraCharges.cgst = exCg;
+  if (exSg !== undefined) extraCharges.sgst = exSg;
+  if (exUt !== undefined) extraCharges.utgst = exUt;
+  if (exCe !== undefined) extraCharges.cess = exCe;
+  const hasExtra = Object.keys(extraCharges).length > 0;
+
   const by = actorOf(req);
   const reason = str(req.body?.reason) || undefined;
 
-  const edit = await updateRecon(id, patch, { changedBy: by, reason, partyName, remarks });
+  const edit = await updateRecon(id, patch, {
+    changedBy: by,
+    reason,
+    partyName,
+    remarks,
+    ...(hasExtra ? { extraCharges } : {}),
+  });
   if (!edit.ok) return res.status(edit.locked ? 423 : 400).json(edit);
 
   const auditedPayload: Record<string, unknown> = { ...patch };
   if (partyName !== undefined) auditedPayload.party_name = partyName;
   if (remarks !== undefined) auditedPayload.remarks = remarks;
+  if (hasExtra) auditedPayload.extra_charges = extraCharges;
   const auditedFields = (edit.changed && edit.changed.length ? edit.changed : Object.keys(auditedPayload)).join(', ') || null;
 
   await audit(req.user, {
@@ -4681,9 +4820,9 @@ app.post('/api/validate-gstins', wrap(async (req, res) => {
   const rawList: string[] = Array.isArray(req.body?.gstins)
     ? req.body.gstins
     : String(req.body?.text || '')
-        .split(/[\r\n,;\t ]+/)
-        .map((s) => s.trim().toUpperCase())
-        .filter(Boolean);
+      .split(/[\r\n,;\t ]+/)
+      .map((s) => s.trim().toUpperCase())
+      .filter(Boolean);
 
   const CHARS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   const checkGstinOne = (g: string) => {

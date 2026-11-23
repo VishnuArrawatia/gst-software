@@ -127,6 +127,13 @@ export const FIELD_LABEL: Record<string, string> = {
   recon_supplier_gstin: 'Reconciliation GSTIN',
   recon_invoice_no: 'Reconciliation Invoice No',
   recon_invoice_date: 'Reconciliation Invoice Date',
+  recon_extra_charges_type: 'Additional Charges Type',
+  recon_extra_taxable: 'Additional Charges Taxable',
+  recon_extra_igst: 'Additional Charges IGST',
+  recon_extra_cgst: 'Additional Charges CGST',
+  recon_extra_sgst: 'Additional Charges SGST',
+  recon_extra_utgst: 'Additional Charges UTGST',
+  recon_extra_cess: 'Additional Charges Cess',
   has_e_invoice: 'E-Invoice Generated',
   e_invoice_no: 'E-Invoice IRN',
   has_e_way_bill: 'E-Way Bill Generated',
@@ -345,11 +352,12 @@ const SALES_ITEM_COL_COUNT = 16;
         twobValues.push([
           key, normGstin(t.our_gstin), normGstin(t.supplier_gstin), t.supplier_name || '',
           String(t.invoice_no ?? '').trim(), t.invoice_date || null, t.invoice_type || null,
-          r2(t.taxable_value), r2(t.igst), r2(t.cgst), r2(t.sgst), r2(t.cess), r2(t.invoice_value),
+          r2(t.taxable_value), r2(t.igst), r2(t.cgst), r2(t.sgst), r2(t.utgst ?? 0), r2(t.cess), r2(t.invoice_value),
           month, (t.portal_fp || '').slice(0, 7) || null, t.filing_date || null,
           t.place_of_supply || null, !!t.reverse_charge, t.itc_availability || 'Yes',
           t.reason || null, t.applicable_pct || null, t.source_file || null, t.source_row ?? null,
           /\.json$/i.test(t.source_file || '') ? 'json' : 'xlsx',
+          t.doc_category || null, r2(t.source_utgst ?? 0), t.original_doc_no || null, t.original_doc_date || null,
         ]);
       }
       // ---- Sales invoices ----------------------------------------------
@@ -540,19 +548,24 @@ const SALES_ITEM_COL_COUNT = 16;
           const r = await c.query(
             `INSERT INTO gstr2b_lines
                (line_key, our_gstin, supplier_gstin, supplier_name, invoice_no, invoice_date,
-                document_type, taxable_value, igst, cgst, sgst, cess, invoice_value,
+                document_type, taxable_value, igst, cgst, sgst, utgst, cess, invoice_value,
                 twob_month, portal_fp, filing_date, place_of_supply, reverse_charge,
-                itc_availability, reason, applicable_pct, source_file, source_row, source_format)
+                itc_availability, reason, applicable_pct, source_file, source_row, source_format,
+                doc_category, source_utgst, original_doc_no, original_doc_date)
              VALUES ${chunk.map((_, i) =>
                `(${Array.from({ length: TWOB_COL_COUNT }, (_, k) => '$' + (i * TWOB_COL_COUNT + k + 1)).join(',')})`).join(',')}
              ON CONFLICT (line_key) DO UPDATE SET
                supplier_gstin = EXCLUDED.supplier_gstin,
                supplier_name = COALESCE(NULLIF(EXCLUDED.supplier_name,''), gstr2b_lines.supplier_name),
                taxable_value = EXCLUDED.taxable_value,
-               igst = EXCLUDED.igst, cgst = EXCLUDED.cgst, sgst = EXCLUDED.sgst,
+               igst = EXCLUDED.igst, cgst = EXCLUDED.cgst, sgst = EXCLUDED.sgst, utgst = EXCLUDED.utgst,
                cess = EXCLUDED.cess, invoice_value = EXCLUDED.invoice_value,
                twob_month = EXCLUDED.twob_month, portal_fp = EXCLUDED.portal_fp,
                itc_availability = EXCLUDED.itc_availability, reason = EXCLUDED.reason,
+               doc_category = COALESCE(EXCLUDED.doc_category, gstr2b_lines.doc_category),
+               source_utgst = EXCLUDED.source_utgst,
+               original_doc_no = COALESCE(EXCLUDED.original_doc_no, gstr2b_lines.original_doc_no),
+               original_doc_date = COALESCE(EXCLUDED.original_doc_date, gstr2b_lines.original_doc_date),
                imported_at = now()`,
             chunk.flat(),
           );
@@ -572,7 +585,9 @@ const SALES_ITEM_COL_COUNT = 16;
         const key = lineKeyOf(b);
         const g = gmap.get(normGstin(b.our_gstin));
         const recon = input.reconByBundle.get(bk);
-        const row = recon?.rows.find((r) => r.source_row === b.source_row);
+        const row =
+          recon?.rows.find((r) => (r.source_file ?? '') === (b.source_file ?? '') && r.source_row === b.source_row) ??
+          recon?.rows.find((r) => r.source_row === b.source_row);
         const matchedTwob = row?.matched_2b_id ? input.twob.find((t) => t.id === row.matched_2b_id) : undefined;
         values.push(lineParams(key, b, g, row, matchedTwob, 'file'));
       }
@@ -592,8 +607,8 @@ const SALES_ITEM_COL_COUNT = 16;
   return res;
 }
 
-const PURCHASE_COL_COUNT = 59;
-const TWOB_COL_COUNT = 24;
+const PURCHASE_COL_COUNT = 62;
+const TWOB_COL_COUNT = 29;
 /** PostgreSQL allows 65535 bind parameters per statement, so bulk writes chunk. */
 const MAX_PARAMS = 60_000;
 
@@ -611,12 +626,12 @@ function insertPurchaseSql(n: number): string {
         party_name, source_file, source_row, import_source,
         book_supplier_gstin, book_invoice_no, book_invoice_date, book_reference_no,
         book_entry_date, book_document_type, book_document_type_raw, book_sign,
-        source_taxable_value, source_igst, source_cgst, source_sgst, source_cess,
-        book_taxable_value, book_igst, book_cgst, book_sgst, book_cess,
+        source_taxable_value, source_igst, source_cgst, source_sgst, source_utgst, source_cess,
+        book_taxable_value, book_igst, book_cgst, book_sgst, book_utgst, book_cess,
         recon_supplier_gstin, recon_invoice_no, recon_invoice_date,
         match_status, detailed_match_status, match_method, matched_2b_key, matched_2b_month,
         twob_supplier_gstin, twob_invoice_no, twob_invoice_date, twob_taxable_value,
-        twob_igst, twob_cgst, twob_sgst, twob_cess, twob_itc, itc_availability,
+        twob_igst, twob_cgst, twob_sgst, twob_utgst, twob_cess, twob_itc, itc_availability,
         mismatch_reason, itc_amount, taxable_difference, itc_difference,
         duplicate_count, suggested_action, reconciled_at, imported_at,
         has_e_invoice, e_invoice_no, has_e_way_bill, e_way_bill_no)
@@ -656,6 +671,7 @@ function insertPurchaseSql(n: number): string {
        source_igst = EXCLUDED.source_igst,
        source_cgst = EXCLUDED.source_cgst,
        source_sgst = EXCLUDED.source_sgst,
+       source_utgst = EXCLUDED.source_utgst,
        source_cess = EXCLUDED.source_cess,
        unit_name = COALESCE(EXCLUDED.unit_name, purchase_lines.unit_name),
        match_status = EXCLUDED.match_status,
@@ -668,7 +684,7 @@ function insertPurchaseSql(n: number): string {
        twob_invoice_date = EXCLUDED.twob_invoice_date,
        twob_taxable_value = EXCLUDED.twob_taxable_value,
        twob_igst = EXCLUDED.twob_igst, twob_cgst = EXCLUDED.twob_cgst,
-       twob_sgst = EXCLUDED.twob_sgst, twob_cess = EXCLUDED.twob_cess,
+       twob_sgst = EXCLUDED.twob_sgst, twob_utgst = EXCLUDED.twob_utgst, twob_cess = EXCLUDED.twob_cess,
        twob_itc = EXCLUDED.twob_itc,
        itc_availability = EXCLUDED.itc_availability,
        mismatch_reason = EXCLUDED.mismatch_reason,
@@ -727,19 +743,23 @@ function lineParams(
     r2(b.source_igst ?? b.igst),
     r2(b.source_cgst ?? b.cgst),
     r2(b.source_sgst ?? b.sgst),
+    r2(b.source_utgst ?? b.utgst ?? 0),
     r2(b.source_cess ?? b.cess),
-    r2(b.taxable_value), r2(b.igst), r2(b.cgst), r2(b.sgst), r2(b.cess),
+    r2(b.taxable_value), r2(b.igst), r2(b.cgst), r2(b.sgst), r2(b.utgst ?? 0), r2(b.cess),
     // recon_* — the editable copy
     normGstin(b.supplier_gstin), String(b.invoice_no ?? '').trim(), b.invoice_date || null,
     // match outcome
     row?.status ?? null, row?.detailed_status ?? null, row ? 'primary' : 'none', row?.matched_2b_id ?? null,
     row?.matched_2b_month ?? null,
-    matched ? normGstin(twob?.supplier_gstin ?? b.supplier_gstin) : null,
-    matched ? String(twob?.invoice_no ?? row?.invoice_no ?? '') : null,
-    matched ? twob?.invoice_date || row?.invoice_date || null : null,
+    matched ? normGstin(row?.two_b_supplier_gstin ?? twob?.supplier_gstin ?? b.supplier_gstin) : null,
+    matched ? String(row?.two_b_invoice_no ?? twob?.invoice_no ?? row?.invoice_no ?? '') : null,
+    matched ? (row?.two_b_invoice_date ?? twob?.invoice_date ?? row?.invoice_date) || null : null,
     row?.two_b_taxable ?? null,
-    matched ? r2(twob?.igst) : null, matched ? r2(twob?.cgst) : null,
-    matched ? r2(twob?.sgst) : null, matched ? r2(twob?.cess) : null,
+    matched ? r2(row?.two_b_igst ?? twob?.igst) : null,
+    matched ? r2(row?.two_b_cgst ?? twob?.cgst) : null,
+    matched ? r2(row?.two_b_sgst ?? twob?.sgst) : null,
+    matched ? r2(row?.two_b_utgst ?? twob?.utgst ?? 0) : null,
+    matched ? r2(row?.two_b_cess ?? twob?.cess) : null,
     row?.two_b_itc ?? null, row?.itc_availability ?? null,
     row?.reason ?? null, itc, row?.taxable_difference ?? null, row?.itc_difference ?? null,
     row?.duplicate_count ?? null, [row?.action, row?.match_hint].filter(Boolean).join(' | ') || null, row ? new Date() : null, new Date(),
@@ -795,15 +815,16 @@ function lineWhere(f: LineFilters, params: unknown[]): string {
 const LINE_COLS = `id, line_key, our_gstin, period, financial_year, company_id, unit_name, party_name,
   source_file, source_row, import_source, imported_at,
   book_supplier_gstin, book_invoice_no, book_invoice_date, book_taxable_value,
-  book_igst, book_cgst, book_sgst, book_cess, book_reference_no, book_entry_date,
+  book_igst, book_cgst, book_sgst, book_utgst, book_cess, book_reference_no, book_entry_date,
   book_document_type, book_document_type_raw, book_sign,
-  source_taxable_value, source_igst, source_cgst, source_sgst, source_cess,
+  source_taxable_value, source_igst, source_cgst, source_sgst, source_utgst, source_cess,
   has_e_invoice, e_invoice_no, has_e_way_bill, e_way_bill_no,
   e_invoice_required, e_way_bill_required,
   recon_supplier_gstin, recon_invoice_no, recon_invoice_date, recon_edited, recon_edited_by, recon_edited_at,
+  recon_extra_charges_type, recon_extra_taxable, recon_extra_igst, recon_extra_cgst, recon_extra_sgst, recon_extra_utgst, recon_extra_cess,
   match_status, detailed_match_status, match_method, matched_2b_key, matched_2b_month,
   twob_supplier_gstin, twob_invoice_no, twob_invoice_date, twob_taxable_value,
-  twob_igst, twob_cgst, twob_sgst, twob_cess, twob_itc, itc_availability,
+  twob_igst, twob_cgst, twob_sgst, twob_utgst, twob_cess, twob_itc, itc_availability,
   mismatch_reason, itc_amount, taxable_difference, itc_difference, duplicate_count,
   suggested_action, reconciled_at,
   itc_decision, itc_decision_month, decision_by, decision_at, decision_reason, return_classification,
@@ -826,7 +847,7 @@ export function shapeLine(r: Record<string, any>): Record<string, any> {
     document_type: normDocType(r.book_document_type),
     document_type_raw: r.book_document_type_raw ?? null,
     sign_effect: Number(r.book_sign ?? 1),
-    book_itc: r2(n(r.book_igst) + n(r.book_cgst) + n(r.book_sgst) + n(r.book_cess)),
+    book_itc: r2(n(r.book_igst) + n(r.book_cgst) + n(r.book_sgst) + n(r.book_utgst) + n(r.book_cess)),
     periodLabel: labelOf(r.period),
     twoBMonthLabel: r.matched_2b_month ? labelOf(r.matched_2b_month) : '',
     twoBMatched: !!r.matched_2b_key,
@@ -917,6 +938,7 @@ export async function loadBundleForReconcile(gstin: string, period: string, cach
       igst: Number(r.book_igst),
       cgst: Number(r.book_cgst),
       sgst: Number(r.book_sgst),
+      utgst: Number(r.book_utgst ?? 0),
       cess: Number(r.book_cess),
       invoice_total: r2(Number(r.book_taxable_value)),
       source_file: r.source_file ?? undefined,
@@ -928,6 +950,13 @@ export async function loadBundleForReconcile(gstin: string, period: string, cach
       return_classification: r.return_classification ?? undefined,
       recon_invoice_date:
         r.recon_invoice_date instanceof Date ? iso(r.recon_invoice_date) : r.recon_invoice_date,
+      recon_extra_charges_type: r.recon_extra_charges_type ?? undefined,
+      recon_extra_taxable: Number(r.recon_extra_taxable ?? 0),
+      recon_extra_igst: Number(r.recon_extra_igst ?? 0),
+      recon_extra_cgst: Number(r.recon_extra_cgst ?? 0),
+      recon_extra_sgst: Number(r.recon_extra_sgst ?? 0),
+      recon_extra_utgst: Number(r.recon_extra_utgst ?? 0),
+      recon_extra_cess: Number(r.recon_extra_cess ?? 0),
     });
   }
 
@@ -954,6 +983,7 @@ export async function loadBundleForReconcile(gstin: string, period: string, cach
         igst: Number(r.igst),
         cgst: Number(r.cgst),
         sgst: Number(r.sgst),
+        utgst: Number(r.utgst ?? 0),
         cess: Number(r.cess),
         period: r.twob_month,
         portal_fp: r.portal_fp ?? r.twob_month,
@@ -967,15 +997,14 @@ export async function loadBundleForReconcile(gstin: string, period: string, cach
   }
 
   // Exclude 2B lines already claimed by purchase lines in OTHER months of the
-  // same GSTIN so across-FY invoice numbers can never hijack an old 2B line.
+  // same GSTIN so no 2B line can ever be double-claimed across months.
   const ceRes = await withClient((c) =>
     c.query(
       `SELECT DISTINCT matched_2b_key
          FROM purchase_lines
         WHERE our_gstin = $1
           AND period <> $2
-          AND matched_2b_key IS NOT NULL
-          AND match_status = 'Matched'`,
+          AND matched_2b_key IS NOT NULL`,
       [normGstin(gstin), period],
     ),
   );
@@ -984,12 +1013,12 @@ export async function loadBundleForReconcile(gstin: string, period: string, cach
     const claimedTuples = new Set<string>();
     for (const t of twob) {
       if (t.id && claimedElsewhere.has(t.id)) {
-        claimedTuples.add(`${normGstin(t.supplier_gstin)}|${normInvoice(t.invoice_no)}|${t.portal_fp || t.period || ''}`);
+        claimedTuples.add(`${normGstin(t.supplier_gstin)}|${normInvoice(t.invoice_no)}|${normDocType(t.invoice_type)}|${t.portal_fp || t.period || ''}`);
       }
     }
     for (const t of twob) {
       if (!t.id) continue;
-      const tup = `${normGstin(t.supplier_gstin)}|${normInvoice(t.invoice_no)}|${t.portal_fp || t.period || ''}`;
+      const tup = `${normGstin(t.supplier_gstin)}|${normInvoice(t.invoice_no)}|${normDocType(t.invoice_type)}|${t.portal_fp || t.period || ''}`;
       if (claimedTuples.has(tup)) claimedElsewhere.add(t.id);
     }
   }
@@ -1102,6 +1131,7 @@ export async function reReconcile(
       const tIgsts: Array<number | null> = [];
       const tCgsts: Array<number | null> = [];
       const tSgsts: Array<number | null> = [];
+      const tUtgsts: Array<number | null> = [];
       const tCesss: Array<number | null> = [];
       const tItcs: Array<number | null> = [];
       const tAvails: Array<string | null> = [];
@@ -1113,7 +1143,7 @@ export async function reReconcile(
       const actions: Array<string | null> = [];
 
       for (const r of result.rows) {
-        const id = byKey.get(`${r.source_file ?? ''}|${r.source_row}`);
+        const id = r.book_line_id || byKey.get(`${r.source_file ?? ''}|${r.source_row}`);
         if (!id) continue;
         const was = priorById.get(String(id));
         if (was && (was.st !== r.status || was.k !== (r.matched_2b_id ?? ''))) moved++;
@@ -1129,6 +1159,7 @@ export async function reReconcile(
         tIgsts.push(r.two_b_igst ?? null);
         tCgsts.push(r.two_b_cgst ?? null);
         tSgsts.push(r.two_b_sgst ?? null);
+        tUtgsts.push(r.two_b_utgst ?? null);
         tCesss.push(r.two_b_cess ?? null);
         tItcs.push(r.two_b_itc ?? null);
         tAvails.push(r.itc_availability ?? null);
@@ -1155,6 +1186,7 @@ export async function reReconcile(
              twob_igst = v.twob_igst,
              twob_cgst = v.twob_cgst,
              twob_sgst = v.twob_sgst,
+             twob_utgst = v.twob_utgst,
              twob_cess = v.twob_cess,
              twob_itc = v.twob_itc,
              itc_availability = v.itc_availability,
@@ -1171,21 +1203,21 @@ export async function reReconcile(
                $1::bigint[], $2::text[], $3::text[], $4::text[], $5::text[],
                $6::text[], $7::text[], $8::numeric[], $9::numeric[], $10::numeric[],
                $11::numeric[], $12::numeric[], $13::numeric[], $14::text[],
-               $15::text[], $16::numeric[], $17::numeric[], $18::numeric[], $19::int[], $20::text[], $21::text[]
+               $15::text[], $16::numeric[], $17::numeric[], $18::numeric[], $19::int[], $20::text[], $21::text[], $22::numeric[]
              )
            ) AS v(
              id, match_status, matched_2b_key, matched_2b_month, twob_supplier_gstin,
              twob_invoice_no, twob_invoice_date, twob_taxable_value, twob_igst, twob_cgst,
              twob_sgst, twob_cess, twob_itc, itc_availability,
              mismatch_reason, itc_amount, taxable_difference, itc_difference, duplicate_count, suggested_action,
-             detailed_match_status
+             detailed_match_status, twob_utgst
            )
            WHERE p.id = v.id`,
           [
             ids, statuses, mKeys, mMonths, tGstins,
             tInvs, tDates, tTaxables, tIgsts, tCgsts,
             tSgsts, tCesss, tItcs, tAvails,
-            reasons, itcAmts, taxDiffs, itcDiffs, dupCounts, actions, dStatuses,
+            reasons, itcAmts, taxDiffs, itcDiffs, dupCounts, actions, dStatuses, tUtgsts,
           ],
         );
       }
@@ -1581,6 +1613,13 @@ const CORRECTION_FIELDS = new Set([
   'recon_supplier_gstin',
   'recon_invoice_no',
   'recon_invoice_date',
+  'recon_extra_charges_type',
+  'recon_extra_taxable',
+  'recon_extra_igst',
+  'recon_extra_cgst',
+  'recon_extra_sgst',
+  'recon_extra_utgst',
+  'recon_extra_cess',
   'itc_decision',
   'itc_decision_month',
   'decision_reason',
@@ -1610,10 +1649,21 @@ export interface EditResult {
   historyId?: number;
 }
 
+export interface ExtraChargesPatch {
+  type?: string | null;
+  taxable?: number;
+  igst?: number;
+  cgst?: number;
+  sgst?: number;
+  utgst?: number;
+  cess?: number;
+}
+
 /** One line's worth of changes, whichever route they arrived by. */
 export interface LineEdit {
   lineId: number;
   recon?: Partial<Record<ReconField, string>>;
+  extraCharges?: ExtraChargesPatch;
   partyName?: string;
   itc?: { decision?: string; decisionMonth?: string; reason?: string };
   /** E-invoice / e-way bill answers. Absent = leave whatever is recorded. */
@@ -1717,6 +1767,43 @@ export async function applyEdits(
           stampRecon = true;
           r.changed.push(f);
           r.diff!.push({ field: f, from: prev, to: next });
+        }
+
+        // ---- additional charges overlay (Freight / Other Charges) ------
+        if (e.extraCharges) {
+          if (e.extraCharges.type !== undefined) {
+            const next = e.extraCharges.type === null ? null : String(e.extraCharges.type).trim().slice(0, 40) || null;
+            const prev = row.recon_extra_charges_type ? String(row.recon_extra_charges_type) : null;
+            if (next !== prev) {
+              params.push(next);
+              sets.push(`recon_extra_charges_type = $${params.length}`);
+              wroteAnything = true;
+              stampRecon = true;
+              r.changed.push('recon_extra_charges_type');
+              r.diff!.push({ field: 'recon_extra_charges_type', from: prev ?? '', to: next ?? '' });
+            }
+          }
+          const numMap: Array<[keyof Omit<ExtraChargesPatch, 'type'>, string]> = [
+            ['taxable', 'recon_extra_taxable'],
+            ['igst', 'recon_extra_igst'],
+            ['cgst', 'recon_extra_cgst'],
+            ['sgst', 'recon_extra_sgst'],
+            ['utgst', 'recon_extra_utgst'],
+            ['cess', 'recon_extra_cess'],
+          ];
+          for (const [k, col] of numMap) {
+            const rawVal = e.extraCharges[k];
+            if (rawVal === undefined) continue;
+            const next = r2(rawVal);
+            const prev = r2(row[col] ?? 0);
+            if (next === prev) continue;
+            params.push(next);
+            sets.push(`${col} = $${params.length}`);
+            wroteAnything = true;
+            stampRecon = true;
+            r.changed.push(col);
+            r.diff!.push({ field: col, from: prev.toFixed(2), to: next.toFixed(2) });
+          }
         }
 
         // ---- party / vendor display name (non-trigger-locked) ----------
@@ -1859,7 +1946,7 @@ export async function applyEdits(
           }
           await writeAudit(c, {
             changedBy: opts.by,
-            action: ((RECON_FIELDS as readonly string[]).includes(d.field) || d.field === 'party_name')
+            action: ((RECON_FIELDS as readonly string[]).includes(d.field) || d.field === 'party_name' || d.field.startsWith('recon_extra_'))
               ? 'EDIT'
               : (E_DOC_FIELDS as readonly string[]).includes(d.field)
                 ? 'E DOC'
@@ -1904,7 +1991,7 @@ export async function applyEdits(
 export async function updateRecon(
   lineId: number,
   patch: Partial<Record<ReconField, string>>,
-  opts: { changedBy: string; reason?: string; partyName?: string; remarks?: string },
+  opts: { changedBy: string; reason?: string; partyName?: string; remarks?: string; extraCharges?: ExtraChargesPatch },
 ): Promise<EditResult> {
   const out: EditResult = { ok: false, changed: [] };
 
@@ -1924,6 +2011,7 @@ export async function updateRecon(
   const edit: LineEdit = {
     lineId,
     ...(Object.keys(patch).length ? { recon: patch } : {}),
+    ...(opts.extraCharges ? { extraCharges: opts.extraCharges } : {}),
     ...(opts.partyName !== undefined ? { partyName: opts.partyName } : {}),
     ...(opts.remarks !== undefined ? { followUp: { remarks: opts.remarks } } : {}),
   };
@@ -1954,7 +2042,16 @@ export async function resetReconToBook(
   };
   const bookDt = existing.book_invoice_date ? isoDate(existing.book_invoice_date) : '';
   if (bookDt) patch.recon_invoice_date = bookDt;
-  const bulk = await applyEdits([{ lineId, recon: patch }], {
+  const extraCharges: ExtraChargesPatch = {
+    type: null,
+    taxable: 0,
+    igst: 0,
+    cgst: 0,
+    sgst: 0,
+    utgst: 0,
+    cess: 0,
+  };
+  const bulk = await applyEdits([{ lineId, recon: patch, extraCharges }], {
     by: opts.changedBy,
     reason: opts.reason || 'Reset recon fields back to original book values',
     atomic: true,
@@ -2309,7 +2406,7 @@ export async function itcWorking(f: LineFilters) {
               recon_supplier_gstin AS reconGstin, recon_invoice_no AS reconInvoiceNo,
               recon_invoice_date AS reconInvoiceDate, recon_edited AS edited,
               book_taxable_value AS taxable, book_igst AS igst, book_cgst AS cgst,
-              book_sgst AS sgst, book_cess AS cess,
+              book_sgst AS sgst, book_utgst AS utgst, book_cess AS cess,
               match_status, matched_2b_key, matched_2b_month,
               twob_taxable_value AS twoBTaxable, twob_itc AS twoBItc, itc_availability,
               itc_decision, itc_decision_month, decision_by, decision_at, decision_reason,
@@ -2322,7 +2419,7 @@ export async function itcWorking(f: LineFilters) {
   );
   return r.rows.map((x: any) => ({
     ...x,
-    itc: r2(Number(x.igst) + Number(x.cgst) + Number(x.sgst) + Number(x.cess)),
+    itc: r2(Number(x.igst) + Number(x.cgst) + Number(x.sgst) + Number(x.utgst ?? 0) + Number(x.cess)),
     periodLabel: labelOf(x.period),
     twoBMonthLabel: x.matched_2b_month ? labelOf(x.matched_2b_month) : '',
     twoBMatched: !!x.matched_2b_key,
@@ -2380,8 +2477,8 @@ export async function dashboard(f: { gstin?: string; gstins?: string[]; period?:
       `SELECT count(*)::int lines,
               count(*) FILTER (WHERE matched_2b_key IS NOT NULL)::int matched,
               count(*) FILTER (WHERE itc_decision = 'Pending Review')::int pending,
-              coalesce(sum(book_igst + book_cgst + book_sgst + book_cess) FILTER (WHERE matched_2b_key IS NOT NULL),0)::numeric itc_matched,
-              coalesce(sum(book_igst + book_cgst + book_sgst + book_cess) FILTER (WHERE itc_decision = 'Claim'),0)::numeric itc_claim,
+              coalesce(sum(book_igst + book_cgst + book_sgst + book_utgst + book_cess) FILTER (WHERE matched_2b_key IS NOT NULL),0)::numeric itc_matched,
+              coalesce(sum(book_igst + book_cgst + book_sgst + book_utgst + book_cess) FILTER (WHERE itc_decision = 'Claim'),0)::numeric itc_claim,
               count(*) FILTER (WHERE book_document_type = 'Credit Note')::int credit_docs,
               count(*) FILTER (WHERE book_document_type = 'Debit Note')::int debit_docs,
               count(*) FILTER (WHERE book_document_type = 'Tax Invoice')::int invoice_docs,
@@ -2400,7 +2497,7 @@ export async function dashboard(f: { gstin?: string; gstins?: string[]; period?:
         : await c.query('SELECT count(*)::int n FROM gstr2b_lines');
     const m = await c.query(
       `SELECT matched_2b_month k, count(*)::int n,
-              coalesce(sum(book_igst + book_cgst + book_sgst + book_cess),0)::numeric itc
+              coalesce(sum(book_igst + book_cgst + book_sgst + book_utgst + book_cess),0)::numeric itc
          FROM purchase_lines ${where} ${where ? 'AND' : 'WHERE'} matched_2b_month IS NOT NULL
         GROUP BY matched_2b_month ORDER BY matched_2b_month`,
       params,
@@ -2784,9 +2881,9 @@ export async function monthControl(f: { gstin?: string } = {}): Promise<MonthCon
       `SELECT period,
               count(*)::int lines,
               coalesce(sum(book_taxable_value),0)::numeric taxable,
-              coalesce(sum(book_igst + book_cgst + book_sgst + book_cess),0)::numeric purchase_gst,
+              coalesce(sum(book_igst + book_cgst + book_sgst + book_utgst + book_cess),0)::numeric purchase_gst,
               count(*) FILTER (WHERE matched_2b_key IS NOT NULL)::int matched,
-              coalesce(sum(book_igst + book_cgst + book_sgst + book_cess)
+              coalesce(sum(book_igst + book_cgst + book_sgst + book_utgst + book_cess)
                        FILTER (WHERE matched_2b_key IS NOT NULL),0)::numeric matched_itc,
               count(*) FILTER (WHERE match_status = 'Missing in 2B')::int missing,
               count(*) FILTER (WHERE match_status = 'Amount Mismatch')::int mismatch,
@@ -2794,7 +2891,7 @@ export async function monthControl(f: { gstin?: string } = {}): Promise<MonthCon
               count(*) FILTER (WHERE match_status = 'ITC Blocked')::int blocked,
               count(*) FILTER (WHERE itc_decision = 'Pending Review')::int pending_decision,
               count(*) FILTER (WHERE itc_decision = 'Claim')::int claimed,
-              coalesce(sum(book_igst + book_cgst + book_sgst + book_cess)
+              coalesce(sum(book_igst + book_cgst + book_sgst + book_utgst + book_cess)
                        FILTER (WHERE itc_decision = 'Claim'),0)::numeric claimed_amt,
               count(*) FILTER (WHERE match_status <> 'Matched'
                                AND (follow_up_date IS NULL OR action_taken IS NULL))::int follow_up
@@ -2961,7 +3058,7 @@ export async function loadExistingGstr2bFingerprints(gstins?: string[] | null): 
     }
     const r = await c.query(
       `SELECT our_gstin, supplier_gstin, invoice_no, document_type, doc_category,
-              twob_month, portal_fp, invoice_date, taxable_value, igst, cgst, sgst, cess
+              twob_month, portal_fp, invoice_date, taxable_value, igst, cgst, sgst, utgst, cess
          FROM gstr2b_lines ${where}`,
       params,
     );
@@ -2981,6 +3078,7 @@ export async function loadExistingGstr2bFingerprints(gstins?: string[] | null): 
         igst: Number(row.igst || 0),
         cgst: Number(row.cgst || 0),
         sgst: Number(row.sgst || 0),
+        utgst: Number(row.utgst || 0),
         cess: Number(row.cess || 0),
       });
       fingerprints.add(fp);
@@ -3094,6 +3192,7 @@ export async function importGstr2bExcelBatch(
             r2(rec.igst),
             r2(rec.cgst),
             r2(rec.sgst),
+            r2(rec.utgst ?? 0),
             r2(rec.cess),
             r2(rec.invoice_value),
             rec.period,
@@ -3114,20 +3213,24 @@ export async function importGstr2bExcelBatch(
             r2(rec.source_igst ?? rec.igst),
             r2(rec.source_cgst ?? rec.cgst),
             r2(rec.source_sgst ?? rec.sgst),
+            r2(rec.source_utgst ?? rec.utgst ?? 0),
             r2(rec.source_cess ?? rec.cess),
+            rec.original_doc_no || null,
+            rec.original_doc_date || null,
           ]);
         }
 
-        const COL_CNT = 32;
+        const COL_CNT = 36;
         for (const chunk of chunkRows(vals, COL_CNT)) {
           const ins = await c.query(
             `INSERT INTO gstr2b_lines
                (line_key, our_gstin, supplier_gstin, supplier_name, invoice_no, invoice_date,
-                document_type, taxable_value, igst, cgst, sgst, cess, invoice_value,
+                document_type, taxable_value, igst, cgst, sgst, utgst, cess, invoice_value,
                 twob_month, portal_fp, filing_date, place_of_supply, reverse_charge,
                 itc_availability, reason, applicable_pct, source_file, source_row, source_format,
                 doc_category, import_batch_id, original_sign_preserved,
-                source_taxable_value, source_igst, source_cgst, source_sgst, source_cess)
+                source_taxable_value, source_igst, source_cgst, source_sgst, source_utgst, source_cess,
+                original_doc_no, original_doc_date)
              VALUES ${chunk.map((_, i) =>
                `(${Array.from({ length: COL_CNT }, (__, k) => '$' + (i * COL_CNT + k + 1)).join(',')})`).join(',')}
              ON CONFLICT (line_key) DO NOTHING`,

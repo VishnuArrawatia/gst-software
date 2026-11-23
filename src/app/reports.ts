@@ -75,7 +75,7 @@ export interface Column {
 // shared SQL fragments
 // ---------------------------------------------------------------------------
 
-const ITC = `(p.book_igst + p.book_cgst + p.book_sgst + p.book_cess)`;
+const ITC = `(p.book_igst + p.book_cgst + p.book_sgst + COALESCE(p.book_utgst,0) + p.book_cess)`;
 
 /**
  * The derived "ITC Status" the spec asks for separately from the decision.
@@ -117,11 +117,13 @@ const LINE_SELECT = `
   p.source_igst,
   p.source_cgst,
   p.source_sgst,
+  p.source_utgst,
   p.source_cess,
   p.book_taxable_value,
   p.book_igst,
   p.book_cgst,
   p.book_sgst,
+  p.book_utgst,
   p.book_cess,
   ${ITC} AS book_itc,
   p.recon_supplier_gstin,
@@ -138,6 +140,7 @@ const LINE_SELECT = `
   p.twob_igst,
   p.twob_cgst,
   p.twob_sgst,
+  p.twob_utgst,
   p.twob_cess,
   p.twob_itc,
   p.itc_availability,
@@ -1058,7 +1061,7 @@ export const FOLLOWUP_COLUMNS: Column[] = [
  */
 export function shapeRow(row: Record<string, any>): Record<string, any> {
   const out = { ...row };
-  out.utgst = 0;
+  out.utgst = Number(row.book_utgst ?? 0);
   out.edited_yesno = row.recon_edited ? 'YES' : '';
   out.matched_yesno = row.matched_2b_key ? 'YES' : 'No';
   out.remark = row.remarks ?? row.mismatch_reason ?? row.suggested_action ?? '';

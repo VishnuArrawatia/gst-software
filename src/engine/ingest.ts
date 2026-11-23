@@ -21,6 +21,7 @@ import {
   inferDocType,
   isBlankish,
   isCreditNote,
+  isUtWithoutLegislature,
   normDate,
   normGstin,
   normInvoice,
@@ -189,6 +190,7 @@ export function parsePurchaseRegister(
       const igstRaw = toNum(pick(raw, map, 'igst'));
       const cgstRaw = toNum(pick(raw, map, 'cgst'));
       const sgstRaw = toNum(pick(raw, map, 'sgst'));
+      const utgstRaw = toNum(pick(raw, map, 'utgst'));
       const cessRaw = toNum(pick(raw, map, 'cess'));
 
       // The register holds invoices, credit notes and debit notes in one file,
@@ -199,7 +201,7 @@ export function parsePurchaseRegister(
       // minus signs is not made double negative (see docAmount).
       const docTypeRaw = String(pick(raw, map, 'invoice_type') ?? '').trim();
       const documentType = inferDocType(docTypeRaw, [
-        taxableRaw, igstRaw, cgstRaw, sgstRaw, cessRaw,
+        taxableRaw, igstRaw, cgstRaw, sgstRaw, utgstRaw, cessRaw,
       ]);
       if (docTypeRaw && !docTypeOrNull(docTypeRaw)) {
         // Silence here is how a "Sales Return" line becomes a purchase that
@@ -210,7 +212,7 @@ export function parsePurchaseRegister(
         );
       }
       if (!docTypeRaw) {
-        const nonZero = [taxableRaw, igstRaw, cgstRaw, sgstRaw, cessRaw].filter((n) => n !== 0);
+        const nonZero = [taxableRaw, igstRaw, cgstRaw, sgstRaw, utgstRaw, cessRaw].filter((n) => n !== 0);
         if (nonZero.length && nonZero.every((n) => n < 0)) {
           warnings.push(
             `row ${rowNo}: no Document Type but every amount is negative — treated as a Credit Note`,
@@ -218,7 +220,7 @@ export function parsePurchaseRegister(
         }
       }
       const signCheck = signCheckOf(documentType, [
-        taxableRaw, igstRaw, cgstRaw, sgstRaw, cessRaw,
+        taxableRaw, igstRaw, cgstRaw, sgstRaw, utgstRaw, cessRaw,
       ]);
       if (signCheck === 'conflict') {
         warnings.push(
@@ -227,11 +229,13 @@ export function parsePurchaseRegister(
         );
       }
       const sign = docSign(documentType);
-      const taxable = docAmount(documentType, taxableRaw);
-      const igst = docAmount(documentType, igstRaw);
-      const cgst = docAmount(documentType, cgstRaw);
-      const sgst = docAmount(documentType, sgstRaw);
-      const cess = docAmount(documentType, cessRaw);
+      const applySign = (n: number) => (signCheck === 'conflict' ? r2(n) : docAmount(documentType, n));
+      const taxable = applySign(taxableRaw);
+      const igst = applySign(igstRaw);
+      const cgst = applySign(cgstRaw);
+      const sgst = applySign(sgstRaw);
+      const utgst = applySign(utgstRaw);
+      const cess = applySign(cessRaw);
 
       // When the invoice was booked in our books. Many registers carry one
       // date for both this and the PO/GRN reference, which is why it has its
@@ -263,6 +267,7 @@ export function parsePurchaseRegister(
         source_igst: igstRaw,
         source_cgst: cgstRaw,
         source_sgst: sgstRaw,
+        source_utgst: utgstRaw,
         source_cess: cessRaw,
         reference_no: String(pick(raw, map, 'reference_no') ?? '').trim() || undefined,
         // "Yes"/"No" -> true/false/undefined. GSTR-2B carries neither figure,
@@ -278,8 +283,9 @@ export function parsePurchaseRegister(
         igst,
         cgst,
         sgst,
+        utgst,
         cess,
-        invoice_total: r2(taxable + taxOf({ igst, cgst, sgst, cess })),
+        invoice_total: r2(taxable + taxOf({ igst, cgst, sgst, utgst, cess })),
         reverse_charge: ynTri(pick(raw, map, 'reverse_charge')),
         hsn: String(pick(raw, map, 'hsn') ?? '').trim() || undefined,
         remark: String(pick(raw, map, 'remark') ?? '').trim() || undefined,
@@ -313,21 +319,29 @@ export function parseGstr2b(rows: unknown[][], sourceFile = 'gstr2b'): IngestRes
       const date = normDate(pick(raw, map, 'invoice_date'));
       const period = periodFromAny(pick(raw, map, 'period')) || periodOf(date);
 
-      // GSTR-2B puts credit notes in their own CDNR table, and their figures
-      // are shown as printed there (sometimes negative, sometimes positive).
-      // The ledger effect is always a reduction, so the type decides the sign.
+      const hasExplicitUtgstCol = [...map.values()].includes('utgst');
+      const rawTx = toNum(pick(raw, map, 'taxable_value'));
+      const rawIg = toNum(pick(raw, map, 'igst'));
+      const rawCg = toNum(pick(raw, map, 'cgst'));
+      const rawSg = toNum(pick(raw, map, 'sgst'));
+      const rawUt = toNum(pick(raw, map, 'utgst'));
+      const rawCe = toNum(pick(raw, map, 'cess'));
+      const ourG = normGstin(pick(raw, map, 'our_gstin'));
+      const posRaw = String(pick(raw, map, 'place_of_supply') ?? '').trim();
+
       const docType = inferDocType(pick(raw, map, 'invoice_type'), [
-        toNum(pick(raw, map, 'taxable_value')),
-        toNum(pick(raw, map, 'igst')),
-        toNum(pick(raw, map, 'cgst')),
-        toNum(pick(raw, map, 'sgst')),
-        toNum(pick(raw, map, 'cess')),
+        rawTx, rawIg, rawCg, rawSg, rawUt, rawCe,
       ]);
-      const signed = (f: 'taxable_value' | 'igst' | 'cgst' | 'sgst' | 'cess') =>
-        docAmount(docType, toNum(pick(raw, map, f)));
+      const useUtgst = !hasExplicitUtgstCol && rawUt === 0 && rawSg !== 0 && isUtWithoutLegislature(posRaw || ourG);
+      const sgstVal = useUtgst ? 0 : docAmount(docType, rawSg);
+      const utgstVal = useUtgst ? docAmount(docType, rawSg) : docAmount(docType, rawUt);
+      const taxableVal = docAmount(docType, rawTx);
+      const igstVal = docAmount(docType, rawIg);
+      const cgstVal = docAmount(docType, rawCg);
+      const cessVal = docAmount(docType, rawCe);
 
       return {
-        our_gstin: normGstin(pick(raw, map, 'our_gstin')),
+        our_gstin: ourG,
         supplier_gstin: gstin,
         supplier_name: String(pick(raw, map, 'supplier_name') ?? pick(raw, map, 'party_name') ?? '').trim(),
         invoice_no: invoiceNo,
@@ -335,22 +349,21 @@ export function parseGstr2b(rows: unknown[][], sourceFile = 'gstr2b'): IngestRes
         invoice_date: date,
         invoice_value:
           docAmount(docType, toNum(pick(raw, map, 'invoice_value'))) ||
-          r2(
-            signed('taxable_value') +
-              taxOf({
-                igst: signed('igst'),
-                cgst: signed('cgst'),
-                sgst: signed('sgst'),
-                cess: signed('cess'),
-              }),
-          ),
-        place_of_supply: String(pick(raw, map, 'place_of_supply') ?? '').trim(),
+          r2(taxableVal + taxOf({ igst: igstVal, cgst: cgstVal, sgst: sgstVal, utgst: utgstVal, cess: cessVal })),
+        place_of_supply: posRaw,
         reverse_charge: toBool(pick(raw, map, 'reverse_charge')),
-        taxable_value: signed('taxable_value'),
-        igst: signed('igst'),
-        cgst: signed('cgst'),
-        sgst: signed('sgst'),
-        cess: signed('cess'),
+        taxable_value: taxableVal,
+        igst: igstVal,
+        cgst: cgstVal,
+        sgst: sgstVal,
+        utgst: utgstVal,
+        cess: cessVal,
+        source_taxable_value: rawTx,
+        source_igst: rawIg,
+        source_cgst: rawCg,
+        source_sgst: rawSg,
+        source_utgst: rawUt,
+        source_cess: rawCe,
         period,
         filing_date: normDate(pick(raw, map, 'filing_date')) || undefined,
         itc_availability: String(pick(raw, map, 'itc_availability') ?? 'Yes').trim() || 'Yes',
@@ -604,7 +617,7 @@ export function parseGstr2bJson(
     // "R" regular, "C" credit note, "D" debit note.
     const rawType = pickStr(o, ['ntty', 'typ', 'inv_typ', 'invTyp', 'inv_type']).toUpperCase();
     let invType: string;
-    if (ctx.group === 'CDNR') invType = rawType.startsWith('D') ? 'DN' : 'CDNR';
+    if (ctx.group === 'CDNR' || ctx.group === 'CDNRA') invType = rawType.startsWith('D') ? 'DN' : 'CDNR';
     else invType = normInvoiceType(rawType || 'R');
     // Credit notes are a reduction whatever sign the portal printed: some
     // releases export `txval` negative, others positive. The type is the fact.
@@ -612,6 +625,12 @@ export function parseGstr2bJson(
 
     const supName = pickStr(o, ['trdnm', 'tradenm', 'sup_name', 'supplier_name', 'party_name', 'supplierNm']) || ctx.supplierName;
     const fDate = normDate(jpick(o, ['supfildt', 'filing_date'])) || ctx.filingDate || defaultFilingDate;
+    const posCode = normPos(ctx.pos || jpick(o, ['pos', 'place_of_supply', 'poscd']));
+    const useUtgst = t.sgst !== 0 && isUtWithoutLegislature(posCode || ourGstin);
+    const sgstSigned = useUtgst ? 0 : amt(t.sgst);
+    const utgstSigned = useUtgst ? amt(t.sgst) : 0;
+    const origDocNo = pickStr(o, ['oinum', 'ont_num', 'orig_inv_no', 'original_invoice_no']) || undefined;
+    const origDocDt = normDate(jpick(o, ['oidt', 'ont_dt', 'orig_inv_dt', 'original_invoice_date'])) || undefined;
 
     rows.push({
       id: `${sourceFile}#${seq++}`,
@@ -620,17 +639,27 @@ export function parseGstr2bJson(
       supplier_name: supName,
       invoice_no: invNo,
       invoice_type: invType,
+      doc_category: ctx.group || 'B2B',
+      original_doc_no: origDocNo,
+      original_doc_date: origDocDt,
       invoice_date: date,
       invoice_value:
         amt(toNum(jpick(o, ['val', 'inv_val', 'invVal', 'invoice_value', 'inv_amt']))) ||
-        r2(amt(t.taxable_value) + taxOf({ igst: amt(t.igst), cgst: amt(t.cgst), sgst: amt(t.sgst), cess: amt(t.cess) })),
-      place_of_supply: normPos(ctx.pos || jpick(o, ['pos', 'place_of_supply', 'poscd'])),
+        r2(amt(t.taxable_value) + taxOf({ igst: amt(t.igst), cgst: amt(t.cgst), sgst: sgstSigned, utgst: utgstSigned, cess: amt(t.cess) })),
+      place_of_supply: posCode,
       reverse_charge: toBool(jpick(o, ['rev', 'rchrg', 'rev_chrg', 'revChrg', 'reverse_charge'])),
       taxable_value: amt(t.taxable_value),
       igst: amt(t.igst),
       cgst: amt(t.cgst),
-      sgst: amt(t.sgst),
+      sgst: sgstSigned,
+      utgst: utgstSigned,
       cess: amt(t.cess),
+      source_taxable_value: t.taxable_value,
+      source_igst: t.igst,
+      source_cgst: t.cgst,
+      source_sgst: t.sgst,
+      source_utgst: 0,
+      source_cess: t.cess,
       period: periodOf(date) || fp,
       portal_fp: fp || undefined,
       filing_date: fDate || undefined,
@@ -670,57 +699,69 @@ export function parseGstr2bJson(
     }
   }
 
-  // ---- CDNR / CDNRA: credit / debit notes ---------------------------------
-  const cdnrList = asArr(doc.cdnr ?? doc.cdnra ?? data.cdnr ?? data.cdnra ?? raw.cdnr ?? raw.cdnra);
-  for (const gRaw of cdnrList) {
-    const g = asObj(gRaw);
-    const ctin = pickStr(g, ['ctin', 'ctn', 'ctinstr', 'gstin', 'supplier_gstin']);
-    const pos = pickStr(g, ['pos', 'place_of_supply']);
-    const sec = pickStr(g, ['sec', 'section']);
-    const supplierName = pickStr(g, ['trdnm', 'tradenm', 'sup_name', 'supplier_name', 'party_name', 'supplierNm']);
-    const filingDate = normDate(pickStr(g, ['supfildt', 'filing_date']));
-    const list = asArr(jpick(g, ['nt', 'notes', 'inv', 'invs', 'inv_list']));
-    if (list.length === 0) {
-      emit(g, { ctin, pos, sec, group: 'CDNR', supplierName, filingDate });
-      continue;
+  // ---- CDNR / CDNRA: credit / debit notes (read BOTH, never drop CDNRA!) -
+  for (const { key, group } of [
+    { key: 'cdnr', group: 'CDNR' },
+    { key: 'cdnra', group: 'CDNRA' },
+  ] as const) {
+    const cdnrList = asArr(doc[key] ?? data[key] ?? raw[key]);
+    for (const gRaw of cdnrList) {
+      const g = asObj(gRaw);
+      const ctin = pickStr(g, ['ctin', 'ctn', 'ctinstr', 'gstin', 'supplier_gstin']);
+      const pos = pickStr(g, ['pos', 'place_of_supply']);
+      const sec = pickStr(g, ['sec', 'section']);
+      const supplierName = pickStr(g, ['trdnm', 'tradenm', 'sup_name', 'supplier_name', 'party_name', 'supplierNm']);
+      const filingDate = normDate(pickStr(g, ['supfildt', 'filing_date']));
+      const list = asArr(jpick(g, ['nt', 'notes', 'inv', 'invs', 'inv_list']));
+      if (list.length === 0) {
+        emit(g, { ctin, pos, sec, group, supplierName, filingDate });
+        continue;
+      }
+      for (const nRaw of list) emit(asObj(nRaw), { ctin, pos, sec, group, supplierName, filingDate });
     }
-    for (const nRaw of list) emit(asObj(nRaw), { ctin, pos, sec, group: 'CDNR', supplierName, filingDate });
   }
 
-  // ---- IMPG: import of goods (Bill of Entry) ----------------------------
-  const impgList = asArr(doc.impg ?? doc.impga ?? data.impg ?? data.impga ?? raw.impg ?? raw.impga);
-  for (const gRaw of impgList) {
-    const g = asObj(gRaw);
-    const boeNum = pickStr(g, ['boenum', 'boe_num', 'boeNo', 'boeno']);
-    if (!boeNum) continue;
-    const boeDt = normDate(jpick(g, ['boedt', 'boe_dt', 'refdt']));
-    const port = pickStr(g, ['portcode', 'port_code', 'port']) || 'CUSTOMS';
-    const txval = toNum(jpick(g, ['txval', 'taxable_value']));
-    const igst = toNum(jpick(g, ['igst', 'iamt']));
-    const cess = toNum(jpick(g, ['cess', 'csamt']));
-    rows.push({
-      id: `${sourceFile}#${seq++}`,
-      our_gstin: ourGstin,
-      supplier_gstin: `CUSTOMS-${port}`,
-      supplier_name: `Import Customs (${port})`,
-      invoice_no: `BOE-${boeNum}`,
-      invoice_type: 'IMPG',
-      invoice_date: boeDt,
-      invoice_value: r2(txval + igst + cess),
-      place_of_supply: ourGstin ? ourGstin.slice(0, 2) : '',
-      reverse_charge: false,
-      taxable_value: txval,
-      igst: igst,
-      cgst: 0,
-      sgst: 0,
-      cess: cess,
-      period: periodOf(boeDt) || fp,
-      portal_fp: fp || undefined,
-      filing_date: boeDt || defaultFilingDate,
-      itc_availability: 'Yes',
-      source_file: sourceFile,
-      source_row: seq,
-    });
+  // ---- IMPG / IMPGA: import of goods (Bill of Entry — read BOTH!) -------
+  for (const { key, group } of [
+    { key: 'impg', group: 'IMPG' },
+    { key: 'impga', group: 'IMPGA' },
+  ] as const) {
+    const impgList = asArr(doc[key] ?? data[key] ?? raw[key]);
+    for (const gRaw of impgList) {
+      const g = asObj(gRaw);
+      const boeNum = pickStr(g, ['boenum', 'boe_num', 'boeNo', 'boeno']);
+      if (!boeNum) continue;
+      const boeDt = normDate(jpick(g, ['boedt', 'boe_dt', 'refdt']));
+      const port = pickStr(g, ['portcode', 'port_code', 'port']) || 'CUSTOMS';
+      const txval = toNum(jpick(g, ['txval', 'taxable_value']));
+      const igst = toNum(jpick(g, ['igst', 'iamt']));
+      const cess = toNum(jpick(g, ['cess', 'csamt']));
+      rows.push({
+        id: `${sourceFile}#${seq++}`,
+        our_gstin: ourGstin,
+        supplier_gstin: `CUSTOMS-${port}`,
+        supplier_name: `Import Customs (${port})`,
+        invoice_no: `BOE-${boeNum}`,
+        invoice_type: 'IMPG',
+        doc_category: group,
+        invoice_date: boeDt,
+        invoice_value: r2(txval + igst + cess),
+        place_of_supply: ourGstin ? ourGstin.slice(0, 2) : '',
+        reverse_charge: false,
+        taxable_value: txval,
+        igst: igst,
+        cgst: 0,
+        sgst: 0,
+        utgst: 0,
+        cess: cess,
+        period: periodOf(boeDt) || fp,
+        portal_fp: fp || undefined,
+        filing_date: boeDt || defaultFilingDate,
+        itc_availability: 'Yes',
+        source_file: sourceFile,
+        source_row: seq,
+      });
+    }
   }
 
   // ---- B2CS: summary only, cannot be matched invoice-wise ---------------

@@ -1423,6 +1423,411 @@ tbody tr:hover td.recon-sticky-act { background: var(--panel-3); }
   background: var(--accent-soft); color: var(--accent); border-color: var(--accent);
 }
 
+
+/* === MODERN ENTERPRISE FINTECH UI UPGRADE === */
+/* Executive Fintech Visual Polish — Light & Midnight Dark */
+:root, [data-theme="dark"] {
+  --bg: #050814;
+  --bg-grad-1: #091022;
+  --bg-grad-2: #040712;
+  --panel: #0d1527;
+  --panel-2: #0a1020;
+  --panel-3: #131d35;
+  --sidebar-bg: linear-gradient(180deg, #091021 0%, #050914 100%);
+  --topbar-bg: rgba(9, 16, 33, 0.84);
+  --thead-bg: #111b31;
+  --input-bg: #080d1a;
+  --line: rgba(148, 163, 184, 0.17);
+  --line-soft: rgba(148, 163, 184, 0.09);
+  --accent: #6366f1;
+  --accent-2: #4f46e5;
+  --accent-grad: linear-gradient(135deg, #6366f1 0%, #2563eb 55%, #0ea5e9 100%);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.42), 0 14px 36px -18px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --shadow-hover: 0 12px 32px -12px rgba(2, 6, 23, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.09);
+  --ring: 0 0 0 3px rgba(99, 102, 241, 0.28);
+}
+
+[data-theme="light"] {
+  --bg: #f1f5fb;
+  --bg-grad-1: #f8fafd;
+  --bg-grad-2: #edf2f9;
+  --panel: #ffffff;
+  --panel-2: #ffffff;
+  --panel-3: #f6f9fc;
+  --sidebar-bg: linear-gradient(180deg, #ffffff 0%, #f8fafd 100%);
+  --topbar-bg: rgba(255, 255, 255, 0.88);
+  --thead-bg: #f4f7fc;
+  --input-bg: #ffffff;
+  --line: #dfe7f2;
+  --line-soft: #eef2f8;
+  --accent: #4338ca;
+  --accent-2: #3730a3;
+  --accent-grad: linear-gradient(135deg, #4f46e5 0%, #2563eb 60%, #0284c7 100%);
+  --shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 10px 26px -14px rgba(15, 23, 42, 0.11);
+  --shadow-hover: 0 12px 30px -12px rgba(30, 41, 59, 0.16);
+  --ring: 0 0 0 3px rgba(79, 70, 229, 0.18);
+}
+
+/* Crisp Scrollbars */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.28);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(100, 116, 139, 0.48); background-clip: content-box; }
+
+/* Tabular Numbers for Financial Precision */
+.tile .v, .tile .n, td.num, th.num, .mono, code, .cal-kpi-val, .rt-cnt {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Live DB Indicator Pulse */
+@keyframes pgLivePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.42); }
+  50% { box-shadow: 0 0 0 5px rgba(16, 185, 129, 0); }
+}
+.db-live-dot { animation: pgLivePulse 2.4s ease-in-out infinite; }
+
+/* Sidebar Polish */
+.sidebar {
+  box-shadow: 1px 0 0 var(--line), 12px 0 36px -28px rgba(15, 23, 42, 0.22);
+  padding: 16px 13px 20px;
+}
+.brand {
+  padding: 6px 6px 14px;
+}
+.brand-name {
+  font-size: 15.5px;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, var(--text) 20%, var(--accent) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+.navlink {
+  padding: 8.5px 10px;
+  border-radius: 12px;
+  transition: transform 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.navlink.active {
+  background: linear-gradient(135deg, var(--accent-soft), rgba(37, 99, 235, 0.08));
+  border-color: rgba(79, 70, 229, 0.28);
+  box-shadow: 0 6px 18px -10px rgba(79, 70, 229, 0.45);
+}
+.navlink.active::before {
+  width: 3.5px;
+  top: 7px;
+  bottom: 7px;
+  box-shadow: 0 0 10px rgba(79, 70, 229, 0.65);
+}
+
+/* Topbar Glass & Controls */
+header.topbar {
+  padding: 11px 24px;
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  box-shadow: 0 1px 0 var(--line), 0 8px 24px -20px rgba(15, 23, 42, 0.25);
+}
+.crumb .v {
+  letter-spacing: -0.02em;
+  font-size: 15.5px;
+}
+.ctx select {
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 12.5px;
+  height: 36px;
+  padding: 0 28px 0 11px;
+  border: 1px solid var(--line);
+  background-color: var(--input-bg);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.ctx select:hover { border-color: rgba(79, 70, 229, 0.45); }
+.ctx select:focus { border-color: var(--accent); box-shadow: var(--ring); outline: none; }
+
+/* Main Content Rhythm */
+main {
+  padding: 22px 26px 40px;
+}
+.page-head {
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  background: var(--banner-bg);
+  position: relative;
+  overflow: hidden;
+}
+.page-head::after {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: var(--accent-grad);
+  opacity: 0.9;
+}
+
+/* Elevated Cards */
+.card {
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.card:hover {
+  border-color: rgba(99, 102, 241, 0.24);
+}
+.card h2, .card h3 {
+  letter-spacing: -0.018em;
+}
+
+/* High-Contrast Executive KPI Tiles */
+.tiles {
+  gap: 14px;
+}
+.tile {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.18s ease, border-color 0.18s ease;
+}
+.tile::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--accent-grad);
+  opacity: 0.72;
+}
+.tile.good::before { background: linear-gradient(90deg, #10b981, #06b6d4); opacity: 1; }
+.tile.warn::before { background: linear-gradient(90deg, #f59e0b, #f97316); opacity: 1; }
+.tile.bad::before  { background: linear-gradient(90deg, #ef4444, #e11d48); opacity: 1; }
+.tile:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-hover);
+  border-color: rgba(99, 102, 241, 0.32);
+}
+.tile .k {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.tile .v, .tile .n {
+  font-family: "Plus Jakarta Sans", "Inter", sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+}
+
+/* Buttons — Crisp Primary, Refined Ghost */
+button, .btn {
+  border-radius: 10px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  transition: transform 0.14s ease, box-shadow 0.14s ease, background-color 0.14s ease, border-color 0.14s ease, filter 0.14s ease;
+}
+button:not(.ghost):not(.navlink):not(.recon-tab):not(.chip):not(.tab):not(.gst-suite-tab):not(.gen-left-tab):not(.legal-nav-item):not(.lux-close-btn):not(.reveal):not(.cal-kpi-card) {
+  box-shadow: 0 4px 14px -6px rgba(79, 70, 229, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+button:not(.ghost):not(.navlink):not(.recon-tab):not(.chip):not(.tab):not(.gst-suite-tab):not(.gen-left-tab):not(.legal-nav-item):not(.lux-close-btn):not(.reveal):not(.cal-kpi-card):hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.04);
+  box-shadow: 0 8px 20px -8px rgba(79, 70, 229, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+button:active:not(:disabled) { transform: translateY(0); }
+button.ghost {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--text-2);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+button.ghost:hover:not(:disabled) {
+  background: var(--panel-3);
+  color: var(--text);
+  border-color: rgba(99, 102, 241, 0.42);
+  transform: translateY(-1px);
+}
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+
+/* Inputs & Selects */
+input[type="text"], input[type="number"], input[type="password"], input[type="date"], input[type="search"], select, textarea {
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--input-bg);
+  color: var(--text);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+input[type="text"]:focus, input[type="number"]:focus, input[type="password"]:focus, input[type="date"]:focus, input[type="search"]:focus, select:focus, textarea:focus {
+  border-color: var(--accent);
+  box-shadow: var(--ring);
+  outline: none;
+}
+
+/* Data Tables — Crisp Financial Ledger Feel */
+.tablewrap, .scroll {
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--thead-bg);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.055em;
+  border-bottom: 1px solid var(--line);
+  padding: 11px 12px;
+}
+tbody td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line-soft);
+  vertical-align: middle;
+}
+tbody tr {
+  transition: background-color 0.12s ease;
+}
+tbody tr:hover td {
+  background: var(--table-hover);
+}
+
+/* Status Pills */
+.pill {
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+.pill.good { border-color: rgba(16, 185, 129, 0.25); }
+.pill.warn { border-color: rgba(245, 158, 11, 0.28); }
+.pill.bad  { border-color: rgba(239, 68, 68, 0.28); }
+.pill.info { border-color: rgba(56, 189, 248, 0.28); }
+
+/* Reconciliation Quick Filter Bar & Month Chips */
+.recon-tabs {
+  padding: 6px;
+  border-radius: 14px;
+  background: var(--panel-3);
+  border: 1px solid var(--line);
+  gap: 6px;
+}
+.recon-tab {
+  border-radius: 10px;
+  padding: 7px 13px;
+  background: transparent;
+  border-color: transparent;
+}
+.recon-tab:hover {
+  background: var(--panel);
+  border-color: var(--line);
+  transform: none;
+}
+.recon-tab.active {
+  background: var(--accent-grad);
+  color: #fff;
+  box-shadow: 0 6px 16px -6px rgba(79, 70, 229, 0.55);
+}
+.chip {
+  border-radius: 10px;
+  font-weight: 600;
+  transition: all 0.14s ease;
+}
+.chip:hover {
+  transform: translateY(-1px);
+  border-color: var(--accent);
+}
+
+/* Modals — Glass Backdrop & Elevated Card */
+.gst-modal-backdrop {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  background: rgba(2, 6, 23, 0.62) !important;
+}
+.gst-modal-card {
+  border-radius: 20px !important;
+  border: 1px solid var(--line) !important;
+  box-shadow: 0 28px 70px -20px rgba(2, 6, 23, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.06) inset !important;
+  animation: modalPop 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.eb-box {
+  border-radius: 14px;
+  box-shadow: 0 2px 10px -6px rgba(15, 23, 42, 0.15);
+}
+
+/* Dashboard Hero & Suite Cards Polish */
+.gst-hero-wrap {
+  border-radius: 22px;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  position: relative;
+  overflow: hidden;
+}
+.gst-poster-card {
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.gst-poster-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-hover);
+}
+.gst-suite-box {
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+.gst-feat-card {
+  border-radius: 16px;
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.gst-feat-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--accent);
+  box-shadow: var(--shadow-hover);
+}
+.gst-feat-ico {
+  border-radius: 14px;
+  transition: transform 0.18s ease, background-color 0.18s ease, color 0.18s ease;
+}
+.gst-feat-card:hover .gst-feat-ico {
+  transform: scale(1.06);
+}
+
+/* Login Screen Executive Polish */
+.login-shell {
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 32px 80px -24px rgba(2, 6, 23, 0.55);
+}
+.login-form-wrap button[type="submit"] {
+  height: 44px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 14px;
+  background: var(--accent-grad);
+  box-shadow: 0 10px 24px -10px rgba(79, 70, 229, 0.65);
+}
+/* === END MODERN ENTERPRISE FINTECH UI UPGRADE === */
+
 /* ------------------------------------------------------------------ print */
 @media print {
   .sidebar, header.topbar, nav, .toast, .login-hero, button { display: none !important; }
@@ -3484,8 +3889,54 @@ tbody tr:hover td.recon-sticky-act { background: var(--panel-3); }
       </div>
       <div style="grid-column:1 / -1">
         <label for="eb_why">Audit Reason (Logged in Correction History)</label>
-        <input type="text" id="eb_why" value="Corrected Book entry for GSTR-2B matching" placeholder="e.g. Supplier invoice no / date / GSTIN corrected" />
+        <input type="text" id="eb_why" value="Corrected Book entry for GSTR-2B matching" placeholder="e.g. Supplier invoice no / date / GSTIN / Freight charges" />
       </div>
+    </div>
+
+    <div id="ebExtraChargesBox" style="margin-top:12px;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--bg-soft, #f8fafc)">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+        <div style="font-weight:700;font-size:13px;color:var(--text)">📦 Additional Charges — Freight / Other Charges (Books Recon Overlay)</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button type="button" id="ebAutoFillExtraBtn" class="sm" style="display:none;background:#0ea5e9;color:#fff" onclick="autoFillExtraChargesFrom2b()" title="GSTR-2B aur Book ke beech ka exact difference yahan fill karein">⚡ Auto-Fill Diff from 2B</button>
+          <button type="button" id="ebClearExtraBtn" class="ghost sm" onclick="clearExtraChargesInModal()" title="Additional charges ko 0 karein">Clear</button>
+        </div>
+      </div>
+      <div class="hint" style="font-size:11.5px;margin-bottom:8px">Agar Freight, Packaging ya Other Charges main Purchase Register me nahi aaye aur Amount Mismatch aa raha hai, to yahan fill karein — original Book amount immutable rahega aur <b>Save &amp; Re-Match</b> karte hi invoice Match ho jayega.</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:8px">
+        <div>
+          <label for="eb_extra_type" style="font-size:11.5px">Charge Reason</label>
+          <select id="eb_extra_type" onchange="updateEditBookExtraPreview()">
+            <option value="">— None —</option>
+            <option value="Freight">Freight</option>
+            <option value="Other Charges">Other Charges</option>
+            <option value="Packaging & Forwarding">Packaging &amp; Forwarding</option>
+            <option value="Loading / Unloading">Loading / Unloading</option>
+            <option value="Insurance">Insurance</option>
+            <option value="Rounding / Adjustment">Rounding / Adjustment</option>
+          </select>
+        </div>
+        <div>
+          <label for="eb_extra_taxable" style="font-size:11.5px">Extra Taxable (₹)</label>
+          <input type="number" step="0.01" id="eb_extra_taxable" value="0" oninput="updateEditBookExtraPreview()" style="font-family:monospace" />
+        </div>
+        <div>
+          <label for="eb_extra_igst" style="font-size:11.5px">Extra IGST (₹)</label>
+          <input type="number" step="0.01" id="eb_extra_igst" value="0" oninput="updateEditBookExtraPreview()" style="font-family:monospace" />
+        </div>
+        <div>
+          <label for="eb_extra_cgst" style="font-size:11.5px">Extra CGST (₹)</label>
+          <input type="number" step="0.01" id="eb_extra_cgst" value="0" oninput="updateEditBookExtraPreview()" style="font-family:monospace" />
+        </div>
+        <div>
+          <label for="eb_extra_sgst" style="font-size:11.5px">Extra SGST (₹)</label>
+          <input type="number" step="0.01" id="eb_extra_sgst" value="0" oninput="updateEditBookExtraPreview()" style="font-family:monospace" />
+        </div>
+        <div>
+          <label for="eb_extra_cess" style="font-size:11.5px">Extra Cess (₹)</label>
+          <input type="number" step="0.01" id="eb_extra_cess" value="0" oninput="updateEditBookExtraPreview()" style="font-family:monospace" />
+        </div>
+      </div>
+      <div id="ebExtraPreview" class="hint" style="margin-top:8px;font-size:12px"></div>
     </div>
 
     <div id="ebMsg" class="hint" style="margin-top:10px"></div>
@@ -4354,7 +4805,7 @@ function setCrumb() {
   if (!c) return;
   const parts = [];
   const co = (CTX.companies || []).find((x) => String(x.id) === String(CTX.company));
-  parts.push(co ? dispCompany(co.name) : 'Sab companies');
+  parts.push(co ? dispCompany(co.name) : 'All Companies');
   if (CTX.gstin) parts.push(CTX.gstin);
   if (CTX.period) {
     parts.push(monthLabel(CTX.period));
@@ -4451,7 +4902,7 @@ async function loadContext() {
 function fillPickers(periodsOnFile) {
   const co = el('ctxCompany');
   if (co) {
-    co.innerHTML = '<option value="">Sab companies</option>' +
+    co.innerHTML = '<option value="">All Companies</option>' +
       CTX.companies.map((c) => '<option value="' + esc(c.id) + '">' + esc(dispCompany(c.name)) + '</option>').join('');
     co.value = CTX.company;
     co.onchange = () => { CTX.company = co.value; refreshContext(false); };
@@ -6085,9 +6536,14 @@ function renderRecon() {
             String(r.suggested_2b_supplier_gstin).toUpperCase() !== String(r.recon_supplier_gstin || r.book_supplier_gstin || '').toUpperCase()) {
             subNote = '<div class="hint" style="font-size:10px;color:var(--warn-text)">2B GSTIN differs</div>';
           }
+          const exTx = Number(r.recon_extra_taxable || 0);
+          const exTax = Number(r.recon_extra_igst || 0) + Number(r.recon_extra_cgst || 0) + Number(r.recon_extra_sgst || 0) + Number(r.recon_extra_cess || 0);
+          const extraBadge = (Math.abs(exTx) > 0.005 || Math.abs(exTax) > 0.005)
+            ? '<div class="hint" style="font-size:10px;color:#0369a1" title="Books Recon Additional Charges Overlay">+' + esc(r.recon_extra_charges_type || 'Charges') + ': ' + money(exTx) + (Math.abs(exTax) > 0.005 ? ' (Tax ' + money(exTax) + ')' : '') + '</div>'
+            : '';
           return '<td><span class="pill ' + pillClass(slug(st)) + '">' + esc(st) + '</span>' +
             (r.recon_edited ? ' <span class="pill info" title="Books recon values were corrected (2B untouched)">edited</span>' : '') +
-            subNote + '</td>';
+            extraBadge + subNote + '</td>';
         }
         if (k === 'itc') return '<td>' + (r.itc_decision ? esc(r.itc_decision) : '<span class="hint">Pending Review</span>') + '</td>';
         if (k === 'gstr3b_bucket') {
@@ -8220,6 +8676,37 @@ function openEditBookModal(lineId) {
   if (el('eb_remarks')) el('eb_remarks').value = r.remarks || '';
   if (el('eb_why')) el('eb_why').value = 'Corrected Book entry for GSTR-2B matching';
 
+  // Populate Additional Charges (Freight / Other Charges) overlay fields
+  const exType = r.recon_extra_charges_type || '';
+  const exTx = Number(r.recon_extra_taxable || 0);
+  const exIg = Number(r.recon_extra_igst || 0);
+  const exCg = Number(r.recon_extra_cgst || 0);
+  const exSg = Number(r.recon_extra_sgst || 0);
+  const exCe = Number(r.recon_extra_cess || 0);
+  if (el('eb_extra_type')) el('eb_extra_type').value = exType;
+  if (el('eb_extra_taxable')) el('eb_extra_taxable').value = exTx ? exTx.toFixed(2) : '0';
+  if (el('eb_extra_igst')) el('eb_extra_igst').value = exIg ? exIg.toFixed(2) : '0';
+  if (el('eb_extra_cgst')) el('eb_extra_cgst').value = exCg ? exCg.toFixed(2) : '0';
+  if (el('eb_extra_sgst')) el('eb_extra_sgst').value = exSg ? exSg.toFixed(2) : '0';
+  if (el('eb_extra_cess')) el('eb_extra_cess').value = exCe ? exCe.toFixed(2) : '0';
+
+  const has2bDiff = Boolean(
+    (r.matched_2b_key || r.twob_invoice_no) && (
+      Math.abs(Number(r.twob_taxable_value || 0) - Number(r.book_taxable_value || 0)) > 0.01 ||
+      Math.abs(Number(r.twob_igst || 0) - Number(r.book_igst || 0)) > 0.01 ||
+      Math.abs(Number(r.twob_cgst || 0) - Number(r.book_cgst || 0)) > 0.01 ||
+      Math.abs(Number(r.twob_sgst || 0) - Number(r.book_sgst || 0)) > 0.01 ||
+      Math.abs(Number(r.twob_cess || 0) - Number(r.book_cess || 0)) > 0.01
+    ),
+  );
+  if (el('ebAutoFillExtraBtn')) el('ebAutoFillExtraBtn').style.display = (!locked && has2bDiff) ? '' : 'none';
+  const extraBox = el('ebExtraChargesBox');
+  if (extraBox) {
+    extraBox.style.borderColor = st === 'Amount Mismatch' ? '#f59e0b' : 'var(--border)';
+    extraBox.style.background = st === 'Amount Mismatch' ? '#fffbeb' : 'var(--bg-soft, #f8fafc)';
+  }
+  updateEditBookExtraPreview();
+
   const ourSel = el('eb_our');
   const curOur = String(r.our_gstin || '').toUpperCase();
   if (ourSel) {
@@ -8285,7 +8772,31 @@ async function saveEditBookModal() {
   const itcChanged = (itcDec && itcDec !== String(r.itc_decision || 'Pending Review')) ||
     (claimMo !== String(EDIT_BOOK.initClaim || ''));
 
-  const hasReconBody = Object.keys(patch).length > 0 || partyChanged || remarksChanged;
+  const numIn = (eid) => {
+    const v = Number(reconVal(eid) || 0);
+    return Number.isFinite(v) ? Math.round(v * 100) / 100 : 0;
+  };
+  const exType = reconVal('eb_extra_type');
+  const exTx = numIn('eb_extra_taxable');
+  const exIg = numIn('eb_extra_igst');
+  const exCg = numIn('eb_extra_cgst');
+  const exSg = numIn('eb_extra_sgst');
+  const exCe = numIn('eb_extra_cess');
+  const prevExType = String(r.recon_extra_charges_type || '');
+  const prevExTx = Math.round(Number(r.recon_extra_taxable || 0) * 100) / 100;
+  const prevExIg = Math.round(Number(r.recon_extra_igst || 0) * 100) / 100;
+  const prevExCg = Math.round(Number(r.recon_extra_cgst || 0) * 100) / 100;
+  const prevExSg = Math.round(Number(r.recon_extra_sgst || 0) * 100) / 100;
+  const prevExCe = Math.round(Number(r.recon_extra_cess || 0) * 100) / 100;
+  const extraChanged =
+    exType !== prevExType ||
+    exTx !== prevExTx ||
+    exIg !== prevExIg ||
+    exCg !== prevExCg ||
+    exSg !== prevExSg ||
+    exCe !== prevExCe;
+
+  const hasReconBody = Object.keys(patch).length > 0 || partyChanged || remarksChanged || extraChanged;
   if (!hasReconBody && !moves && !itcChanged) {
     return toast('Koi change nahi kiya gaya hai.', 'warn');
   }
@@ -8304,6 +8815,14 @@ async function saveEditBookModal() {
       }, patch);
       if (partyChanged) payload.party_name = party;
       if (remarksChanged) payload.remarks = remarks;
+      if (extraChanged) {
+        payload.recon_extra_charges_type = exType || (exTx || exIg || exCg || exSg || exCe ? 'Freight / Other Charges' : '');
+        payload.recon_extra_taxable = exTx;
+        payload.recon_extra_igst = exIg;
+        payload.recon_extra_cgst = exCg;
+        payload.recon_extra_sgst = exSg;
+        payload.recon_extra_cess = exCe;
+      }
       const out = await postJson('/api/lines/' + id + '/recon', payload);
       if (out && out.line && out.line.match_status) finalStatus = out.line.match_status;
     }
@@ -8341,6 +8860,86 @@ async function resetEditBookModal() {
   const lid = EDIT_BOOK.id;
   closeEditBookModal();
   await unlinkReconRow(lid);
+}
+
+function updateEditBookExtraPreview() {
+  const r = EDIT_BOOK.row;
+  const box = el('ebExtraPreview');
+  if (!r || !box) return;
+  const n2 = (v) => {
+    const x = Number(v || 0);
+    return Number.isFinite(x) ? Math.round(x * 100) / 100 : 0;
+  };
+  const exTx = n2(reconVal('eb_extra_taxable'));
+  const exIg = n2(reconVal('eb_extra_igst'));
+  const exCg = n2(reconVal('eb_extra_cgst'));
+  const exSg = n2(reconVal('eb_extra_sgst'));
+  const exCe = n2(reconVal('eb_extra_cess'));
+  const exItc = n2(exIg + exCg + exSg + exCe);
+
+  const bTx = n2(r.book_taxable_value);
+  const bItc = n2(r.book_igst) + n2(r.book_cgst) + n2(r.book_sgst) + n2(r.book_cess);
+  const effTx = n2(bTx + exTx);
+  const effItc = n2(bItc + exItc);
+
+  if (r.matched_2b_key || r.twob_invoice_no) {
+    const tTx = n2(r.twob_taxable_value);
+    const tItc = n2(r.twob_itc);
+    const remTx = n2(tTx - effTx);
+    const remItc = n2(tItc - effItc);
+    const cfg = getReconMatchingCfg();
+    const tol = Number(cfg.tolerance ?? 1);
+    const compOk =
+      Math.abs(n2(r.twob_igst) - n2(n2(r.book_igst) + exIg)) <= tol &&
+      Math.abs(n2(r.twob_cgst) - n2(n2(r.book_cgst) + exCg)) <= tol &&
+      Math.abs(n2(r.twob_sgst) - n2(n2(r.book_sgst) + exSg)) <= tol &&
+      Math.abs(n2(r.twob_cess) - n2(n2(r.book_cess) + exCe)) <= tol;
+    const ready = Math.abs(remTx) <= tol && Math.abs(remItc) <= tol && compOk;
+    box.innerHTML =
+      '<b>Effective Recon Taxable:</b> ' + money(effTx) + ' (2B: ' + money(tTx) + ', Diff: ' + money(remTx) + ') &nbsp;|&nbsp; ' +
+      '<b>Effective ITC:</b> ' + money(effItc) + ' (2B: ' + money(tItc) + ', Diff: ' + money(remItc) + ') &nbsp; ' +
+      (ready
+        ? '<span class="pill good">✅ Match Ready — Save &amp; Re-Match dabate hi Matched ho jayega!</span>'
+        : '<span class="pill warn">Remaining Diff hai</span>');
+  } else if (exTx || exItc) {
+    box.innerHTML = '<b>Effective Recon Taxable:</b> ' + money(effTx) + ' &nbsp;|&nbsp; <b>Effective ITC:</b> ' + money(effItc);
+  } else {
+    box.innerHTML = '';
+  }
+}
+
+function autoFillExtraChargesFrom2b() {
+  const r = EDIT_BOOK.row;
+  if (!r) return;
+  const n2 = (v) => {
+    const x = Number(v || 0);
+    return Number.isFinite(x) ? Math.round(x * 100) / 100 : 0;
+  };
+  const dTx = n2(n2(r.twob_taxable_value) - n2(r.book_taxable_value));
+  const dIg = n2(n2(r.twob_igst) - n2(r.book_igst));
+  const dCg = n2(n2(r.twob_cgst) - n2(r.book_cgst));
+  const dSg = n2(n2(r.twob_sgst) - n2(r.book_sgst));
+  const dCe = n2(n2(r.twob_cess) - n2(r.book_cess));
+  if (el('eb_extra_type') && !el('eb_extra_type').value) el('eb_extra_type').value = 'Freight';
+  if (el('eb_extra_taxable')) el('eb_extra_taxable').value = dTx.toFixed(2);
+  if (el('eb_extra_igst')) el('eb_extra_igst').value = dIg.toFixed(2);
+  if (el('eb_extra_cgst')) el('eb_extra_cgst').value = dCg.toFixed(2);
+  if (el('eb_extra_sgst')) el('eb_extra_sgst').value = dSg.toFixed(2);
+  if (el('eb_extra_cess')) el('eb_extra_cess').value = dCe.toFixed(2);
+  if (el('eb_why') && (!el('eb_why').value || el('eb_why').value === 'Corrected Book entry for GSTR-2B matching')) {
+    el('eb_why').value = (el('eb_extra_type') && el('eb_extra_type').value ? el('eb_extra_type').value : 'Freight') + ' charges added in Books Recon overlay to match GSTR-2B';
+  }
+  updateEditBookExtraPreview();
+}
+
+function clearExtraChargesInModal() {
+  if (el('eb_extra_type')) el('eb_extra_type').value = '';
+  if (el('eb_extra_taxable')) el('eb_extra_taxable').value = '0';
+  if (el('eb_extra_igst')) el('eb_extra_igst').value = '0';
+  if (el('eb_extra_cgst')) el('eb_extra_cgst').value = '0';
+  if (el('eb_extra_sgst')) el('eb_extra_sgst').value = '0';
+  if (el('eb_extra_cess')) el('eb_extra_cess').value = '0';
+  updateEditBookExtraPreview();
 }
 
 async function cleanDuplicateUploads() {

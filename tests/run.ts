@@ -3994,10 +3994,12 @@ section('34. Category 1 fixes — 40% slab, 2B JSON edge cases, 3B ITC decisions
         TWO({ id: '2b-dn', period: '2026-04', portal_fp: '2026-04', invoice_no: '202627PND0000333', invoice_type: 'DN', invoice_date: '2026-04-19', taxable_value: 37500.5, igst: 6750.09 }),
       ],
     );
-    eq('Polarity-aware matching eliminates false duplicate between Tax Invoice & negative Debit Note and matches positive 2B DN', [
+    eq('Strict document-type matching eliminates false duplicate between Tax Invoice & Debit Note and blocks Tax Invoice/DN/CN cross-matching', [
       polRecon.summary.duplicate,
       polRecon.summary.matched,
-    ], [0, 3]);
+      polRecon.rows[1]?.detailed_status,
+      polRecon.rows[2]?.detailed_status,
+    ], [0, 1, 'DOCUMENT TYPE MISMATCH', 'DOCUMENT TYPE MISMATCH']);
 
     const optWinExact = reconcilePurchases(
       [BILL({ invoice_no: 'OPT-1', invoice_date: '2026-04-10', taxable_value: 10000, igst: 1800 })],

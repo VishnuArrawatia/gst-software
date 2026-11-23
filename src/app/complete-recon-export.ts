@@ -283,7 +283,11 @@ export async function queryCompleteReconDataset(
                                 '; ' ORDER BY rc.changed_at)
                 FROM recon_corrections rc
                WHERE rc.line_id = p.id
-                 AND rc.field_name IN ('recon_supplier_gstin','recon_invoice_no','recon_invoice_date','our_gstin')
+                 AND rc.field_name IN (
+                   'recon_supplier_gstin','recon_invoice_no','recon_invoice_date','our_gstin',
+                   'recon_extra_charges_type','recon_extra_taxable','recon_extra_igst',
+                   'recon_extra_cgst','recon_extra_sgst','recon_extra_cess'
+                 )
              ) AS corr_audit_summary,
              COALESCE(g2.doc_category,
                CASE WHEN p.book_document_type = 'Credit Note' THEN 'CDNR'
