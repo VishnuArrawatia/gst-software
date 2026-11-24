@@ -3008,6 +3008,7 @@ tbody tr:hover td {
             </div>
             <button type="button" class="ghost sm" id="btnFastEditMode" onclick="toggleReconFastEdit()">⚡ Excel Fast-Edit Mode (Books-Only)</button>
             <button type="button" class="ghost sm" onclick="autoLinkProbable2b()">🔗 Auto-Link Probable 2B Bills</button>
+            <button type="button" class="sm" style="background:#0f766e;color:#fff" onclick="openSupplierFollowupModal('','')">✉️ Inform Supplier</button>
             <button type="button" class="ghost sm" onclick="downloadTwobRecon(false)">⬇ Export Excel</button>
             <button type="button" class="sm" onclick="openCompleteReconExportModal()" style="background:#4338ca;color:#fff">📊 EXPORT COMPLETE RECONCILIATION TO EXCEL</button>
           </div>
@@ -3950,6 +3951,73 @@ tbody tr:hover td {
   </div>
 </div>
 
+
+
+<!-- ===================== SUPPLIER FOLLOW-UP & EMAIL/MESSAGE DRAFT MODAL ===================== -->
+<div class="gst-modal-backdrop" id="modalSupplierFollowup" style="display:none" onclick="if (event.target === this) closeSupplierFollowupModal()">
+  <div class="gst-modal-card lux-modal" style="width:min(1120px,97%)">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 22px;background:linear-gradient(135deg,#0f172a 0%,#0f766e 60%,#0369a1 100%);color:#fff;border-bottom:1px solid rgba(255,255,255,0.14)">
+      <div>
+        <div style="font-size:11px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#99f6e4">Supplier Follow-up &amp; Communication Center (Drafts Only)</div>
+        <h3 id="supModalTitle" style="margin:3px 0 0;color:#fff;font-size:18px">✉️ Inform Supplier — Invoice Details &amp; Ready-to-Send Draft</h3>
+        <div id="supModalSub" style="font-size:12px;color:#e0f2fe;margin-top:2px">Select a supplier to view invoice-wise discrepancies and generate Email / WhatsApp draft.</div>
+      </div>
+      <button type="button" class="lux-close-btn" onclick="closeSupplierFollowupModal()" aria-label="Close">&times;</button>
+    </div>
+
+    <div class="lux-modal-body">
+      <div class="row" style="gap:10px;align-items:flex-end;flex-wrap:wrap;padding:12px 14px;background:var(--panel-3);border:1px solid var(--line);border-radius:12px;margin-bottom:14px">
+        <div style="flex:2;min-width:260px">
+          <label for="supFollowSelect" style="display:block;font-size:11.5px;font-weight:700;margin-bottom:4px">Supplier (Pending / Mismatched in Current Scope)</label>
+          <select id="supFollowSelect" onchange="loadSupplierFollowupDraft(this.value)" style="width:100%;height:36px"></select>
+        </div>
+        <div style="flex:1.2;min-width:200px">
+          <label for="supFollowEmail" style="display:block;font-size:11.5px;font-weight:700;margin-bottom:4px">Supplier Email (To — Optional)</label>
+          <input type="text" id="supFollowEmail" placeholder="accounts@supplier.com" style="width:100%;height:36px" />
+        </div>
+        <label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;height:36px;cursor:pointer">
+          <input type="checkbox" id="supIncludeOnly2b" checked onchange="if (SUP_DRAFT.supplierGstin) loadSupplierFollowupDraft(SUP_DRAFT.supplierGstin)" />
+          Include "Only in 2B" bills
+        </label>
+        <button type="button" class="ghost sm" onclick="if (SUP_DRAFT.supplierGstin) loadSupplierFollowupDraft(SUP_DRAFT.supplierGstin)">↻ Refresh Draft</button>
+      </div>
+
+      <div class="tiles" id="supFollowKpis" style="margin-bottom:14px;grid-template-columns:repeat(auto-fit,minmax(170px,1fr))"></div>
+
+      <div class="recon-tabs" style="margin-bottom:12px">
+        <button type="button" class="recon-tab active" id="supTabInvoices" onclick="switchSupModalTab('invoices')">📄 Invoice-wise Details <span class="rt-cnt" id="supTabInvCnt">0</span></button>
+        <button type="button" class="recon-tab" id="supTabMessage" onclick="switchSupModalTab('message')">✉️ Ready-to-Send Message (Email / WhatsApp)</button>
+      </div>
+
+      <div id="supPaneInvoices">
+        <div class="scroll" style="max-height:360px">
+          <table id="supFollowInvTable"></table>
+        </div>
+      </div>
+
+      <div id="supPaneMessage" style="display:none">
+        <div style="margin-bottom:10px">
+          <label for="supDraftSubject" style="display:block;font-size:11.5px;font-weight:700;margin-bottom:4px">Email Subject (Editable)</label>
+          <input type="text" id="supDraftSubject" style="width:100%;font-weight:600" />
+        </div>
+        <div>
+          <label for="supDraftBody" style="display:block;font-size:11.5px;font-weight:700;margin-bottom:4px">Message Body — Ready for Email or WhatsApp (Editable before Copy)</label>
+          <textarea id="supDraftBody" rows="13" style="width:100%;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.55;padding:10px 12px"></textarea>
+        </div>
+      </div>
+
+      <div id="supFollowMsg" class="hint" style="margin-top:10px"></div>
+
+      <div class="row" style="margin-top:14px;gap:8px;flex-wrap:wrap;align-items:center;padding-top:12px;border-top:1px solid var(--line)">
+        <button type="button" onclick="copySupplierDraftMessage()" style="background:#0f766e;color:#fff">📋 Copy Message (Email / WhatsApp)</button>
+        <button type="button" class="ghost" onclick="openSupplierDraftMailto()">📧 Open in Mail App</button>
+        <button type="button" class="ghost" onclick="downloadSupplierDraftEml()">⬇️ Download .eml Draft</button>
+        <button type="button" class="ghost" onclick="downloadSupplierDraftXlsx()">📊 Download Supplier Excel</button>
+        <button type="button" class="ghost" onclick="closeSupplierFollowupModal()" style="margin-left:auto">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- ===================== IMPORT GSTR-2B EXCEL MODAL ===================== -->
 <div class="gst-modal-backdrop" id="modalGstr2bExcelImport" style="display:none" onclick="if (event.target === this) closeGstr2bExcelImportModal()">
@@ -6478,16 +6546,20 @@ function renderRecon() {
           const editBtn = !locked
             ? '<button type="button" class="' + editBtnCls + '"' + editBtnStyle + ' onclick="openEditBookModal(' + r.id + ')" title="Edit Book Inv No, Date, Party GSTIN, Our GSTIN, Vendor">✏️ Edit Book</button>'
             : '';
+          const rowSupGstin = String(r.recon_supplier_gstin || r.book_supplier_gstin || '').replace(/'/g, '');
+          const informBtn = (isActionable && rowSupGstin)
+            ? '<button type="button" class="ghost sm" onclick="openSupplierFollowupModal(\'' + esc(rowSupGstin) + '\', \'\')" title="Inform Supplier — View Invoice Details &amp; Email/WhatsApp Draft">✉️</button>'
+            : '';
           if (RECON.fastEdit && !locked) {
             return '<td class="row-actions recon-sticky-act" style="white-space:nowrap">' +
               '<button type="button" class="sm" onclick="saveFastReconRow(' + r.id + ')">\ud83d\udcbe Save</button>' +
-              matchBtn + unlinkBtn +
+              matchBtn + unlinkBtn + informBtn +
               '<button type="button" class="ghost sm" onclick="openEditBookModal(' + r.id + ')" title="Side-by-side Full Edit Modal">Full</button>' +
               '<button type="button" class="ghost sm" onclick="reconHistory(' + r.id + ')" title="Correction history">Log</button>' +
               '</td>';
           }
           return '<td class="row-actions recon-sticky-act" style="white-space:nowrap">' +
-            editBtn + matchBtn + unlinkBtn +
+            editBtn + matchBtn + informBtn + unlinkBtn +
             '<button type="button" class="ghost sm" onclick="reconHistory(' + r.id + ')" title="Correction history">Log</button>' +
             '</td>';
         }
@@ -8241,8 +8313,8 @@ function renderReconVendorTable() {
             : (v.missingCount > 0
                 ? '<span class="pill warn">' + v.missingCount + ' Missing in 2B</span>'
                 : '<span class="pill info">' + v.mismatchCount + ' Mismatch</span>');
-          const delayNoticeBtn = v.missingCount > 0
-            ? '<button type="button" class="ghost sm" onclick="toast(\'Vendor delay follow-up notice copied for ' + esc(v.gstin) + '\', \'ok\')">📲 Delay Notice</button>'
+          const delayNoticeBtn = (v.missingCount > 0 || v.mismatchCount > 0)
+            ? '<button type="button" class="sm" style="background:#0f766e;color:#fff" onclick="openSupplierFollowupModal(\'' + esc(v.gstin) + '\', \'\')">✉️ Inform Supplier</button>'
             : '<span class="hint">Compliant</span>';
           return '<tr>' +
             '<td><code>' + esc(v.gstin) + '</code></td>' +
@@ -8984,6 +9056,178 @@ document.addEventListener('keydown', (e) => {
 
 updateThemeBtn();
 boot();
+
+/* ===================== SUPPLIER FOLLOW-UP & EMAIL/MESSAGE DRAFT CENTER ===================== */
+const SUP_DRAFT = { supplierGstin: '', data: null, suppliers: [] };
+
+function supDraftScopeQuery(extra) {
+  const qs = new URLSearchParams();
+  if (CTX.gstin) qs.set('gstin', CTX.gstin);
+  else if (CTX.company) qs.set('company', CTX.company);
+  if (CTX.period) qs.set('period', CTX.period);
+  else if (CTX.fy) qs.set('fy', CTX.fy);
+  if (extra) Object.entries(extra).forEach(([k, v]) => { if (v !== undefined && v !== null && v !== '') qs.set(k, String(v)); });
+  return qs.toString();
+}
+
+async function openSupplierFollowupModal(supplierGstin, supplierName) {
+  const m = el('modalSupplierFollowup');
+  if (!m) return;
+  m.style.display = 'flex';
+  switchSupModalTab('invoices');
+  setHtml('supFollowMsg', 'Loading pending suppliers & invoice discrepancies...');
+  setHtml('supFollowKpis', '');
+  setHtml('supFollowInvTable', '<tbody><tr><td class="hint">Loading...</td></tr></tbody>');
+
+  try {
+    const res = await getJson('/api/supplier-followup/suppliers?' + supDraftScopeQuery());
+    SUP_DRAFT.suppliers = res.suppliers || [];
+    const sel = el('supFollowSelect');
+    if (sel) {
+      let opts = SUP_DRAFT.suppliers.map((s) =>
+        '<option value="' + esc(s.supplierGstin) + '">' +
+        esc(s.supplierName) + ' (' + esc(s.supplierGstin) + ') — ' + s.totalIssues + ' issues | ITC Risk: ' + money(s.itcAtRisk) +
+        '</option>'
+      ).join('');
+      if (supplierGstin && !SUP_DRAFT.suppliers.some((s) => s.supplierGstin.toUpperCase() === supplierGstin.toUpperCase())) {
+        opts = '<option value="' + esc(supplierGstin) + '">' + esc(supplierName || supplierGstin) + ' (' + esc(supplierGstin) + ')</option>' + opts;
+      }
+      if (!opts) opts = '<option value="">No pending / mismatched suppliers in current scope</option>';
+      sel.innerHTML = opts;
+    }
+
+    const chosen = supplierGstin || (SUP_DRAFT.suppliers[0] ? SUP_DRAFT.suppliers[0].supplierGstin : '');
+    if (chosen) {
+      if (sel) sel.value = chosen;
+      await loadSupplierFollowupDraft(chosen);
+    } else {
+      setHtml('supFollowMsg', 'Current scope me koi Missing in 2B ya Mismatch supplier pending nahi hai.');
+      setHtml('supFollowInvTable', '<tbody><tr><td class="hint">All suppliers matched in current scope!</td></tr></tbody>');
+    }
+  } catch (e) {
+    setHtml('supFollowMsg', 'Error loading suppliers: ' + esc(e.message || e));
+  }
+}
+
+function closeSupplierFollowupModal() {
+  const m = el('modalSupplierFollowup');
+  if (m) m.style.display = 'none';
+}
+
+function switchSupModalTab(tab) {
+  const pInv = el('supPaneInvoices');
+  const pMsg = el('supPaneMessage');
+  const tInv = el('supTabInvoices');
+  const tMsg = el('supTabMessage');
+  if (!pInv || !pMsg) return;
+  const isInv = tab === 'invoices';
+  pInv.style.display = isInv ? '' : 'none';
+  pMsg.style.display = isInv ? 'none' : '';
+  if (tInv) tInv.classList.toggle('active', isInv);
+  if (tMsg) tMsg.classList.toggle('active', !isInv);
+}
+
+async function loadSupplierFollowupDraft(supplierGstin) {
+  if (!supplierGstin) return;
+  SUP_DRAFT.supplierGstin = supplierGstin;
+  setHtml('supFollowMsg', 'Generating invoice breakdown & draft for ' + esc(supplierGstin) + '...');
+  const toEmail = (el('supFollowEmail') && el('supFollowEmail').value || '').trim();
+  const inc2b = el('supIncludeOnly2b') ? (el('supIncludeOnly2b').checked ? '1' : '0') : '1';
+  try {
+    const d = await getJson('/api/supplier-followup/draft?' + supDraftScopeQuery({
+      supplier: supplierGstin,
+      to_email: toEmail,
+      include_only_2b: inc2b,
+    }));
+    SUP_DRAFT.data = d;
+    if (el('supModalTitle')) el('supModalTitle').textContent = '✉️ ' + d.supplierName + ' (' + d.supplierGstin + ')';
+    if (el('supModalSub')) el('supModalSub').textContent = 'Scope: ' + d.periodLabel + (d.ourGstin ? ' • Our GSTIN: ' + d.ourGstin : '') + ' • Drafts Only (Review & Send Manually)';
+    if (el('supTabInvCnt')) el('supTabInvCnt').textContent = String(d.summary.totalIssues);
+    if (el('supDraftSubject')) el('supDraftSubject').value = d.subject || '';
+    if (el('supDraftBody')) el('supDraftBody').value = d.plainText || '';
+
+    setHtml('supFollowKpis',
+      kpiTile('Total Discrepancies', cnt(d.summary.totalIssues), d.periodLabel, d.summary.totalIssues ? 'warn' : 'good') +
+      kpiTile('Missing in 2B', cnt(d.summary.missingIn2bCount), 'not filed in GSTR-1', d.summary.missingIn2bCount ? 'bad' : 'good') +
+      kpiTile('Value / Tax Mismatch', cnt(d.summary.mismatchCount), (d.summary.onlyIn2bCount ? '+' + d.summary.onlyIn2bCount + ' Only in 2B' : 'books vs 2B diff'), d.summary.mismatchCount ? 'warn' : 'good') +
+      kpiTile('ITC at Risk', money(d.summary.itcAtRisk), 'Books ' + money(d.summary.bookTax) + ' vs 2B ' + money(d.summary.twobTax), Math.abs(d.summary.itcAtRisk) > 1 ? 'bad' : 'good')
+    );
+
+    const invs = d.invoices || [];
+    setHtml('supFollowInvTable',
+      '<thead><tr><th>#</th><th>Invoice No</th><th>Date</th><th>Period</th><th>Status</th><th class="num">Books Taxable</th><th class="num">Books Tax</th><th class="num">2B Taxable</th><th class="num">2B Tax</th><th class="num">Tax Diff</th><th>Action Required</th></tr></thead><tbody>' +
+      (invs.length ? invs.map((inv, idx) => {
+        const pillCls = inv.matchStatus === 'Missing in 2B' ? 'warn' : (inv.source === 'GSTR2B_ONLY' ? 'info' : 'bad');
+        return '<tr>' +
+          '<td>' + (idx + 1) + '</td>' +
+          '<td><code>' + esc(inv.invoiceNo) + '</code>' + (inv.twobInvoiceNo && inv.twobInvoiceNo !== inv.invoiceNo ? '<div class="hint" style="font-size:10.5px">2B: ' + esc(inv.twobInvoiceNo) + '</div>' : '') + '</td>' +
+          '<td style="white-space:nowrap">' + esc(inv.invoiceDate || '—') + '</td>' +
+          '<td style="white-space:nowrap">' + esc(inv.period || '—') + '</td>' +
+          '<td><span class="pill ' + pillCls + '">' + esc(inv.matchStatus) + '</span></td>' +
+          '<td class="num">' + money(inv.bookTaxable) + '</td>' +
+          '<td class="num">' + money(inv.bookTax) + '</td>' +
+          '<td class="num">' + money(inv.twobTaxable) + '</td>' +
+          '<td class="num">' + money(inv.twobTax) + '</td>' +
+          '<td class="num ' + (Math.abs(inv.taxDiff) > 1 ? 'bad' : '') + '"><b>' + money(inv.taxDiff) + '</b></td>' +
+          '<td style="font-size:11.5px;max-width:260px">' + esc(inv.actionRequired) + '</td>' +
+          '</tr>';
+      }).join('') : '<tr><td colspan="11" class="hint">No discrepancy invoices for this supplier in current scope.</td></tr>') +
+      '</tbody>'
+    );
+    setHtml('supFollowMsg', 'Ready! Aap invoice details check karein, "Ready-to-Send Message" tab me draft dekhein, aur Copy / Mail App / .eml / Excel use karein.');
+  } catch (e) {
+    setHtml('supFollowMsg', 'Error loading draft: ' + esc(e.message || e));
+  }
+}
+
+async function copySupplierDraftMessage() {
+  const subj = (el('supDraftSubject') && el('supDraftSubject').value || '').trim();
+  const body = (el('supDraftBody') && el('supDraftBody').value || '').trim();
+  if (!body) return toast('No draft message to copy', 'warn');
+  const full = (subj ? 'Subject: ' + subj + '\n\n' : '') + body;
+  try {
+    await navigator.clipboard.writeText(full);
+    toast('Supplier message copied! Email ya WhatsApp me paste kar sakte hain.', 'ok');
+  } catch {
+    const ta = el('supDraftBody');
+    if (ta) { ta.select(); document.execCommand('copy'); toast('Supplier message copied!', 'ok'); }
+  }
+}
+
+function openSupplierDraftMailto() {
+  if (!SUP_DRAFT.data) return toast('Select a supplier first', 'warn');
+  const to = (el('supFollowEmail') && el('supFollowEmail').value || '').trim();
+  const subj = (el('supDraftSubject') && el('supDraftSubject').value || SUP_DRAFT.data.subject || '').trim();
+  let body = (el('supDraftBody') && el('supDraftBody').value || SUP_DRAFT.data.plainText || '').trim();
+  if (body.length > 1700) {
+    body = body.slice(0, 1650) + '\n\n[... Complete invoice table ke liye downloaded Excel attach karein ya .eml draft open karein.]';
+  }
+  const url = 'mailto:' + encodeURIComponent(to) + '?subject=' + encodeURIComponent(subj) + '&body=' + encodeURIComponent(body);
+  window.location.href = url;
+}
+
+function downloadSupplierDraftEml() {
+  if (!SUP_DRAFT.supplierGstin) return toast('Select a supplier first', 'warn');
+  const toEmail = (el('supFollowEmail') && el('supFollowEmail').value || '').trim();
+  const inc2b = el('supIncludeOnly2b') ? (el('supIncludeOnly2b').checked ? '1' : '0') : '1';
+  const url = '/api/supplier-followup/draft.eml?' + supDraftScopeQuery({
+    supplier: SUP_DRAFT.supplierGstin,
+    to_email: toEmail,
+    include_only_2b: inc2b,
+  });
+  download(url, 'Supplier_Followup_' + SUP_DRAFT.supplierGstin + '.eml');
+}
+
+function downloadSupplierDraftXlsx() {
+  if (!SUP_DRAFT.supplierGstin) return toast('Select a supplier first', 'warn');
+  const inc2b = el('supIncludeOnly2b') ? (el('supIncludeOnly2b').checked ? '1' : '0') : '1';
+  const url = '/api/supplier-followup/draft.xlsx?' + supDraftScopeQuery({
+    supplier: SUP_DRAFT.supplierGstin,
+    include_only_2b: inc2b,
+  });
+  download(url, 'Supplier_Followup_' + SUP_DRAFT.supplierGstin + '.xlsx');
+}
+
 </script>
 </body>
 </html>

@@ -120,6 +120,12 @@ import {
   type Column,
   type ReportFilters,
 } from '../app/reports';
+import {
+  buildSupplierDraft,
+  buildSupplierDraftWorkbook,
+  buildSupplierEml,
+  listPendingSuppliers,
+} from '../app/supplier-draft';
 import { planImport, planToEdits } from '../app/report-import';
 import { purchaseTemplateBuffer, purchaseTemplateCsv } from '../app/template';
 import { salesTemplateBuffer, salesTemplateCsv } from '../app/sales-template';
@@ -3943,6 +3949,97 @@ app.get('/api/supplier-followup/letter.csv', wrap(async (req, res) => {
     { k: 'vendor_response', h: 'Vendor Response' }, { k: 'expected_correction', h: 'Expected Correction' },
   ];
   res.json({ supplier, count: r!.count, rows: r!.rows });
+}));
+
+/**
+ * List suppliers with pending / mismatched invoices in current filter scope
+ * (powers the Supplier Follow-up & Email/Message Draft Center dropdown).
+ */
+app.get('/api/supplier-followup/suppliers', wrap(async (req, res) => {
+  const ready = await dbReady();
+  if (!ready.ok) return res.status(503).json({ error: ready.reason });
+  const f = { ...filtersOf(req), fy: str(req.query.fy) || undefined, company: str(req.query.company) || undefined };
+  const suppliers = await listPendingSuppliers(f);
+  res.json({ count: suppliers.length, suppliers });
+}));
+
+/**
+ * Ready-to-send Supplier Follow-up Draft (JSON: invoice-wise table, plainText
+ * for Email/WhatsApp copy, HTML body, and mailto: link). Drafts-only, no SMTP.
+ */
+app.get('/api/supplier-followup/draft', wrap(async (req, res) => {
+  const ready = await dbReady();
+  if (!ready.ok) return res.status(503).json({ error: ready.reason });
+  const supplier = str(req.query.supplier);
+  if (!supplier) return res.status(400).json({ error: 'supplier GSTIN is required' });
+  const f = { ...filtersOf(req), fy: str(req.query.fy) || undefined, company: str(req.query.company) || undefined };
+  const draft = await buildSupplierDraft({
+    supplierGstin: supplier,
+    filters: f,
+    toEmail: str(req.query.to_email) || '',
+    includeOnlyIn2b: String(req.query.include_only_2b ?? '1') !== '0',
+    includeAll: String(req.query.include_all ?? '0') === '1',
+  });
+  res.json(draft);
+}));
+
+/**
+ * Download RFC 5322 .eml draft (X-Unsent: 1) so Outlook / Thunderbird / Apple Mail
+ * opens directly in Compose mode for manual review and sending.
+ */
+app.get('/api/supplier-followup/draft.eml', wrap(async (req, res) => {
+  const ready = await dbReady();
+  if (!ready.ok) return res.status(503).json({ error: ready.reason });
+  const supplier = str(req.query.supplier);
+  if (!supplier) return res.status(400).json({ error: 'supplier GSTIN is required' });
+  const f = { ...filtersOf(req), fy: str(req.query.fy) || undefined, company: str(req.query.company) || undefined };
+  const draft = await buildSupplierDraft({
+    supplierGstin: supplier,
+    filters: f,
+    toEmail: str(req.query.to_email) || '',
+    includeOnlyIn2b: String(req.query.include_only_2b ?? '1') !== '0',
+    includeAll: String(req.query.include_all ?? '0') === '1',
+  });
+  const eml = buildSupplierEml(draft);
+  await audit(req.user, {
+    action: 'SUPPLIER_DRAFT_EXPORT',
+    module: 'Follow-up',
+    gstin: f.gstin || null,
+    period: f.period || null,
+    details: { supplier: draft.supplierGstin, format: 'eml', invoices: draft.summary.totalIssues },
+  });
+  const safeName = `Supplier_Followup_${draft.supplierGstin}_${(f.period || f.fy || 'ALL').replace(/[^A-Za-z0-9_-]/g, '_')}.eml`;
+  res.setHeader('Content-Type', 'message/rfc822; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${safeName}"`);
+  res.send(eml);
+}));
+
+/**
+ * Download single-supplier invoice discrepancy Excel workbook (for email/WhatsApp attachment).
+ */
+app.get('/api/supplier-followup/draft.xlsx', wrap(async (req, res) => {
+  const ready = await dbReady();
+  if (!ready.ok) return res.status(503).json({ error: ready.reason });
+  const supplier = str(req.query.supplier);
+  if (!supplier) return res.status(400).json({ error: 'supplier GSTIN is required' });
+  const f = { ...filtersOf(req), fy: str(req.query.fy) || undefined, company: str(req.query.company) || undefined };
+  const draft = await buildSupplierDraft({
+    supplierGstin: supplier,
+    filters: f,
+    toEmail: str(req.query.to_email) || '',
+    includeOnlyIn2b: String(req.query.include_only_2b ?? '1') !== '0',
+    includeAll: String(req.query.include_all ?? '0') === '1',
+  });
+  const buf = buildSupplierDraftWorkbook(draft);
+  await audit(req.user, {
+    action: 'SUPPLIER_DRAFT_EXPORT',
+    module: 'Follow-up',
+    gstin: f.gstin || null,
+    period: f.period || null,
+    details: { supplier: draft.supplierGstin, format: 'xlsx', invoices: draft.summary.totalIssues },
+  });
+  const safeName = `Supplier_Followup_${draft.supplierGstin}_${(f.period || f.fy || 'ALL').replace(/[^A-Za-z0-9_-]/g, '_')}.xlsx`;
+  return sendXlsx(res, buf, safeName);
 }));
 
 // ---------------------------------------------------------------------------
