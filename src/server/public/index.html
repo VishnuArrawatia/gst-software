@@ -5284,6 +5284,9 @@ async function enter(user) {
   if (av) av.textContent = (who || '?').trim().charAt(0).toUpperCase() || '?';
   renderNav();
   injectPageHeads();
+  if (!CTX.period) CTX.period = todayPeriod();
+  if (!CTX.fy) CTX.fy = fyOfPeriod(CTX.period) || fyOfPeriod(todayPeriod());
+  fillPickers([]);
   await loadContext();
   showView('home');
 }
@@ -5408,9 +5411,18 @@ function showView(v) {
 // Context: masters, coverage, months -> the four pickers in the header
 // ---------------------------------------------------------------------------
 async function loadContext() {
-  let masters = { ok: false, rows: [] };
-  try { masters = await api('/api/masters'); } catch (e) { masters = { ok: false, rows: [] }; }
-  CTX.masters = (masters && masters.ok && masters.rows) ? masters.rows : [];
+  const safeApi = (url, fallback) => Promise.race([
+    api(url).catch(() => fallback),
+    new Promise((resolve) => setTimeout(() => resolve(fallback), 12000)),
+  ]);
+  const [masters, mc, cov, up] = await Promise.all([
+    safeApi('/api/masters', { ok: false, rows: [] }),
+    safeApi('/api/control/months', { ready: false, rows: [] }),
+    safeApi('/api/gstr1/coverage', { coverage: [] }),
+    safeApi('/api/uploads', { dir: '', files: [] }),
+  ]);
+
+  CTX.masters = (masters && masters.ok && Array.isArray(masters.rows)) ? masters.rows : [];
 
   const companies = [];
   const seenCo = {};
@@ -5426,16 +5438,8 @@ async function loadContext() {
     gstin: r.gstin, company_id: r.company_id, company: r.company, unit: r.unit, state: r.state,
   }));
 
-  let mc = { ready: false, rows: [] };
-  try { mc = await api('/api/control/months'); } catch (e) { mc = { ready: false, rows: [] }; }
-  CTX.months = (mc && mc.ready && mc.rows) ? mc.rows : [];
-
-  let cov = { coverage: [] };
-  try { cov = await api('/api/gstr1/coverage'); } catch (e) { cov = { coverage: [] }; }
-  CTX.coverage = (cov && cov.coverage) ? cov.coverage : [];
-
-  let up = { dir: '', files: [] };
-  try { up = await api('/api/uploads'); } catch (e) { up = { dir: '', files: [] }; }
+  CTX.months = (mc && mc.ready && Array.isArray(mc.rows)) ? mc.rows : [];
+  CTX.coverage = (cov && Array.isArray(cov.coverage)) ? cov.coverage : [];
   CTX.uploadDir = (up && up.dir) ? up.dir : '';
 
   const periodsOnFile = CTX.months.map((m) => m.period).concat(CTX.coverage.map((c) => c.period));
@@ -5514,8 +5518,8 @@ function fillPickers(periodsOnFile) {
   const pp = el('plPeriod'); if (pp) pp.value = CTX.period;
   const pg = el('portalG1Gstin'); if (pg) pg.value = CTX.gstin;
   const ppd = el('portalG1Period'); if (ppd) ppd.value = CTX.period;
-  syncPhase3And6PickersFromCtx();
-  renderUploads();
+  try { syncPhase3And6PickersFromCtx(); } catch (e) { console.error('syncPhase3And6PickersFromCtx error:', e); }
+  try { renderUploads(); } catch (e) { console.error('renderUploads error:', e); }
 }
 
 function syncPhase3And6PickersFromCtx() {
@@ -9567,9 +9571,6 @@ document.addEventListener('keydown', (e) => {
   if (leg && leg.style.display !== 'none') { closeGstLegalLibraryModal(); }
 });
 
-updateThemeBtn();
-boot();
-
 /* ===================== SUPPLIER FOLLOW-UP & EMAIL/MESSAGE DRAFT CENTER ===================== */
 const SUP_DRAFT = { supplierGstin: '', data: null, suppliers: [] };
 
@@ -10408,6 +10409,9 @@ async function submitItcReclaim(ev) {
     T4_SUBMITTING = false; if (btn) btn.disabled = false;
   }
 }
+
+updateThemeBtn();
+boot();
 
 </script>
 </body>

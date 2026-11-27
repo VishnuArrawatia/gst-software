@@ -580,7 +580,14 @@ async function assertLineOwnership(
   return { ok: true };
 }
 
-app.use(express.static(path.join(process.cwd(), 'src', 'server', 'public'), { index: 'index.html' }));
+app.use(express.static(path.join(process.cwd(), 'src', 'server', 'public'), {
+  index: 'index.html',
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('index.html')) {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    }
+  },
+}));
 
 registerAdminRoutes(app, requirePerm);
 
