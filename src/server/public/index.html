@@ -1826,6 +1826,159 @@ tbody tr:hover td {
   background: var(--accent-grad);
   box-shadow: 0 10px 24px -10px rgba(79, 70, 229, 0.65);
 }
+
+/* === CONSULTANT-GRADE PHASE 3, PHASE 6 & FINTECH WORKSPACE POLISH === */
+/* Consultant Historical Recon Report One-Click Action Strip */
+.consultant-report-strip {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;
+  padding: 14px 18px; margin-bottom: 16px; border-radius: 16px;
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.08) 0%, rgba(16, 185, 129, 0.08) 100%);
+  border: 1px solid rgba(79, 70, 229, 0.24);
+  box-shadow: 0 6px 20px -12px rgba(79, 70, 229, 0.28);
+}
+[data-theme="dark"] .consultant-report-strip {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.16) 0%, rgba(16, 185, 129, 0.12) 100%);
+  border-color: rgba(129, 140, 248, 0.32);
+}
+.crs-left { display: flex; align-items: center; gap: 12px; min-width: 240px; flex: 1; }
+.crs-icon {
+  width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; flex: none;
+  background: var(--accent-grad); color: #fff; font-size: 18px;
+  box-shadow: 0 6px 16px -6px rgba(79, 70, 229, 0.55);
+}
+.crs-title { font-size: 13.5px; font-weight: 800; color: var(--text); letter-spacing: -0.01em; }
+.crs-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.crs-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.btn-excel-hero {
+  background: linear-gradient(135deg, #059669 0%, #0d9488 100%) !important;
+  color: #fff !important; border-color: transparent !important;
+  box-shadow: 0 6px 16px -6px rgba(5, 150, 105, 0.55) !important;
+}
+.btn-pdf-hero {
+  background: linear-gradient(135deg, #e11d48 0%, #be123c 100%) !important;
+  color: #fff !important; border-color: transparent !important;
+  box-shadow: 0 6px 16px -6px rgba(225, 29, 72, 0.5) !important;
+}
+
+/* Phase 3: Styled SAP Excel Upload Dropzone */
+.sap-dropzone {
+  display: inline-flex; align-items: center; gap: 9px; cursor: pointer;
+  padding: 8px 14px; border-radius: 12px;
+  border: 1.5px dashed rgba(79, 70, 229, 0.45);
+  background: var(--accent-soft); color: var(--accent);
+  font-size: 12.5px; font-weight: 700; margin: 0;
+  transition: all 0.16s ease;
+}
+[data-theme="dark"] .sap-dropzone { color: #c7d2fe; border-color: rgba(129, 140, 248, 0.5); }
+.sap-dropzone:hover, .sap-dropzone.over {
+  border-color: var(--accent); background: rgba(79, 70, 229, 0.16);
+  transform: translateY(-1px); box-shadow: 0 6px 16px -8px rgba(79, 70, 229, 0.45);
+}
+.sap-filter-bar, .t4-filter-bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  padding: 10px 12px; margin-top: 12px; border-radius: 12px;
+  background: var(--panel-3); border: 1px solid var(--line);
+}
+.t4-quick-chips { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.t4-qchip {
+  background: var(--panel); color: var(--text-2); border: 1px solid var(--line);
+  border-radius: 999px; padding: 5px 11px; font-size: 11.5px; font-weight: 700;
+  cursor: pointer; box-shadow: none !important; transition: all 0.14s ease;
+}
+.t4-qchip:hover { border-color: var(--accent); color: var(--accent); transform: none !important; filter: none !important; }
+.t4-qchip.active {
+  background: var(--accent-grad); color: #fff; border-color: transparent;
+  box-shadow: 0 4px 12px -4px rgba(79, 70, 229, 0.45) !important;
+}
+.t4-qchip.reclaim-chip { border-color: rgba(245, 158, 11, 0.45); color: var(--warn-text); background: var(--warn-soft); }
+.t4-qchip.reclaim-chip.active { background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; border-color: transparent; }
+
+/* Phase 6: Consultant-Grade GSTR-3B Table 4 Visual Grouping */
+tr.t4-row-4a td:first-child { border-left: 4px solid #10b981; }
+tr.t4-row-4a td { background: rgba(16, 185, 129, 0.035); }
+tr.t4-row-4a-total td:first-child { border-left: 4px solid #059669; }
+tr.t4-row-4a-total td {
+  background: rgba(16, 185, 129, 0.11); font-weight: 700; color: var(--text);
+  border-top: 1px solid rgba(16, 185, 129, 0.28); border-bottom: 1px solid rgba(16, 185, 129, 0.28);
+}
+tr.t4-row-4b1 td:first-child { border-left: 4px solid #e11d48; }
+tr.t4-row-4b1 td { background: rgba(225, 29, 72, 0.04); }
+tr.t4-row-4b2 td:first-child { border-left: 4px solid #f59e0b; }
+tr.t4-row-4b2 td { background: rgba(245, 158, 11, 0.05); }
+tr.t4-row-4b-total td:first-child { border-left: 4px solid #e11d48; }
+tr.t4-row-4b-total td {
+  background: rgba(239, 68, 68, 0.10); font-weight: 700; color: var(--text);
+  border-top: 1px solid rgba(239, 68, 68, 0.26); border-bottom: 1px solid rgba(239, 68, 68, 0.26);
+}
+tr.t4-row-4c-hero td:first-child { border-left: 5px solid #4f46e5; }
+tr.t4-row-4c-hero td {
+  background: linear-gradient(90deg, rgba(79, 70, 229, 0.13) 0%, rgba(16, 185, 129, 0.12) 100%);
+  font-weight: 800; font-size: 13.5px; color: var(--text);
+  border-top: 2px solid rgba(79, 70, 229, 0.35); border-bottom: 2px solid rgba(16, 185, 129, 0.35);
+  padding-top: 13px; padding-bottom: 13px;
+}
+[data-theme="dark"] tr.t4-row-4c-hero td {
+  background: linear-gradient(90deg, rgba(99, 102, 241, 0.24) 0%, rgba(16, 185, 129, 0.18) 100%);
+}
+tr.t4-row-4d td:first-child { border-left: 4px solid #0284c7; }
+tr.t4-row-4d td { background: rgba(56, 189, 248, 0.045); color: var(--text-2); }
+
+.t4-memo-callout {
+  display: flex; align-items: flex-start; gap: 11px; margin-top: 12px;
+  padding: 12px 15px; border-radius: 12px;
+  background: var(--info-soft); border: 1px solid rgba(2, 132, 199, 0.28);
+  color: var(--info-text); font-size: 12.5px; line-height: 1.55;
+}
+.t4-memo-callout .t4-callout-ico { font-size: 16px; flex: none; margin-top: 1px; }
+.t4-memo-callout b { color: var(--text); }
+
+/* Phase 6: Polished Backdrop-Blur Modals */
+#modalItcDecision.modal, #modalItcReclaim.modal {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  background: rgba(2, 6, 23, 0.62) !important;
+}
+.t4-modal-card {
+  border-radius: 20px !important;
+  border: 1px solid var(--line) !important;
+  box-shadow: 0 28px 70px -20px rgba(2, 6, 23, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+  animation: modalPop 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+  padding: 22px 24px !important;
+}
+.t4-modal-head {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  padding-bottom: 12px; margin-bottom: 12px; border-bottom: 1px solid var(--line);
+}
+.t4-modal-close {
+  width: 32px; height: 32px; padding: 0 !important; display: grid; place-items: center;
+  border-radius: 9px !important; font-size: 18px; line-height: 1;
+}
+.t4-form-grid {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;
+}
+.t4-form-grid label { margin-bottom: 0; }
+.t4-form-grid input, .t4-form-grid select { width: 100%; margin-top: 4px; }
+@media (max-width: 600px) { .t4-form-grid { grid-template-columns: 1fr; } }
+
+/* Empty & Loading States */
+.empty-state, .loading-state {
+  text-align: center; padding: 28px 18px !important; color: var(--muted); font-size: 13px;
+}
+.empty-state .es-title { font-weight: 700; color: var(--text-2); margin-bottom: 4px; }
+
+/* Responsive Laptop Breakpoints (1280px - 1366px) */
+@media (max-width: 1366px) {
+  :root { --sidebar-w: 248px; }
+  header.topbar { padding: 10px 16px; gap: 10px; }
+  main { padding: 18px 18px 40px; }
+  .ctx { gap: 8px; }
+  .ctx > div { min-width: 112px; }
+  .tile .v { font-size: 21px; }
+}
+@media (max-width: 1180px) {
+  :root { --sidebar-w: 220px; }
+  .card { padding: 16px 16px; }
+}
 /* === END MODERN ENTERPRISE FINTECH UI UPGRADE === */
 
 /* ------------------------------------------------------------------ print */
@@ -3011,6 +3164,8 @@ tbody tr:hover td {
             <button type="button" class="sm" style="background:#0f766e;color:#fff" onclick="openSupplierFollowupModal('','')">✉️ Inform Supplier</button>
             <button type="button" class="ghost sm" onclick="downloadTwobRecon(false)">⬇ Export Excel</button>
             <button type="button" class="sm" onclick="openCompleteReconExportModal()" style="background:#4338ca;color:#fff">📊 EXPORT COMPLETE RECONCILIATION TO EXCEL</button>
+            <button type="button" class="ghost sm" onclick="downloadHistoricalRecon('xlsx')" title="7-Sheet Consultant Historical Bill-wise Reconciliation Excel">📑 Historical Report (7-Sheet Excel)</button>
+            <button type="button" class="ghost sm" onclick="downloadHistoricalRecon('pdf')" title="Consultant Executive Historical Bill-wise Reconciliation PDF">📄 Historical Report (PDF)</button>
           </div>
         </div>
 
@@ -3209,8 +3364,318 @@ tbody tr:hover td {
       </div>
     </section>
 
+    <!-- ==================== PHASE 3: BOOKS SUMMARY, PAN & SAP CONTROLS ==================== -->
+    <section class="view" id="viewBooksControls" hidden>
+      <!-- One-Click Consultant Historical Recon Report Strip -->
+      <div class="consultant-report-strip" id="bcConsultantStrip">
+        <div class="crs-left">
+          <div class="crs-icon">📑</div>
+          <div>
+            <div class="crs-title">Consultant Historical Reconciliation Report (7-Sheet Excel &amp; Executive PDF)</div>
+            <div class="crs-sub">Full FY bill-wise Books vs GSTR-2B reconciliation, UTGST separation, PAN summary &amp; audit-ready totals for the active header context.</div>
+          </div>
+        </div>
+        <div class="crs-actions">
+          <button type="button" class="sm btn-excel-hero" onclick="downloadHistoricalRecon('xlsx')" title="Download 7-Sheet Consultant Historical Recon Excel">⬇ 7-Sheet Excel (.xlsx)</button>
+          <button type="button" class="sm btn-pdf-hero" onclick="downloadHistoricalRecon('pdf')" title="Download Consultant Executive Historical Recon PDF">📄 Executive PDF (.pdf)</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+          <div class="tabs" id="bcTabs" style="margin-bottom:0">
+            <button type="button" class="tab active" data-bctab="mbs" onclick="switchBooksControlsTab('mbs')">Monthly Book Summary</button>
+            <button type="button" class="tab" data-bctab="pan" onclick="switchBooksControlsTab('pan')">PAN Consolidation</button>
+            <button type="button" class="tab" data-bctab="sap" onclick="switchBooksControlsTab('sap')">SAP B1 Control Totals</button>
+          </div>
+          <div class="row" style="gap:8px;align-items:center">
+            <label style="font-size:12px;color:var(--muted);margin:0">FY:
+              <select id="bcFy" onchange="loadBooksControls()" style="margin-left:4px;min-width:105px">
+                <option value="2026-27">2026-27</option>
+                <option value="2025-26">2025-26</option>
+                <option value="2024-25">2024-25</option>
+              </select>
+            </label>
+            <button type="button" class="ghost sm" onclick="loadBooksControls()">↻ Refresh</button>
+          </div>
+        </div>
+        <div id="bcBanner" class="hint" style="margin-top:10px"></div>
+      </div>
+
+      <!-- Sub-tab 1: Monthly Book Summary -->
+      <div id="bcPaneMbs">
+        <div class="card">
+          <div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+            <h2 style="margin:0">Monthly Purchase Book Summary (April &ndash; March)</h2>
+            <div class="row" style="gap:8px;align-items:center">
+              <label style="font-size:12px;color:var(--muted);margin:0">Month Filter:
+                <select id="mbsMonthFilter" onchange="renderMonthlyBookSummary()" style="margin-left:4px">
+                  <option value="">All 12 Months</option>
+                </select>
+              </label>
+              <button type="button" class="ghost sm" id="btnMbsExport" onclick="exportMonthlyBookExcel()">⬇ Export Excel (.xlsx)</button>
+            </div>
+          </div>
+          <div class="tiles" id="mbsTiles" style="margin-top:12px"></div>
+          <div class="scroll" style="margin-top:12px"><table id="mbsTable"></table></div>
+        </div>
+      </div>
+
+      <!-- Sub-tab 2: PAN Consolidation -->
+      <div id="bcPanePan" hidden>
+        <div class="card">
+          <div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+            <h2 style="margin:0">PAN-wise Supplier Consolidation (GSTIN Breakdown)</h2>
+            <div class="row" style="gap:8px;align-items:center">
+              <input id="panSearch" type="search" placeholder="Search supplier name / GSTIN / PAN..." style="min-width:240px" onkeydown="if(event.key==='Enter')loadPanConsolidation()">
+              <button type="button" class="ghost sm" onclick="loadPanConsolidation()">Search</button>
+              <button type="button" class="ghost sm" id="btnPanExport" onclick="exportPanExcel()">⬇ Export Excel (.xlsx)</button>
+            </div>
+          </div>
+          <div class="tiles" id="panTiles" style="margin-top:12px"></div>
+          <div class="scroll" style="margin-top:12px"><table id="panTable"></table></div>
+        </div>
+      </div>
+
+      <!-- Sub-tab 3: SAP B1 Control Totals -->
+      <div id="bcPaneSap" hidden>
+        <div class="card" id="sapWriteCard">
+          <div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+            <h2 style="margin:0">SAP Business One Control Totals &mdash; Manual Entry &amp; Excel Upload</h2>
+            <div class="row" style="gap:8px;align-items:center">
+              <button type="button" class="ghost sm" onclick="download('/api/sap-controls/template.xlsx','SAP_B1_Control_Totals_Template.xlsx')">⬇ Download Template (.xlsx)</button>
+              <label class="sap-dropzone" id="sapDropzone" title="Click or drop SAP B1 Control Excel (.xlsx, .xls, .csv)"
+                     ondragover="event.preventDefault();this.classList.add('over')"
+                     ondragleave="this.classList.remove('over')"
+                     ondrop="event.preventDefault();this.classList.remove('over');if(event.dataTransfer&&event.dataTransfer.files&&event.dataTransfer.files[0]){const dt=new DataTransfer();dt.items.add(event.dataTransfer.files[0]);el('sapExcelFile').files=dt.files;uploadSapExcel(el('sapExcelFile'));}">
+                <span>📤 Upload / Drop SAP Excel (.xlsx / .csv)</span>
+                <input id="sapExcelFile" type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="uploadSapExcel(this)">
+              </label>
+            </div>
+          </div>
+          <div id="sapStatusBanner" style="margin-top:10px"></div>
+          <form id="sapManualForm" onsubmit="submitSapManual(event)" style="margin-top:12px">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px">
+              <label>Our GSTIN<input id="sapGstin" required placeholder="15-char GSTIN"></label>
+              <label>Period (YYYY-MM)<input id="sapPeriod" required placeholder="2026-04"></label>
+              <label>Invoice Count<input id="sapCount" type="number" min="0" step="1" value="0" required></label>
+              <label>Taxable Value<input id="sapTaxable" type="number" step="0.01" value="0" required></label>
+              <label>IGST<input id="sapIgst" type="number" step="0.01" value="0"></label>
+              <label>CGST<input id="sapCgst" type="number" step="0.01" value="0"></label>
+              <label>SGST<input id="sapSgst" type="number" step="0.01" value="0"></label>
+              <label>UTGST<input id="sapUtgst" type="number" step="0.01" value="0"></label>
+              <label>Cess<input id="sapCess" type="number" step="0.01" value="0"></label>
+              <label>Invoice Value<input id="sapInvVal" type="number" step="0.01" value="0"></label>
+              <label>Remarks<input id="sapRemarks" placeholder="Optional remarks"></label>
+            </div>
+            <div class="row" style="margin-top:12px;gap:10px;align-items:center;flex-wrap:wrap">
+              <label style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;margin:0">
+                <input id="sapAllowOverwrite" type="checkbox"> Allow Overwrite (archives prior version)
+              </label>
+              <input id="sapOverwriteReason" placeholder="Overwrite reason (required if superseding)" style="min-width:260px">
+              <button type="submit" class="primary" id="btnSapSave">Save SAP Control Total</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card">
+          <div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+            <h2 style="margin:0">3-Way Control Comparison (SAP B1 vs Books vs GSTR-2B)</h2>
+            <span class="hint" id="sapCompMeta"></span>
+          </div>
+          <div class="tiles" id="sapTiles" style="margin-top:10px"></div>
+          <div class="sap-filter-bar">
+            <div class="row" style="gap:8px;align-items:center;flex:1;min-width:240px">
+              <input id="sapCompSearch" type="search" placeholder="Instant filter by GSTIN or Period (e.g. 2026-04)..." style="flex:1;min-width:220px" oninput="renderSapComparisonTable()">
+              <select id="sapCompStatusFilter" onchange="renderSapComparisonTable()" style="min-width:170px">
+                <option value="">All Statuses</option>
+                <option value="SAP_VERIFIED">SAP_VERIFIED (Emerald)</option>
+                <option value="SAP_VARIANCE">SAP_VARIANCE (Rose)</option>
+                <option value="SAP_MISSING">SAP_MISSING (Amber)</option>
+              </select>
+            </div>
+            <button type="button" class="ghost sm" onclick="if(el('sapCompSearch'))el('sapCompSearch').value='';if(el('sapCompStatusFilter'))el('sapCompStatusFilter').value='';renderSapComparisonTable()">Clear Filter</button>
+          </div>
+          <div class="scroll" style="margin-top:12px"><table id="sapCompTable"></table></div>
+        </div>
+
+        <div class="card">
+          <h2>SAP Control Version &amp; Upload History</h2>
+          <div class="scroll" style="margin-top:10px"><table id="sapHistTable"></table></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== PHASE 6: GSTR-3B TABLE 4 ITC CONTROL ==================== -->
+    <section class="view" id="viewGstr3bControl" hidden>
+      <div class="card">
+        <div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+          <div>
+            <h2 style="margin:0">GSTR-3B Table 4 &mdash; ITC Control &amp; Reclaim Working</h2>
+            <div class="hint" style="margin-top:3px">All figures are backend-calculated. Table 4(C) = 4(A) &minus; 4(B) strictly; Table 4(D)(1) is an informational reclaim disclosure memo (zero double-counting).</div>
+          </div>
+          <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap">
+            <label style="font-size:12px;color:var(--muted);margin:0">GSTIN:
+              <select id="t4Gstin" onchange="loadGstr3bTable4()" style="margin-left:4px;min-width:170px"></select>
+            </label>
+            <label style="font-size:12px;color:var(--muted);margin:0">Return Month:
+              <input id="t4Period" type="month" onchange="loadGstr3bTable4()" style="margin-left:4px">
+            </label>
+            <button type="button" class="primary sm" onclick="loadGstr3bTable4()">Load Table 4</button>
+            <button type="button" class="ghost sm" id="btnT4Export" onclick="exportGstr3bTable4Excel()">⬇ Export Table 4 (.xlsx)</button>
+          </div>
+        </div>
+        <div id="t4Banner" style="margin-top:10px"></div>
+      </div>
+
+      <div class="card">
+        <h2>Table 4 Summary (IGST / CGST / SGST / UTGST / Cess Separated)</h2>
+        <div class="tiles" id="t4Tiles" style="margin-top:10px"></div>
+        <div class="scroll" style="margin-top:12px"><table id="t4SummaryTable"></table></div>
+        <div class="t4-memo-callout" id="t4CircularCallout">
+          <span class="t4-callout-ico">ℹ️</span>
+          <div>
+            <b>CBIC Circular No. 170/02/2022-GST (Table 4(D)(1) Reclaimed ITC Disclosure):</b>
+            Reclaimed temporary reversals from <b>4(B)(2)</b> are added <b>once</b> inside <b>4(A)(5) All Other ITC</b> and automatically flow into <b>4(C) Net ITC = 4(A) &minus; 4(B)</b>.
+            Row <b>4(D)(1)</b> is a separate statutory disclosure memo only &mdash; it is <b>never added again</b> into 4(C) (guaranteed zero double-counting).
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+          <h2 style="margin:0">Invoice-Level ITC Working &amp; Manual Controls</h2>
+          <span class="hint" id="t4DetailMeta"></span>
+        </div>
+        <div class="t4-filter-bar">
+          <div class="t4-quick-chips" id="t4QuickChips">
+            <button type="button" class="t4-qchip active" data-t4b="" onclick="setT4BucketFilter('')">All Buckets</button>
+            <button type="button" class="t4-qchip reclaim-chip" data-t4b="4(B)(2)" onclick="setT4BucketFilter('4(B)(2)')">🔄 4(B)(2) Reclaimable</button>
+            <button type="button" class="t4-qchip" data-t4b="4(A)" onclick="setT4BucketFilter('4(A)')">✅ 4(A) Eligible</button>
+            <button type="button" class="t4-qchip" data-t4b="4(B)(1)" onclick="setT4BucketFilter('4(B)(1)')">⛔ 4(B)(1) Blocked</button>
+            <button type="button" class="t4-qchip" data-t4b="4(D)" onclick="setT4BucketFilter('4(D)')">📋 4(D) Memo</button>
+          </div>
+          <div class="row" style="gap:8px;align-items:center;flex:1;justify-content:flex-end;min-width:260px">
+            <select id="t4BucketFilter" onchange="syncT4Chips();renderT4DetailTable()" style="min-width:170px">
+              <option value="">All Table 4 Buckets</option>
+              <option value="4(B)(2)">4(B)(2) Reclaimable</option>
+              <option value="4(A)">4(A) Eligible ITC</option>
+              <option value="4(A)(1)">4(A)(1) IMPG</option>
+              <option value="4(A)(3)">4(A)(3) RCM</option>
+              <option value="4(A)(5)">4(A)(5) All Other</option>
+              <option value="4(B)(1)">4(B)(1) Sec 17(5) Blocked</option>
+              <option value="4(D)">4(D) Disclosure Memo</option>
+            </select>
+            <input id="t4DetailSearch" type="search" placeholder="Search Invoice No, Supplier GSTIN, Decision..." style="min-width:220px;flex:1;max-width:320px" oninput="renderT4DetailTable()">
+          </div>
+        </div>
+        <div class="scroll" style="margin-top:10px"><table id="t4DetailTable"></table></div>
+      </div>
+    </section>
+
+    <!-- Manual ITC Decision Modal (Phase 6) -->
+    <div id="modalItcDecision" class="modal" hidden onclick="if(event.target===this)closeItcDecisionModal()" style="position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px">
+      <div class="card t4-modal-card" style="max-width:580px;width:100%;max-height:92vh;overflow:auto;margin:0">
+        <div class="t4-modal-head">
+          <h2 style="margin:0">Manual ITC Control Decision</h2>
+          <button type="button" class="ghost t4-modal-close" onclick="closeItcDecisionModal()" aria-label="Close">&times;</button>
+        </div>
+        <div id="itcDecInfo" class="hint" style="margin:0 0 10px;padding:9px 12px;border-radius:10px;background:var(--panel-3);border:1px solid var(--line)"></div>
+        <div id="itcDecErr" style="margin:8px 0"></div>
+        <form id="itcDecForm" onsubmit="submitItcDecision(event)">
+          <input type="hidden" id="itcDecLineId">
+          <div class="t4-form-grid">
+            <label>ITC Decision
+              <select id="itcDecChoice" required>
+                <option value="Claim">Claim (Table 4(A))</option>
+                <option value="Reversed">Reversed (Table 4(B))</option>
+                <option value="Ineligible">Ineligible / Sec 17(5) (Table 4(B)(1))</option>
+                <option value="Reclaim Later">Reclaim Later / Deferred</option>
+                <option value="Do Not Claim">Do Not Claim</option>
+                <option value="Query Vendor">Query Vendor</option>
+                <option value="Pending Review">Pending Review</option>
+              </select>
+            </label>
+            <label>Reversal Type (for 4(B))
+              <select id="itcDecRevType">
+                <option value="">None</option>
+                <option value="OTHER_TEMPORARY">OTHER_TEMPORARY &rarr; 4(B)(2) Reclaimable</option>
+                <option value="SEC_17_5_BLOCKED">SEC_17_5_BLOCKED &rarr; 4(B)(1) Permanent</option>
+              </select>
+            </label>
+            <label>ITC Category (Mutually Exclusive)
+              <select id="itcDecCat">
+                <option value="OTHER">All Other ITC &rarr; 4(A)(5)</option>
+                <option value="IMPG">Import of Goods (IMPG) &rarr; 4(A)(1)</option>
+                <option value="RCM">Reverse Charge (RCM) &rarr; 4(A)(3)</option>
+              </select>
+            </label>
+            <label>Decision Month (YYYY-MM)
+              <input id="itcDecMonth" placeholder="YYYY-MM">
+            </label>
+            <label>ITC Claim Month (YYYY-MM, optional)
+              <input id="itcDecClaimMonth" placeholder="YYYY-MM">
+            </label>
+          </div>
+          <label style="display:block;margin-top:12px">Mandatory Audit Reason
+            <textarea id="itcDecReason" rows="2" required placeholder="Explain basis for this manual ITC decision..." style="width:100%;min-height:76px;margin-top:4px"></textarea>
+          </label>
+          <div class="row" style="justify-content:flex-end;gap:8px;margin-top:14px">
+            <button type="button" class="ghost" onclick="closeItcDecisionModal()">Cancel</button>
+            <button type="submit" class="primary" id="btnItcDecSubmit">Confirm &amp; Save Decision</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Manual ITC Reclaim Modal (Phase 6 — Full & Partial Tranches) -->
+    <div id="modalItcReclaim" class="modal" hidden onclick="if(event.target===this)closeItcReclaimModal()" style="position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px">
+      <div class="card t4-modal-card" style="max-width:560px;width:100%;max-height:92vh;overflow:auto;margin:0">
+        <div class="t4-modal-head">
+          <h2 style="margin:0">Reclaim ITC &rarr; Table 4(D)(1)</h2>
+          <button type="button" class="ghost t4-modal-close" onclick="closeItcReclaimModal()" aria-label="Close">&times;</button>
+        </div>
+        <div id="itcRecInfo" class="hint" style="margin:0 0 10px;padding:9px 12px;border-radius:10px;background:var(--panel-3);border:1px solid var(--line)"></div>
+        <div class="tiles" id="itcRecTiles" style="margin:10px 0"></div>
+        <div id="itcRecErr" style="margin:8px 0"></div>
+        <form id="itcRecForm" onsubmit="submitItcReclaim(event)">
+          <input type="hidden" id="itcRecLineId">
+          <div class="t4-form-grid">
+            <label>Target Reclaim Month (YYYY-MM)
+              <input id="itcRecMonth" required placeholder="YYYY-MM">
+            </label>
+            <label>Reclaim Amount (blank = full remaining)
+              <input id="itcRecAmount" type="number" step="0.01" min="0.01" placeholder="Partial or full amount">
+            </label>
+          </div>
+          <label style="display:block;margin-top:12px">Mandatory Reclaim Reason
+            <textarea id="itcRecReason" rows="2" required placeholder="e.g., Supplier payment cleared / goods received..." style="width:100%;min-height:76px;margin-top:4px"></textarea>
+          </label>
+          <div class="row" style="justify-content:flex-end;gap:8px;margin-top:14px">
+            <button type="button" class="ghost" onclick="closeItcReclaimModal()">Cancel</button>
+            <button type="submit" class="primary" id="btnItcRecSubmit">Confirm &amp; Record Reclaim</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <!-- =============================== REPORTS ============================= -->
     <section class="view" id="viewReports" hidden>
+      <!-- One-Click Consultant Historical Recon Report Strip -->
+      <div class="consultant-report-strip" id="repConsultantStrip">
+        <div class="crs-left">
+          <div class="crs-icon">📑</div>
+          <div>
+            <div class="crs-title">Consultant Historical Reconciliation Report (7-Sheet Excel &amp; Executive PDF)</div>
+            <div class="crs-sub">One-click CA/Audit export covering Complete Historical Books, GSTR-2B, Variance Breakdown, UTGST &amp; Executive Summary for active header scope.</div>
+          </div>
+        </div>
+        <div class="crs-actions">
+          <button type="button" class="sm btn-excel-hero" onclick="downloadHistoricalRecon('xlsx')" title="Download 7-Sheet Consultant Historical Recon Excel">⬇ 7-Sheet Excel (.xlsx)</button>
+          <button type="button" class="sm btn-pdf-hero" onclick="downloadHistoricalRecon('pdf')" title="Download Consultant Executive Historical Recon PDF">📄 Executive PDF (.pdf)</button>
+        </div>
+      </div>
+
       <div class="card">
         <h2>Reports &amp; Working Exports</h2>
         <div class="row">
@@ -3846,6 +4311,7 @@ tbody tr:hover td {
       <div class="eb-box book" id="ebOrigCard"></div>
       <div class="eb-box twob" id="ebTwoBCard"></div>
     </div>
+    <div id="ebGranularPanel" style="margin-bottom:12px"></div>
 
     <div class="eb-form-grid">
       <div>
@@ -3931,6 +4397,10 @@ tbody tr:hover td {
         <div>
           <label for="eb_extra_sgst" style="font-size:11.5px">Extra SGST (₹)</label>
           <input type="number" step="0.01" id="eb_extra_sgst" value="0" oninput="updateEditBookExtraPreview()" style="font-family:monospace" />
+        </div>
+        <div>
+          <label for="eb_extra_utgst" style="font-size:11.5px">Extra UTGST (₹)</label>
+          <input type="number" step="0.01" id="eb_extra_utgst" value="0" oninput="updateEditBookExtraPreview()" style="font-family:monospace" />
         </div>
         <div>
           <label for="eb_extra_cess" style="font-size:11.5px">Extra Cess (₹)</label>
@@ -4323,7 +4793,7 @@ const CTX = {
   outStatus: '',
 };
 
-const VIEWS = ['home', 'sales', 'portal', 'outward', 'hsn', 'pl', 'purchase', 'paste', 'gstr9', 'reports', 'masters', 'ims'];
+const VIEWS = ['home', 'sales', 'portal', 'outward', 'hsn', 'pl', 'purchase', 'booksControls', 'gstr3bControl', 'paste', 'gstr9', 'reports', 'masters', 'ims'];
 
 /**
  * Icons are inline paths. The office LAN has no internet, so nothing here may
@@ -4357,7 +4827,9 @@ const NAV = [
   { id: 'gstr1-recon', label: 'GSTR-1 Reconciliation', view: 'outward', icon: 'recon', sub: 'Bill-to-bill Books vs Portal match', badge: 'GSTR-1', group: 'Outward & GSTR-1 Control' },
   { id: 'hsn-summary', label: 'HSN Summary (12)', view: 'hsn', icon: 'hsn', sub: 'B2B & B2C Table 12 UQC comparison', badge: 'Table 12', group: 'Outward & GSTR-1 Control' },
   { id: 'pl-recon', label: 'P&L vs GSTR-1', view: 'pl', icon: 'pl', sub: 'Trial Balance turnover vs GSTR-1', badge: 'P&L', group: 'Outward & GSTR-1 Control' },
-  { id: 'purchase-register', label: 'Purchase vs GSTR-2B', view: 'purchase', icon: 'purchase', sub: 'Bill-to-bill 2B match & Table 4 ITC', badge: '3B ITC', group: 'Inward, 2B & GSTR-3B ITC' },
+  { id: 'purchase-register', label: 'Purchase vs GSTR-2B', view: 'purchase', icon: 'purchase', sub: 'Bill-to-bill 2B match & Table 4 ITC', badge: '2B Match', group: 'Inward, 2B & GSTR-3B ITC' },
+  { id: 'books-controls', label: 'Books, PAN & SAP Controls', view: 'booksControls', icon: 'reports', sub: 'Monthly Book Summary, PAN & SAP B1', badge: 'Phase 3', group: 'Inward, 2B & GSTR-3B ITC' },
+  { id: 'gstr3b-control', label: 'GSTR-3B Table 4 ITC', view: 'gstr3bControl', icon: 'recon', sub: 'Table 4(A/B/C/D1), Decisions & Reclaim', badge: '3B Table 4', group: 'Inward, 2B & GSTR-3B ITC' },
   { id: 'ims-recon', label: 'IMS vs Purchase', view: 'ims', icon: 'recon', sub: 'Independent IMS matching & portal actions', badge: 'IMS', group: 'Inward, 2B & GSTR-3B ITC' },
   { id: 'paste-register', label: 'Paste Register', view: 'paste', icon: 'paste', sub: 'Quick Excel clipboard import', badge: 'Paste', group: 'Inward, 2B & GSTR-3B ITC' },
   { id: 'gstr9-annual', label: 'GSTR-9 & 9C Annual', view: 'gstr9', icon: 'reports', sub: '12-month GSTR-9, 9C & IMS Actions', badge: '9 & IMS', group: 'Annual, Reports & Admin' },
@@ -4419,6 +4891,20 @@ const VIEW_META = {
     eyebrow: 'INWARD CREDIT CONTROL \u2022 GSTR-2B & 3B TABLE 4',
     badge: 'Bill-to-Bill ITC',
     icon: 'purchase',
+  },
+  booksControls: {
+    title: 'Monthly Book Summary, PAN Consolidation & SAP B1 Controls',
+    sub: 'April\u2013March Purchase Book Summary, PAN-wise supplier consolidation with GSTIN breakdown, and SAP Business One 3-way control totals.',
+    eyebrow: 'BOOKS & ERP RECONCILIATION \u2022 SAP B1 CONTROLS',
+    badge: '3-Way Control',
+    icon: 'reports',
+  },
+  gstr3bControl: {
+    title: 'GSTR-3B Table 4 \u2014 ITC Readiness & Manual Control',
+    sub: 'Backend-calculated Table 4(A)(1) IMPG, 4(A)(3) RCM, 4(A)(5) Other, 4(B)(1) Sec 17(5), 4(B)(2) Reversals, 4(C) Net ITC & 4(D)(1) Reclaim disclosure.',
+    eyebrow: 'GSTR-3B COMPLIANCE \u2022 STRICT MANUAL ITC CONTROL',
+    badge: 'UTGST Separated',
+    icon: 'recon',
   },
   paste: {
     title: 'Clipboard Paste Register',
@@ -4909,6 +5395,8 @@ function showView(v) {
   if (v === 'outward') loadOutward();
   if (v === 'hsn') loadHsn();
   if (v === 'purchase') loadPurchase();
+  if (v === 'booksControls') loadBooksControls();
+  if (v === 'gstr3bControl') loadGstr3bTable4();
   if (v === 'paste') loadPaste();
   if (v === 'gstr9') loadGstr9();
   if (v === 'reports') loadReports();
@@ -4973,7 +5461,11 @@ function fillPickers(periodsOnFile) {
     co.innerHTML = '<option value="">All Companies</option>' +
       CTX.companies.map((c) => '<option value="' + esc(c.id) + '">' + esc(dispCompany(c.name)) + '</option>').join('');
     co.value = CTX.company;
-    co.onchange = () => { CTX.company = co.value; refreshContext(false); };
+    co.onchange = () => {
+      CTX.company = co.value;
+      fillPickers(CTX.months.map((m) => m.period).concat(CTX.coverage.map((c) => c.period)));
+      refreshContext(false);
+    };
   }
 
   const list = CTX.gstins.filter((g) => !CTX.company || String(g.company_id) === String(CTX.company));
@@ -5010,7 +5502,7 @@ function fillPickers(periodsOnFile) {
 
   setHtml('fyTitle', esc(CTX.fy));
   // The From/To of the selected return month, in DD/MM/YYYY, right in the top
-  // bar \u2014 so "2026-04" is never the only form of the period on screen.
+  // bar — so "2026-04" is never the only form of the period on screen.
   setCrumb();
   // The forms that target ONE GSTIN or ONE month follow the header context.
   // They used to keep whatever they were first given, so changing the month in
@@ -5022,7 +5514,23 @@ function fillPickers(periodsOnFile) {
   const pp = el('plPeriod'); if (pp) pp.value = CTX.period;
   const pg = el('portalG1Gstin'); if (pg) pg.value = CTX.gstin;
   const ppd = el('portalG1Period'); if (ppd) ppd.value = CTX.period;
+  syncPhase3And6PickersFromCtx();
   renderUploads();
+}
+
+function syncPhase3And6PickersFromCtx() {
+  const bcFy = el('bcFy');
+  if (bcFy && CTX.fy) {
+    if (!Array.from(bcFy.options).some((o) => o.value === CTX.fy)) {
+      const opt = document.createElement('option');
+      opt.value = CTX.fy; opt.textContent = CTX.fy;
+      bcFy.insertBefore(opt, bcFy.firstChild);
+    }
+    bcFy.value = CTX.fy;
+  }
+  const sg = el('sapGstin'); if (sg && CTX.gstin) sg.value = CTX.gstin;
+  const sp = el('sapPeriod'); if (sp && CTX.period) sp.value = CTX.period;
+  if (typeof populateT4Pickers === 'function') populateT4Pickers(true);
 }
 
 function setFy(fy) {
@@ -5046,7 +5554,9 @@ function setPeriod(period) {
 /** Re-run whatever the visible view shows, after a context change. */
 function refreshContext(reloadMonths) {
   setHtml('fyTitle', esc(CTX.fy));
-  if (reloadMonths) { loadContext().then(() => showView(CTX.view)); return; }
+  setCrumb();
+  syncPhase3And6PickersFromCtx();
+  if (reloadMonths) { loadContext().then(() => { syncPhase3And6PickersFromCtx(); showView(CTX.view); }); return; }
   showView(CTX.view);
 }
 
@@ -8682,7 +9192,7 @@ function openEditBookModal(lineId) {
     '<div><b>Our GSTIN:</b> <code>' + esc(r.our_gstin || '') + '</code> &nbsp; <b>Type:</b> ' + esc(r.book_document_type || 'Tax Invoice') + '</div>' +
     '<div><b>Vendor:</b> ' + esc(r.party_name || '\u2014') + '</div>' +
     '<div style="margin-top:4px"><b>Taxable:</b> ' + money(r.book_taxable_value) + ' &nbsp;|&nbsp; <b>Book ITC:</b> ' + money(bookItc) + '</div>' +
-    '<div class="hint" style="font-size:11px;margin-top:2px">IGST ' + money(r.book_igst) + ' \u00b7 CGST ' + money(r.book_cgst) + ' \u00b7 SGST ' + money(r.book_sgst) +
+    '<div class="hint" style="font-size:11px;margin-top:2px">IGST ' + money(r.book_igst) + ' \u00b7 CGST ' + money(r.book_cgst) + ' \u00b7 SGST ' + money(r.book_sgst) + ' \u00b7 UTGST ' + money(r.book_utgst || 0) +
       (Number(r.book_cess || 0) ? ' \u00b7 Cess ' + money(r.book_cess) : '') + '</div>');
 
   const curSup = String(r.recon_supplier_gstin || r.book_supplier_gstin || '').toUpperCase();
@@ -8759,8 +9269,11 @@ function openEditBookModal(lineId) {
   if (el('eb_extra_taxable')) el('eb_extra_taxable').value = exTx ? exTx.toFixed(2) : '0';
   if (el('eb_extra_igst')) el('eb_extra_igst').value = exIg ? exIg.toFixed(2) : '0';
   if (el('eb_extra_cgst')) el('eb_extra_cgst').value = exCg ? exCg.toFixed(2) : '0';
+  const exUt = Number(r.recon_extra_utgst || 0);
   if (el('eb_extra_sgst')) el('eb_extra_sgst').value = exSg ? exSg.toFixed(2) : '0';
+  if (el('eb_extra_utgst')) el('eb_extra_utgst').value = exUt ? exUt.toFixed(2) : '0';
   if (el('eb_extra_cess')) el('eb_extra_cess').value = exCe ? exCe.toFixed(2) : '0';
+  renderEbGranularPanel(r);
 
   const has2bDiff = Boolean(
     (r.matched_2b_key || r.twob_invoice_no) && (
@@ -9226,6 +9739,674 @@ function downloadSupplierDraftXlsx() {
     include_only_2b: inc2b,
   });
   download(url, 'Supplier_Followup_' + SUP_DRAFT.supplierGstin + '.xlsx');
+}
+
+
+function renderEbGranularPanel(r) {
+  const box = el('ebGranularPanel');
+  if (!box) return;
+  const reasons = Array.isArray(r.mismatch_reasons) ? r.mismatch_reasons : [];
+  const pills = reasons.length
+    ? reasons.map((code) => {
+        const cls = /MULTIPLE|DOC_TYPE|GSTIN|TAXABLE|IGST|CGST|SGST|UTGST|CESS|BLOCKED/.test(code) ? 'bad' : 'warn';
+        return '<span class="pill ' + cls + '" style="margin-right:4px;margin-bottom:4px">' + esc(code.replace(/_/g, ' ')) + '</span>';
+      }).join('')
+    : '<span class="pill good">No Component Mismatch Tags</span>';
+
+  const has2b = Boolean(r.matched_2b_key || r.twob_invoice_no);
+  const effTx = Number(r.book_taxable_value || 0) + Number(r.recon_extra_taxable || 0);
+  const effIg = Number(r.book_igst || 0) + Number(r.recon_extra_igst || 0);
+  const effCg = Number(r.book_cgst || 0) + Number(r.recon_extra_cgst || 0);
+  const effSg = Number(r.book_sgst || 0) + Number(r.recon_extra_sgst || 0);
+  const effUt = Number(r.book_utgst || 0) + Number(r.recon_extra_utgst || 0);
+  const effCe = Number(r.book_cess || 0) + Number(r.recon_extra_cess || 0);
+  const origTax = Number(r.book_igst || 0) + Number(r.book_cgst || 0) + Number(r.book_sgst || 0) + Number(r.book_utgst || 0) + Number(r.book_cess || 0);
+  const effTax = effIg + effCg + effSg + effUt + effCe;
+  const twobTax = Number(r.twob_igst || 0) + Number(r.twob_cgst || 0) + Number(r.twob_sgst || 0) + Number(r.twob_utgst || 0) + Number(r.twob_cess || 0);
+
+  const cmpRow = (lbl, origVal, corrVal, twobVal, isMoney) => {
+    const oStr = origVal === null || origVal === undefined ? '—' : (isMoney ? money(origVal) : esc(origVal));
+    const cStr = corrVal === null || corrVal === undefined ? '—' : (isMoney ? money(corrVal) : esc(corrVal));
+    const tStr = !has2b || twobVal === null || twobVal === undefined ? '—' : (isMoney ? money(twobVal) : esc(twobVal));
+    let diffHtml = '—';
+    if (isMoney && has2b && corrVal !== null && corrVal !== undefined && twobVal !== null && twobVal !== undefined) {
+      const d = Number(corrVal) - Number(twobVal);
+      diffHtml = '<span class="' + (Math.abs(d) > 1 ? 'bad' : 'good') + '"><b>' + money(d) + '</b></span>';
+    } else if (!isMoney && has2b && twobVal) {
+      diffHtml = String(corrVal || '') === String(twobVal || '') ? '<span class="good">Match</span>' : '<span class="warn">Diff</span>';
+    }
+    return '<tr><td><b>' + lbl + '</b></td><td class="' + (isMoney ? 'num' : '') + '">' + oStr + '</td><td class="' + (isMoney ? 'num' : '') + '">' + cStr + '</td><td class="' + (isMoney ? 'num' : '') + '">' + tStr + '</td><td class="' + (isMoney ? 'num' : '') + '">' + diffHtml + '</td></tr>';
+  };
+
+  box.innerHTML =
+    '<div style="padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--panel-3)">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px">' +
+        '<div style="font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;color:var(--muted)">🔍 Granular Mismatch Diagnosis — Original Books vs Corrected vs GSTR-2B</div>' +
+        '<div>' + pills + '</div>' +
+      '</div>' +
+      '<div class="scroll" style="max-height:210px"><table style="font-size:12px">' +
+        '<thead><tr><th>Component</th><th class="num">Original Books (Immutable)</th><th class="num">Corrected / Overlay</th><th class="num">GSTR-2B Portal</th><th class="num">Difference</th></tr></thead><tbody>' +
+        cmpRow('Taxable Value', Number(r.book_taxable_value || 0), effTx, r.twob_taxable_value, true) +
+        cmpRow('IGST', Number(r.book_igst || 0), effIg, r.twob_igst, true) +
+        cmpRow('CGST', Number(r.book_cgst || 0), effCg, r.twob_cgst, true) +
+        cmpRow('SGST', Number(r.book_sgst || 0), effSg, r.twob_sgst, true) +
+        cmpRow('UTGST (Separate)', Number(r.book_utgst || 0), effUt, r.twob_utgst, true) +
+        cmpRow('Cess', Number(r.book_cess || 0), effCe, r.twob_cess, true) +
+        cmpRow('Total GST', origTax, effTax, has2b ? twobTax : null, true) +
+        cmpRow('Invoice Value', r.book_invoice_value, r.book_invoice_value, r.twob_invoice_value, true) +
+      '</tbody></table></div>' +
+    '</div>';
+}
+
+
+function downloadHistoricalRecon(fmt) {
+  const qs = new URLSearchParams();
+  if (CTX.gstin) qs.set('gstin', CTX.gstin);
+  else if (CTX.company) qs.set('company', CTX.company);
+  if (CTX.fy) { qs.set('fy', CTX.fy); qs.set('periodMode', 'all'); }
+  else qs.set('periodMode', 'all');
+  const ext = fmt === 'pdf' ? 'pdf' : 'xlsx';
+  const tag = (CTX.fy || CTX.period || 'ALL').replace(/[^A-Za-z0-9_-]/g, '_');
+  download('/api/reports/historical-recon/export.' + ext + '?' + qs.toString(), 'Historical_Billwise_Recon_Report_' + tag + '.' + ext);
+}
+
+// ---------------------------------------------------------------------------
+// REM-4: Phase 3 UI (Monthly Book Summary, PAN Consolidation & SAP B1 Controls)
+// ---------------------------------------------------------------------------
+let BC_ACTIVE_TAB = 'mbs';
+let MBS_CACHE = null;
+let SAP_COMP_CACHE = [];
+let SAP_SUBMITTING = false;
+
+function uiHasPerm(permKey) {
+  return Boolean(CTX.user && Array.isArray(CTX.user.permissions) && CTX.user.permissions.includes(permKey));
+}
+
+function bcScopeParams() {
+  const qs = new URLSearchParams();
+  const fyEl = el('bcFy');
+  const fy = (fyEl && fyEl.value) || CTX.fy || '2026-27';
+  if (fy) qs.set('fy', fy);
+  if (CTX.gstin) qs.set('gstin', CTX.gstin);
+  else if (CTX.company) qs.set('company', String(CTX.company));
+  return qs;
+}
+
+function switchBooksControlsTab(tab) {
+  BC_ACTIVE_TAB = tab;
+  document.querySelectorAll('#bcTabs .tab').forEach((b) => {
+    b.className = 'tab' + (b.getAttribute('data-bctab') === tab ? ' active' : '');
+  });
+  const mbs = el('bcPaneMbs'); const pan = el('bcPanePan'); const sap = el('bcPaneSap');
+  if (mbs) mbs.hidden = tab !== 'mbs';
+  if (pan) pan.hidden = tab !== 'pan';
+  if (sap) sap.hidden = tab !== 'sap';
+  loadBooksControls();
+}
+
+async function loadBooksControls() {
+  const expOk = uiHasPerm('report.export');
+  const btnMbs = el('btnMbsExport'); if (btnMbs) btnMbs.style.display = expOk ? '' : 'none';
+  const btnPan = el('btnPanExport'); if (btnPan) btnPan.style.display = expOk ? '' : 'none';
+  const writeCard = el('sapWriteCard'); if (writeCard) writeCard.style.display = uiHasPerm('recon.edit') ? '' : 'none';
+
+  const gIn = el('sapGstin'); if (gIn && !gIn.value && CTX.gstin) gIn.value = CTX.gstin;
+  const pIn = el('sapPeriod'); if (pIn && !pIn.value && CTX.period) pIn.value = CTX.period;
+
+  if (BC_ACTIVE_TAB === 'mbs') await loadMonthlyBookSummary();
+  else if (BC_ACTIVE_TAB === 'pan') await loadPanConsolidation();
+  else await loadSapControls();
+}
+
+async function loadMonthlyBookSummary() {
+  const banner = el('bcBanner');
+  if (banner) banner.textContent = 'Loading Monthly Book Summary...';
+  setHtml('mbsTable', '<tbody><tr><td class="loading-state">Loading 12-month Purchase Book Summary...</td></tr></tbody>');
+  try {
+    const qs = bcScopeParams();
+    MBS_CACHE = await api('/api/reports/monthly-book-summary?' + qs.toString());
+    const sel = el('mbsMonthFilter');
+    if (sel) {
+      const cur = sel.value;
+      sel.innerHTML = '<option value="">All 12 Months</option>' +
+        (MBS_CACHE.months || []).map((m) => '<option value="' + esc(m.period) + '">' + esc(m.period + ' (' + m.label + ')') + '</option>').join('');
+      sel.value = cur;
+    }
+    renderMonthlyBookSummary();
+    if (banner) banner.textContent = 'FY ' + MBS_CACHE.fy + ' \u2022 ' + (MBS_CACHE.gstin || 'All Authorized GSTINs') + (MBS_CACHE.mathVerified ? ' \u2022 Math Verified' : '');
+  } catch (e) {
+    MBS_CACHE = null;
+    if (banner) banner.innerHTML = '<span class="bad">' + esc(errText(e)) + '</span>';
+    setHtml('mbsTiles', '');
+    setHtml('mbsTable', '<tbody><tr><td class="bad">' + esc(errText(e)) + '</td></tr></tbody>');
+  }
+}
+
+function renderMonthlyBookSummary() {
+  if (!MBS_CACHE) return;
+  const mf = (el('mbsMonthFilter') && el('mbsMonthFilter').value) || '';
+  const rows = mf ? (MBS_CACHE.months || []).filter((m) => m.period === mf) : (MBS_CACHE.months || []);
+  const tot = MBS_CACHE.annualTotal || {};
+  setHtml('mbsTiles',
+    '<div class="tile"><div class="k">Annual Invoices</div><div class="v">' + cnt(tot.invoiceCount || 0) + '</div></div>' +
+    '<div class="tile"><div class="k">Taxable Value</div><div class="v">' + money(tot.taxableValue || 0) + '</div></div>' +
+    '<div class="tile"><div class="k">IGST</div><div class="v">' + money(tot.igst || 0) + '</div></div>' +
+    '<div class="tile"><div class="k">CGST / SGST</div><div class="v">' + money(tot.cgst || 0) + ' / ' + money(tot.sgst || 0) + '</div></div>' +
+    '<div class="tile info"><div class="k">UTGST (Separate)</div><div class="v">' + money(tot.utgst || 0) + '</div></div>' +
+    '<div class="tile good"><div class="k">Total GST</div><div class="v">' + money(tot.totalGst || 0) + '</div></div>'
+  );
+  if (!rows.length) {
+    setHtml('mbsTable', '<tbody><tr><td class="empty-state"><div class="es-title">No monthly book records for this selection</div>Select another Financial Year or upload a Purchase Register.</td></tr></tbody>');
+    return;
+  }
+  const tr = (m, isTot) => '<tr' + (isTot ? ' class="total-row"' : '') + '>' +
+    '<td><code>' + esc(m.period) + '</code></td><td>' + esc(m.label) + '</td>' +
+    '<td class="num">' + cnt(m.invoiceCount) + '</td><td class="num">' + cnt(m.taxInvoiceCount) + '</td>' +
+    '<td class="num">' + cnt(m.debitNoteCount) + '</td><td class="num">' + cnt(m.creditNoteCount) + '</td>' +
+    '<td class="num">' + money(m.taxableValue) + '</td><td class="num">' + money(m.igst) + '</td>' +
+    '<td class="num">' + money(m.cgst) + '</td><td class="num">' + money(m.sgst) + '</td>' +
+    '<td class="num">' + money(m.utgst) + '</td><td class="num">' + money(m.cess) + '</td>' +
+    '<td class="num"><b>' + money(m.totalGst) + '</b></td><td class="num">' + money(m.invoiceValue) + '</td></tr>';
+  setHtml('mbsTable',
+    '<thead><tr><th>Period</th><th>Month</th><th class="num">Docs</th><th class="num">Tax Inv</th><th class="num">DN</th><th class="num">CN</th>' +
+    '<th class="num">Taxable</th><th class="num">IGST</th><th class="num">CGST</th><th class="num">SGST</th><th class="num">UTGST</th><th class="num">Cess</th>' +
+    '<th class="num">Total GST</th><th class="num">Invoice Value</th></tr></thead><tbody>' +
+    rows.map((m) => tr(m, false)).join('') + (mf ? '' : tr(tot, true)) + '</tbody>'
+  );
+}
+
+function exportMonthlyBookExcel() {
+  const qs = bcScopeParams();
+  qs.set('format', 'xlsx');
+  download('/api/reports/monthly-book-summary?' + qs.toString(), 'Monthly_Book_Summary_' + (qs.get('fy') || 'FY') + '.xlsx');
+}
+
+async function loadPanConsolidation() {
+  const banner = el('bcBanner');
+  if (banner) banner.textContent = 'Loading PAN-wise Supplier Consolidation...';
+  setHtml('panTable', '<tbody><tr><td class="loading-state">Loading PAN-wise supplier consolidation...</td></tr></tbody>');
+  try {
+    const qs = bcScopeParams();
+    const q = (el('panSearch') && el('panSearch').value || '').trim();
+    if (q) qs.set('q', q);
+    const data = await api('/api/reports/pan-consolidation?' + qs.toString());
+    const gt = data.grandTotal || {};
+    setHtml('panTiles',
+      '<div class="tile"><div class="k">Unique PANs</div><div class="v">' + cnt(data.panCount || 0) + '</div></div>' +
+      '<div class="tile"><div class="k">Supplier GSTINs</div><div class="v">' + cnt(data.gstinCount || 0) + '</div></div>' +
+      '<div class="tile ' + ((data.conflictPanCount || 0) > 0 ? 'warn' : 'good') + '"><div class="k">PAN Conflicts</div><div class="v">' + cnt(data.conflictPanCount || 0) + '</div></div>' +
+      '<div class="tile"><div class="k">Books Taxable</div><div class="v">' + money(gt.taxableValue || 0) + '</div></div>' +
+      '<div class="tile"><div class="k">Books Total GST</div><div class="v">' + money(gt.totalGst || 0) + '</div></div>' +
+      '<div class="tile"><div class="k">GSTR-2B Tax</div><div class="v">' + money(gt.twobTax || 0) + '</div></div>'
+    );
+    const pans = data.pans || [];
+    if (!pans.length) {
+      setHtml('panTable', '<tbody><tr><td class="empty-state"><div class="es-title">No supplier PAN records found</div>Try clearing the search query or selecting another FY/GSTIN in the top bar.</td></tr></tbody>');
+    } else {
+      const body = pans.map((p, idx) => {
+        const conf = p.hasConflict ? '<span class="pill bad">' + esc((p.conflicts || []).join('; ')) + '</span>' : '<span class="pill good">Clean</span>';
+        const subRows = (p.gstins || []).map((g) =>
+          '<tr class="pan-sub-' + idx + '" hidden style="background:var(--panel-3);font-size:12px">' +
+          '<td style="padding-left:24px">\u21b3 <code>' + esc(g.supplierGstin) + '</code></td><td>' + esc((g.supplierNames || []).join(' | ')) + '</td>' +
+          '<td>State ' + esc(g.stateCode || '\u2014') + (g.gstinValid ? '' : ' <span class="bad">(Invalid)</span>') + '</td>' +
+          '<td class="num">' + cnt(g.invoiceCount) + '</td><td class="num">' + money(g.taxableValue) + '</td>' +
+          '<td class="num">' + money(g.igst) + '</td><td class="num">' + money(g.cgst) + '</td><td class="num">' + money(g.sgst) + '</td><td class="num">' + money(g.utgst) + '</td>' +
+          '<td class="num">' + money(g.totalGst) + '</td><td class="num">' + money(g.twobTax) + '</td><td class="num">' + money(g.itcDiff) + '</td></tr>'
+        ).join('');
+        return '<tr><td><button type="button" class="ghost" style="padding:2px 8px;font-size:11.5px" onclick="togglePanRows(' + idx + ')">' + esc(p.pan) + ' (' + p.gstinCount + ')</button></td>' +
+          '<td><b>' + esc(p.primaryName) + '</b></td><td>' + conf + '</td>' +
+          '<td class="num">' + cnt(p.invoiceCount) + '</td><td class="num">' + money(p.taxableValue) + '</td>' +
+          '<td class="num">' + money(p.igst) + '</td><td class="num">' + money(p.cgst) + '</td><td class="num">' + money(p.sgst) + '</td><td class="num">' + money(p.utgst) + '</td>' +
+          '<td class="num"><b>' + money(p.totalGst) + '</b></td><td class="num">' + money(p.twobTax) + '</td><td class="num">' + money(p.itcDiff) + '</td></tr>' + subRows;
+      }).join('');
+      setHtml('panTable',
+        '<thead><tr><th>PAN (Click to expand)</th><th>Primary Supplier</th><th>Status / Conflicts</th><th class="num">Docs</th><th class="num">Taxable</th>' +
+        '<th class="num">IGST</th><th class="num">CGST</th><th class="num">SGST</th><th class="num">UTGST</th><th class="num">Books GST</th><th class="num">2B Tax</th><th class="num">Diff</th></tr></thead><tbody>' + body + '</tbody>'
+      );
+    }
+    if (banner) banner.textContent = pans.length + ' supplier PAN(s) loaded.';
+  } catch (e) {
+    if (banner) banner.innerHTML = '<span class="bad">' + esc(errText(e)) + '</span>';
+    setHtml('panTable', '<tbody><tr><td class="bad">' + esc(errText(e)) + '</td></tr></tbody>');
+  }
+}
+
+function togglePanRows(idx) {
+  document.querySelectorAll('.pan-sub-' + idx).forEach((tr) => { tr.hidden = !tr.hidden; });
+}
+
+function exportPanExcel() {
+  const qs = bcScopeParams();
+  const q = (el('panSearch') && el('panSearch').value || '').trim();
+  if (q) qs.set('q', q);
+  qs.set('format', 'xlsx');
+  download('/api/reports/pan-consolidation?' + qs.toString(), 'PAN_Supplier_Consolidation.xlsx');
+}
+
+function renderSapComparisonTable() {
+  const q = ((el('sapCompSearch') && el('sapCompSearch').value) || '').trim().toLowerCase();
+  const st = (el('sapCompStatusFilter') && el('sapCompStatusFilter').value) || '';
+  const filtered = (SAP_COMP_CACHE || []).filter((r) => {
+    if (st && r.sapStatus !== st) return false;
+    if (q) {
+      const hay = (String(r.ourGstin || '') + ' ' + String(r.period || '') + ' ' + String(r.sapStatus || '')).toLowerCase();
+      if (hay.indexOf(q) < 0) return false;
+    }
+    return true;
+  });
+  const meta = el('sapCompMeta');
+  if (meta) {
+    meta.textContent = SAP_COMP_CACHE.length
+      ? (filtered.length === SAP_COMP_CACHE.length ? filtered.length + ' period row(s)' : 'Showing ' + filtered.length + ' of ' + SAP_COMP_CACHE.length + ' row(s)')
+      : '';
+  }
+  if (!SAP_COMP_CACHE.length) {
+    setHtml('sapCompTable', '<tbody><tr><td class="empty-state"><div class="es-title">No SAP control comparison rows yet</div>Upload a SAP B1 Control Excel or save a manual control total above to compare SAP vs Books vs GSTR-2B.</td></tr></tbody>');
+    return;
+  }
+  if (!filtered.length) {
+    setHtml('sapCompTable', '<tbody><tr><td class="empty-state"><div class="es-title">No matching rows for current filter</div>Adjust the search box or status filter to view all ' + SAP_COMP_CACHE.length + ' comparison rows.</td></tr></tbody>');
+    return;
+  }
+  setHtml('sapCompTable',
+    '<thead><tr><th>GSTIN</th><th>Period</th><th>Status</th><th>Ver</th><th class="num">SAP Taxable</th><th class="num">Books Taxable</th><th class="num">SAP vs Books</th><th class="num">SAP GST</th><th class="num">Books GST</th><th class="num">2B GST</th></tr></thead><tbody>' +
+    filtered.map((r) => {
+      const pill = r.sapStatus === 'SAP_VERIFIED' ? 'good' : (r.sapStatus === 'SAP_VARIANCE' ? 'bad' : 'warn');
+      const diffTax = r.sapVsBooks ? Number(r.sapVsBooks.taxableValue || 0) : null;
+      const diffStyle = diffTax !== null && Math.abs(diffTax) > 0.005 ? ' style="color:var(--bad-text);font-weight:700"' : '';
+      return '<tr><td><code>' + esc(r.ourGstin) + '</code></td><td><code>' + esc(r.period) + '</code></td><td><span class="pill ' + pill + '">' + esc(r.sapStatus) + '</span></td>' +
+        '<td>' + (r.sapVersion ? 'v' + r.sapVersion : '\u2014') + '</td>' +
+        '<td class="num">' + (r.sap ? money(r.sap.taxableValue) : '\u2014') + '</td><td class="num">' + money(r.books.taxableValue) + '</td>' +
+        '<td class="num"' + diffStyle + '>' + (r.sapVsBooks ? money(r.sapVsBooks.taxableValue) : '\u2014') + '</td>' +
+        '<td class="num">' + (r.sap ? money(r.sap.totalGst) : '\u2014') + '</td><td class="num">' + money(r.books.totalGst) + '</td><td class="num">' + money(r.twob.totalGst) + '</td></tr>';
+    }).join('') + '</tbody>'
+  );
+}
+
+async function loadSapControls() {
+  const banner = el('bcBanner');
+  if (banner) banner.textContent = 'Loading SAP Business One Control Totals...';
+  setHtml('sapCompTable', '<tbody><tr><td class="loading-state">Loading 3-Way SAP vs Books vs GSTR-2B comparison...</td></tr></tbody>');
+  setHtml('sapHistTable', '<tbody><tr><td class="loading-state">Loading SAP version history...</td></tr></tbody>');
+  try {
+    const qs = bcScopeParams();
+    const [comp, hist] = await Promise.all([
+      api('/api/sap-controls/comparison?' + qs.toString()),
+      api('/api/sap-controls/history?' + qs.toString()),
+    ]);
+    const sm = comp.summary || {};
+    setHtml('sapTiles',
+      '<div class="tile"><div class="k">Periods Checked</div><div class="v">' + cnt(sm.total || 0) + '</div></div>' +
+      '<div class="tile good"><div class="k">SAP Verified</div><div class="v">' + cnt(sm.verified || 0) + '</div></div>' +
+      '<div class="tile ' + ((sm.variance || 0) > 0 ? 'bad' : '') + '"><div class="k">SAP Variance</div><div class="v">' + cnt(sm.variance || 0) + '</div></div>' +
+      '<div class="tile ' + ((sm.missing || 0) > 0 ? 'warn' : '') + '"><div class="k">SAP Missing</div><div class="v">' + cnt(sm.missing || 0) + '</div></div>'
+    );
+    SAP_COMP_CACHE = comp.rows || [];
+    renderSapComparisonTable();
+    const hRows = hist.rows || [];
+    setHtml('sapHistTable', hRows.length
+      ? '<thead><tr><th>GSTIN</th><th>Period</th><th>Version</th><th>Active</th><th>Locked</th><th>Source</th><th class="num">Docs</th><th class="num">Taxable</th><th class="num">Total GST</th><th>Entered By</th><th>Overwrite Reason / Remarks</th></tr></thead><tbody>' +
+        hRows.map((h) => '<tr><td><code>' + esc(h.our_gstin) + '</code></td><td><code>' + esc(h.period) + '</code></td><td>v' + esc(h.version_no) + '</td>' +
+          '<td>' + (h.is_active ? '<span class="pill good">Active</span>' : '<span class="pill plain">Archived</span>') + '</td>' +
+          '<td>' + (h.is_locked ? '<span class="pill bad">LOCKED</span>' : '<span class="pill plain">Open</span>') + '</td>' +
+          '<td>' + esc(h.source_type) + '</td><td class="num">' + cnt(h.invoice_count) + '</td><td class="num">' + money(h.taxable_value) + '</td><td class="num">' + money(h.total_gst) + '</td>' +
+          '<td>' + esc(h.entered_by || '') + '</td><td>' + esc(h.overwrite_reason || h.remarks || '') + '</td></tr>').join('') + '</tbody>'
+      : '<tbody><tr><td class="empty-state"><div class="es-title">No SAP control history recorded yet</div>Saved manual entries and uploaded Excel batches will appear here with full version audit trail.</td></tr></tbody>'
+    );
+    if (banner) banner.textContent = 'SAP B1 Control Totals loaded.';
+  } catch (e) {
+    SAP_COMP_CACHE = [];
+    if (banner) banner.innerHTML = '<span class="bad">' + esc(errText(e)) + '</span>';
+    setHtml('sapCompTable', '<tbody><tr><td class="bad">' + esc(errText(e)) + '</td></tr></tbody>');
+  }
+}
+
+async function submitSapManual(ev) {
+  ev.preventDefault();
+  if (SAP_SUBMITTING) return;
+  const btn = el('btnSapSave');
+  const sb = el('sapStatusBanner');
+  SAP_SUBMITTING = true;
+  if (btn) btn.disabled = true;
+  if (sb) sb.innerHTML = '<span class="hint">Saving SAP Control Total...</span>';
+  try {
+    const payload = {
+      ourGstin: el('sapGstin').value.trim(),
+      period: el('sapPeriod').value.trim(),
+      invoiceCount: Number(el('sapCount').value || 0),
+      taxableValue: Number(el('sapTaxable').value || 0),
+      igst: Number(el('sapIgst').value || 0),
+      cgst: Number(el('sapCgst').value || 0),
+      sgst: Number(el('sapSgst').value || 0),
+      utgst: Number(el('sapUtgst').value || 0),
+      cess: Number(el('sapCess').value || 0),
+      invoiceValue: Number(el('sapInvVal').value || 0),
+      remarks: el('sapRemarks').value.trim(),
+      allowOverwrite: el('sapAllowOverwrite').checked,
+      overwriteReason: el('sapOverwriteReason').value.trim(),
+    };
+    const res = await postJson('/api/sap-controls/manual', payload);
+    if (sb) sb.innerHTML = '<span class="pill good">Saved SAP Control Total (Batch ' + esc(res.batchUid || '') + ')</span>';
+    toast('SAP Control Total saved.', 'ok');
+    await loadSapControls();
+  } catch (e) {
+    const tag = e.status === 423 ? 'LOCKED PERIOD (HTTP 423): ' : (e.status === 403 ? 'ACCESS DENIED (HTTP 403): ' : (e.status === 409 ? 'CONFLICT (HTTP 409): ' : ''));
+    if (sb) sb.innerHTML = '<div class="pill bad" style="display:block;padding:8px 10px">' + esc(tag + errText(e)) + '</div>';
+    toast(tag + errText(e), 'err');
+  } finally {
+    SAP_SUBMITTING = false;
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function uploadSapExcel(inputEl) {
+  const file = inputEl && inputEl.files && inputEl.files[0];
+  if (!file || SAP_SUBMITTING) return;
+  const sb = el('sapStatusBanner');
+  SAP_SUBMITTING = true;
+  if (sb) sb.innerHTML = '<span class="hint">Uploading SAP Control Excel (' + esc(file.name) + ')...</span>';
+  try {
+    const qs = new URLSearchParams({ name: file.name });
+    if (el('sapAllowOverwrite') && el('sapAllowOverwrite').checked) {
+      qs.set('allowOverwrite', '1');
+      const rsn = (el('sapOverwriteReason') && el('sapOverwriteReason').value || '').trim();
+      if (rsn) qs.set('overwriteReason', rsn);
+    }
+    const res = await postFile('/api/sap-controls/excel?' + qs.toString(), file);
+    if (sb) sb.innerHTML = '<span class="pill good">Uploaded ' + cnt(res.savedCount || 0) + ' SAP control row(s) (' + esc(res.batchUid || '') + ')</span>';
+    toast('SAP Control Excel uploaded.', 'ok');
+    await loadSapControls();
+  } catch (e) {
+    const tag = e.status === 423 ? 'LOCKED PERIOD (HTTP 423): ' : (e.status === 403 ? 'ACCESS DENIED (HTTP 403): ' : (e.status === 409 ? 'CONFLICT (HTTP 409): ' : ''));
+    if (sb) sb.innerHTML = '<div class="pill bad" style="display:block;padding:8px 10px">' + esc(tag + errText(e)) + '</div>';
+    toast(tag + errText(e), 'err');
+  } finally {
+    SAP_SUBMITTING = false;
+    inputEl.value = '';
+  }
+}
+
+// ---------------------------------------------------------------------------
+// REM-4: Phase 6 UI (GSTR-3B Table 4 Control, Manual ITC Decision & Reclaim)
+// ---------------------------------------------------------------------------
+let T4_CACHE = null;
+let T4_SUBMITTING = false;
+
+function populateT4Pickers(forceSync) {
+  const sel = el('t4Gstin');
+  if (sel) {
+    const cur = forceSync ? (CTX.gstin || '') : (sel.value || CTX.gstin || '');
+    const list = (CTX.gstins || []).filter((g) => !CTX.company || String(g.company_id) === String(CTX.company)).map((g) => g.gstin);
+    const fullList = list.length ? list : (CTX.gstins || []).map((g) => g.gstin);
+    sel.innerHTML = fullList.map((g) => '<option value="' + esc(g) + '">' + esc(g) + '</option>').join('');
+    if (cur && fullList.includes(cur)) sel.value = cur;
+    else if (fullList.length) sel.value = fullList[0];
+  }
+  const pEl = el('t4Period');
+  if (pEl && (forceSync || !pEl.value)) {
+    pEl.value = CTX.period || (new Date().toISOString().slice(0, 7));
+  }
+}
+
+function setT4BucketFilter(bucket) {
+  const sel = el('t4BucketFilter');
+  if (sel) sel.value = bucket;
+  syncT4Chips();
+  renderT4DetailTable();
+}
+
+function syncT4Chips() {
+  const val = (el('t4BucketFilter') && el('t4BucketFilter').value) || '';
+  document.querySelectorAll('#t4QuickChips .t4-qchip').forEach((btn) => {
+    const b = btn.getAttribute('data-t4b') || '';
+    const isActive = (b === '' && val === '') || (b !== '' && val.indexOf(b) === 0);
+    btn.classList.toggle('active', isActive);
+  });
+}
+
+function renderT4DetailTable() {
+  const canDecide = uiHasPerm('itc.decide');
+  const allDet = (T4_CACHE && T4_CACHE.details) ? T4_CACHE.details : [];
+  const bf = (el('t4BucketFilter') && el('t4BucketFilter').value) || '';
+  const q = ((el('t4DetailSearch') && el('t4DetailSearch').value) || '').trim().toLowerCase();
+
+  const indexed = allDet.map((d, idx) => ({ d, idx })).filter(({ d }) => {
+    if (bf && String(d.table4Bucket || '').indexOf(bf) < 0) return false;
+    if (q) {
+      const hay = (String(d.docNo || '') + ' ' + String(d.supplierGstin || '') + ' ' + String(d.table4Bucket || '') + ' ' + String(d.itcDecision || '') + ' ' + String(d.decisionReason || '')).toLowerCase();
+      if (hay.indexOf(q) < 0) return false;
+    }
+    return true;
+  });
+
+  const dm = el('t4DetailMeta');
+  if (dm) {
+    dm.textContent = allDet.length
+      ? (indexed.length === allDet.length ? allDet.length + ' invoice line(s)' : 'Showing ' + indexed.length + ' of ' + allDet.length + ' invoice line(s)')
+      : '0 invoice lines';
+  }
+  if (!allDet.length) {
+    setHtml('t4DetailTable', '<tbody><tr><td class="empty-state"><div class="es-title">No invoice lines in Table 4 for this GSTIN and month</div>Select another GSTIN or return period above to inspect Table 4 workings.</td></tr></tbody>');
+    return;
+  }
+  if (!indexed.length) {
+    setHtml('t4DetailTable', '<tbody><tr><td class="empty-state"><div class="es-title">No invoices match your bucket or search filter</div>Click "All Buckets" or clear the search input to view all ' + allDet.length + ' line(s).</td></tr></tbody>');
+    return;
+  }
+  setHtml('t4DetailTable',
+    '<thead><tr><th>Doc No / Supplier</th><th>Books M</th><th>2B M</th><th>Decision M</th><th>Claim M</th><th>Reclaim M</th><th>Table 4 Bucket</th>' +
+    '<th class="num">IGST</th><th class="num">CGST</th><th class="num">SGST</th><th class="num">UTGST</th><th class="num">Total</th>' +
+    '<th class="num">Orig Rev / Reclaimed / Rem</th><th>Decision / Reason</th>' + (canDecide ? '<th>Actions</th>' : '') + '</tr></thead><tbody>' +
+    indexed.map(({ d, idx }) => {
+      const bStr = String(d.table4Bucket || '');
+      const bPill = bStr.indexOf('4(A)') >= 0 ? 'good' : (bStr.indexOf('4(B)(1)') >= 0 ? 'bad' : (bStr.indexOf('4(B)(2)') >= 0 ? 'warn' : 'info'));
+      const canReclaim = canDecide && bStr.indexOf('4(B)(2)') >= 0 && Number(d.remainingBalance || 0) > 0.005;
+      const revCell = d.originalReversalAmount > 0
+        ? money(d.originalReversalAmount) + ' / ' + money(d.cumulativeReclaimed) + ' / <b>' + money(d.remainingBalance) + '</b>'
+        : '\u2014';
+      const actCell = canDecide
+        ? '<td><div class="row" style="gap:4px;flex-wrap:nowrap">' +
+            '<button type="button" class="ghost" style="padding:3px 7px;font-size:11.5px" onclick="openItcDecisionModal(' + idx + ')">Decide</button>' +
+            (canReclaim ? '<button type="button" class="primary" style="padding:3px 7px;font-size:11.5px" onclick="openItcReclaimModal(' + idx + ')">Reclaim</button>' : '') +
+          '</div></td>'
+        : '';
+      return '<tr><td><b>' + esc(d.docNo) + '</b><div class="hint"><code>' + esc(d.supplierGstin) + '</code></div></td>' +
+        '<td>' + esc(d.booksMonth || '\u2014') + '</td><td>' + esc(d.twobMonth || '\u2014') + '</td>' +
+        '<td>' + esc(d.decisionMonth || '\u2014') + '</td><td>' + esc(d.claimMonth || '\u2014') + '</td><td>' + esc(d.reclaimMonth || '\u2014') + '</td>' +
+        '<td><span class="pill ' + bPill + '">' + esc(d.table4Bucket) + '</span></td>' +
+        '<td class="num">' + money(d.igst) + '</td><td class="num">' + money(d.cgst) + '</td><td class="num">' + money(d.sgst) + '</td><td class="num">' + money(d.utgst) + '</td>' +
+        '<td class="num"><b>' + money(d.totalTax) + '</b></td><td class="num" style="font-size:11.5px">' + revCell + '</td>' +
+        '<td style="font-size:11.5px"><b>' + esc(d.itcDecision) + '</b><div class="hint">' + esc(d.decisionReason || '') + '</div></td>' + actCell + '</tr>';
+    }).join('') + '</tbody>'
+  );
+}
+
+async function loadGstr3bTable4() {
+  populateT4Pickers(false);
+  const btnExp = el('btnT4Export');
+  if (btnExp) btnExp.style.display = uiHasPerm('report.export') ? '' : 'none';
+
+  const gstin = (el('t4Gstin') && el('t4Gstin').value) || CTX.gstin || '';
+  const period = (el('t4Period') && el('t4Period').value) || CTX.period || '';
+  const banner = el('t4Banner');
+  if (!gstin || !period) {
+    if (banner) banner.innerHTML = '<span class="hint">Select a GSTIN and Return Month to load GSTR-3B Table 4.</span>';
+    return;
+  }
+  if (banner) banner.innerHTML = '<span class="hint">Loading GSTR-3B Table 4 for ' + esc(gstin) + ' (' + esc(period) + ')...</span>';
+  setHtml('t4SummaryTable', '<tbody><tr><td class="loading-state">Loading backend-calculated GSTR-3B Table 4 summary...</td></tr></tbody>');
+  setHtml('t4DetailTable', '<tbody><tr><td class="loading-state">Loading invoice-level Table 4 workings...</td></tr></tbody>');
+  try {
+    const rep = await api('/api/gstr3b/table4?gstin=' + encodeURIComponent(gstin) + '&period=' + encodeURIComponent(period));
+    T4_CACHE = rep;
+    const t = rep.table4;
+    if (banner) {
+      banner.innerHTML = '<span class="pill ' + (rep.parityOk ? 'good' : 'bad') + '">' +
+        (rep.parityOk ? 'Parity Verified: 4(C) === 4(A) \u2212 4(B) (Zero Double-Count)' : 'Parity Alert: ' + esc((rep.parityErrors || []).join('; '))) +
+        '</span> <span class="hint" style="margin-left:8px">' + esc(rep.gstin + ' \u2022 ' + rep.periodLabel + ' (FY ' + rep.financialYear + ')') + '</span>';
+    }
+    setHtml('t4Tiles',
+      '<div class="tile good"><div class="k">4(A) Total ITC</div><div class="v">' + money(t.table4A_total.total) + '</div></div>' +
+      '<div class="tile warn"><div class="k">4(B) Total Reversed</div><div class="v">' + money(t.table4B_total.total) + '</div></div>' +
+      '<div class="tile accent"><div class="k">4(C) Net ITC (4A \u2212 4B)</div><div class="v">' + money(t.table4C_netItc.total) + '</div></div>' +
+      '<div class="tile info"><div class="k">4(D)(1) Reclaimed Memo</div><div class="v">' + money(t.table4D1_reclaimed.total) + '</div></div>' +
+      '<div class="tile"><div class="k">4(D)(2) Ineligible Memo</div><div class="v">' + money(t.table4D2_ineligible.total) + '</div></div>'
+    );
+    const tRow = (code, desc, b, rowCls) => '<tr class="' + rowCls + '">' +
+      '<td><b>' + esc(code) + '</b></td><td>' + esc(desc) + '</td>' +
+      '<td class="num">' + money(b.igst) + '</td><td class="num">' + money(b.cgst) + '</td>' +
+      '<td class="num">' + money(b.sgst) + '</td><td class="num">' + money(b.utgst) + '</td>' +
+      '<td class="num">' + money(b.cess) + '</td><td class="num"><b>' + money(b.total) + '</b></td></tr>';
+    setHtml('t4SummaryTable',
+      '<thead><tr><th>Table 4 Row</th><th>Description</th><th class="num">IGST</th><th class="num">CGST</th><th class="num">SGST</th><th class="num">UTGST</th><th class="num">Cess</th><th class="num">Total</th></tr></thead><tbody>' +
+      tRow('4(A)(1)', 'Import of Goods (IMPG)', t.table4A1_impg, 't4-row-4a') +
+      tRow('4(A)(3)', 'Inward supplies liable to Reverse Charge (RCM)', t.table4A3_rcm, 't4-row-4a') +
+      tRow('4(A)(5)', 'All other eligible ITC (includes reclaimed 4(B)(2) once)', t.table4A5_allOther, 't4-row-4a') +
+      tRow('4(A) Total', 'Total ITC Available = 4(A)(1) + 4(A)(3) + 4(A)(5)', t.table4A_total, 't4-row-4a-total') +
+      tRow('4(B)(1)', 'ITC Reversed \u2014 Section 17(5) Permanently Blocked', t.table4B1_sec17_5, 't4-row-4b1') +
+      tRow('4(B)(2)', 'ITC Reversed \u2014 Others (Temporary / Reclaimable)', t.table4B2_otherReversal, 't4-row-4b2') +
+      tRow('4(B) Total', 'Total ITC Reversed = 4(B)(1) + 4(B)(2)', t.table4B_total, 't4-row-4b-total') +
+      tRow('4(C)', 'Net ITC Available = 4(A) Total \u2212 4(B) Total (Zero 4(D)(1) Double-Count)', t.table4C_netItc, 't4-row-4c-hero') +
+      tRow('4(D)(1)', 'ITC Reclaimed (Informational Disclosure Memo Only)', t.table4D1_reclaimed, 't4-row-4d') +
+      tRow('4(D)(2)', 'Ineligible / Sec 16(4) Time-Barred Disclosure Memo', t.table4D2_ineligible, 't4-row-4d') +
+      '</tbody>'
+    );
+    syncT4Chips();
+    renderT4DetailTable();
+  } catch (e) {
+    T4_CACHE = null;
+    const tag = e.status === 403 ? 'ACCESS DENIED (HTTP 403): ' : '';
+    if (banner) banner.innerHTML = '<div class="pill bad" style="display:block;padding:8px 10px">' + esc(tag + errText(e)) + '</div>';
+    setHtml('t4Tiles', ''); setHtml('t4SummaryTable', ''); setHtml('t4DetailTable', '');
+  }
+}
+
+document.addEventListener('keydown', (ev) => {
+  if (ev.key === 'Escape') {
+    const md = el('modalItcDecision');
+    if (md && !md.hidden) closeItcDecisionModal();
+    const mr = el('modalItcReclaim');
+    if (mr && !mr.hidden) closeItcReclaimModal();
+  }
+});
+
+function exportGstr3bTable4Excel() {
+  const gstin = (el('t4Gstin') && el('t4Gstin').value) || CTX.gstin || '';
+  const period = (el('t4Period') && el('t4Period').value) || CTX.period || '';
+  if (!gstin || !period) return toast('Select GSTIN and Return Month first.', 'err');
+  download('/api/gstr3b/table4?gstin=' + encodeURIComponent(gstin) + '&period=' + encodeURIComponent(period) + '&format=xlsx',
+    'GSTR3B_Table4_Control_' + gstin + '_' + period + '.xlsx');
+}
+
+function openItcDecisionModal(idx) {
+  const d = T4_CACHE && T4_CACHE.details && T4_CACHE.details[idx];
+  if (!d) return;
+  el('itcDecLineId').value = String(d.lineId);
+  el('itcDecChoice').value = d.itcDecision || 'Pending Review';
+  el('itcDecRevType').value = d.reversalType || '';
+  el('itcDecCat').value = d.isImpg ? 'IMPG' : (d.isRcm ? 'RCM' : 'OTHER');
+  el('itcDecMonth').value = d.decisionMonth || d.booksMonth || '';
+  el('itcDecClaimMonth').value = d.claimMonth || '';
+  el('itcDecReason').value = '';
+  el('itcDecErr').innerHTML = '';
+  el('itcDecInfo').textContent = 'Invoice ' + d.docNo + ' (' + d.supplierGstin + ') \u2022 Books Month: ' + d.booksMonth + ' \u2022 Tax: ' + money(d.totalTax);
+  const m = el('modalItcDecision'); if (m) { m.hidden = false; m.style.display = 'flex'; }
+}
+
+function closeItcDecisionModal() {
+  const m = el('modalItcDecision'); if (m) { m.hidden = true; m.style.display = 'none'; }
+}
+
+async function submitItcDecision(ev) {
+  ev.preventDefault();
+  if (T4_SUBMITTING) return;
+  const lineId = Number(el('itcDecLineId').value);
+  const decision = el('itcDecChoice').value;
+  const reversalType = el('itcDecRevType').value || null;
+  const cat = el('itcDecCat').value;
+  const decisionMonth = el('itcDecMonth').value.trim() || null;
+  const claimMonth = el('itcDecClaimMonth').value.trim() || null;
+  const reason = el('itcDecReason').value.trim();
+  if (!reason) {
+    el('itcDecErr').innerHTML = '<div class="pill bad">Mandatory reason is required.</div>';
+    return;
+  }
+  if (!window.confirm('Confirm manual ITC decision "' + decision + '" for line #' + lineId + '? This action is logged to the audit trail.')) return;
+  const btn = el('btnItcDecSubmit');
+  T4_SUBMITTING = true; if (btn) btn.disabled = true;
+  el('itcDecErr').innerHTML = '<span class="hint">Saving manual ITC decision...</span>';
+  try {
+    await postJson('/api/lines/' + lineId + '/itc-control', {
+      decision,
+      reversalType,
+      isImpg: cat === 'IMPG',
+      isRcm: cat === 'RCM',
+      decisionMonth,
+      claimMonth,
+      reason,
+    });
+    closeItcDecisionModal();
+    toast('Manual ITC decision saved.', 'ok');
+    await loadGstr3bTable4();
+  } catch (e) {
+    const tag = e.status === 423 ? 'LOCKED MONTH (HTTP 423): ' : (e.status === 403 ? 'ACCESS DENIED (HTTP 403): ' : '');
+    el('itcDecErr').innerHTML = '<div class="pill bad" style="display:block;padding:8px 10px">' + esc(tag + errText(e)) + '</div>';
+  } finally {
+    T4_SUBMITTING = false; if (btn) btn.disabled = false;
+  }
+}
+
+function openItcReclaimModal(idx) {
+  const d = T4_CACHE && T4_CACHE.details && T4_CACHE.details[idx];
+  if (!d) return;
+  el('itcRecLineId').value = String(d.lineId);
+  el('itcRecMonth').value = '';
+  el('itcRecAmount').value = '';
+  el('itcRecAmount').max = String(d.remainingBalance || '');
+  el('itcRecReason').value = '';
+  el('itcRecErr').innerHTML = '';
+  el('itcRecInfo').textContent = 'Invoice ' + d.docNo + ' (' + d.supplierGstin + ') \u2022 Original Reversal Month: ' + (d.decisionMonth || d.booksMonth);
+  setHtml('itcRecTiles',
+    '<div class="tile"><div class="k">Original Reversal</div><div class="v">' + money(d.originalReversalAmount) + '</div></div>' +
+    '<div class="tile"><div class="k">Cumulative Reclaimed</div><div class="v">' + money(d.cumulativeReclaimed) + '</div></div>' +
+    '<div class="tile good"><div class="k">Remaining Balance</div><div class="v">' + money(d.remainingBalance) + '</div></div>'
+  );
+  const m = el('modalItcReclaim'); if (m) { m.hidden = false; m.style.display = 'flex'; }
+}
+
+function closeItcReclaimModal() {
+  const m = el('modalItcReclaim'); if (m) { m.hidden = true; m.style.display = 'none'; }
+}
+
+async function submitItcReclaim(ev) {
+  ev.preventDefault();
+  if (T4_SUBMITTING) return;
+  const lineId = Number(el('itcRecLineId').value);
+  const reclaimMonth = el('itcRecMonth').value.trim();
+  const rawAmt = el('itcRecAmount').value.trim();
+  const reclaimAmount = rawAmt !== '' ? Number(rawAmt) : undefined;
+  const reason = el('itcRecReason').value.trim();
+  if (!reason) {
+    el('itcRecErr').innerHTML = '<div class="pill bad">Mandatory reclaim reason is required.</div>';
+    return;
+  }
+  const amtDesc = reclaimAmount !== undefined ? money(reclaimAmount) : 'full remaining balance';
+  if (!window.confirm('Confirm ITC reclaim of ' + amtDesc + ' into Table 4(D)(1) of ' + reclaimMonth + '?')) return;
+  const btn = el('btnItcRecSubmit');
+  T4_SUBMITTING = true; if (btn) btn.disabled = true;
+  el('itcRecErr').innerHTML = '<span class="hint">Recording ITC reclaim tranche...</span>';
+  try {
+    const res = await postJson('/api/lines/' + lineId + '/itc-reclaim', { reclaimMonth, reclaimAmount, reason });
+    closeItcReclaimModal();
+    const tr = res.reclaimEntry;
+    toast('ITC Reclaim recorded' + (tr ? ' (' + money(tr.reclaimAmount) + '; remaining ' + money(tr.remainingBalance) + ')' : '') + '.', 'ok');
+    await loadGstr3bTable4();
+  } catch (e) {
+    const tag = e.status === 423 ? 'LOCKED MONTH (HTTP 423): ' : (e.status === 403 ? 'ACCESS DENIED (HTTP 403): ' : '');
+    el('itcRecErr').innerHTML = '<div class="pill bad" style="display:block;padding:8px 10px">' + esc(tag + errText(e)) + '</div>';
+  } finally {
+    T4_SUBMITTING = false; if (btn) btn.disabled = false;
+  }
 }
 
 </script>

@@ -655,16 +655,45 @@ export const REPORTS: ReportDef[] = [
       C('Invoice No', 'invoice_no', 'text', 18), C('Invoice Date', 'invoice_date', 'date', 13),
       C('Document Type', 'document_type', 'text', 14),
       C('Taxable Value', 'taxable_value', 'money', 14), C('IGST', 'igst', 'money', 12),
-      C('CGST', 'cgst', 'money', 12), C('SGST', 'sgst', 'money', 12), C('CESS', 'cess', 'money', 10),
+      C('CGST', 'cgst', 'money', 12), C('SGST', 'sgst', 'money', 12), C('UTGST', 'utgst', 'money', 12), C('CESS', 'cess', 'money', 10),
       C('Total ITC', 'itc', 'money', 13), C('ITC Availability', 'itc_availability', 'text', 12),
       C('Reason', 'reason', 'text', 30),
     ],
-    sql: (w) => `SELECT t.our_gstin, t.twob_month, t.supplier_gstin, t.supplier_name, t.invoice_no,
-                        t.invoice_date, t.document_type, t.taxable_value, t.igst, t.cgst, t.sgst, t.cess,
-                        (t.igst + t.cgst + t.sgst + t.cess) AS itc, t.itc_availability, t.reason
+    sql: (w) => `WITH canon_2b AS (
+                   SELECT
+                     t.our_gstin,
+                     MIN(t.twob_month) AS twob_month,
+                     UPPER(TRIM(t.supplier_gstin)) AS supplier_gstin,
+                     MAX(t.supplier_name) AS supplier_name,
+                     MIN(t.invoice_no) AS invoice_no,
+                     MIN(t.invoice_date) AS invoice_date,
+                     COALESCE(NULLIF(TRIM(t.document_type), ''), 'Tax Invoice') AS document_type,
+                     ROUND(SUM(COALESCE(t.taxable_value, 0))::numeric, 2)::float8 AS taxable_value,
+                     ROUND(SUM(COALESCE(t.igst, 0))::numeric, 2)::float8 AS igst,
+                     ROUND(SUM(COALESCE(t.cgst, 0))::numeric, 2)::float8 AS cgst,
+                     ROUND(SUM(COALESCE(t.sgst, 0))::numeric, 2)::float8 AS sgst,
+                     ROUND(SUM(COALESCE(t.utgst, 0))::numeric, 2)::float8 AS utgst,
+                     ROUND(SUM(COALESCE(t.cess, 0))::numeric, 2)::float8 AS cess,
+                     ROUND(SUM(COALESCE(t.igst,0) + COALESCE(t.cgst,0) + COALESCE(t.sgst,0) + COALESCE(t.utgst,0) + COALESCE(t.cess,0))::numeric, 2)::float8 AS itc,
+                     MAX(t.itc_availability) AS itc_availability,
+                     MAX(t.reason) AS reason,
+                     ARRAY_AGG(DISTINCT t.line_key) AS line_keys
                    FROM gstr2b_lines t
-                  ${andWhere(w, 'NOT EXISTS (SELECT 1 FROM purchase_lines q WHERE q.matched_2b_key = t.line_key)')}
-                  ORDER BY t.our_gstin, t.twob_month, t.supplier_gstin, t.invoice_no`,
+                   ${w}
+                   GROUP BY t.our_gstin, UPPER(TRIM(t.supplier_gstin)),
+                            UPPER(REGEXP_REPLACE(TRIM(t.invoice_no), '[^A-Za-z0-9]', '', 'g')),
+                            COALESCE(NULLIF(TRIM(t.document_type), ''), 'Tax Invoice')
+                 )
+                 SELECT c.our_gstin, c.twob_month, c.supplier_gstin, c.supplier_name, c.invoice_no,
+                        c.invoice_date, c.document_type, c.taxable_value, c.igst, c.cgst, c.sgst, c.utgst, c.cess,
+                        c.itc, c.itc_availability, c.reason
+                   FROM canon_2b c
+                  WHERE NOT EXISTS (
+                    SELECT 1 FROM purchase_lines q
+                     WHERE q.our_gstin = c.our_gstin
+                       AND q.matched_2b_key = ANY(c.line_keys)
+                  )
+                  ORDER BY c.our_gstin, c.twob_month, c.supplier_gstin, c.invoice_no`,
   },
   {
     name: 'credit-notes',

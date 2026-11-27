@@ -29,6 +29,7 @@ import {
   normGstin,
   normInvoice,
   r2,
+  stripInvoiceLeadingZeros,
   taxOf,
   withinTolerance,
   type DetailedReconStatus,
@@ -165,7 +166,7 @@ function keyOf(gstin: unknown, invoiceNo: unknown, ourGstin?: unknown): string {
 function bookDocOf(b: PurchaseBill): DocType {
   const stated = normDocType(b.document_type);
   if (stated !== 'Tax Invoice') return stated;
-  const amounts = [b.taxable_value, b.igst, b.cgst, b.sgst, b.cess]
+  const amounts = [b.taxable_value, b.igst, b.cgst, b.sgst, b.utgst ?? 0, b.cess]
     .map(r2)
     .filter((n) => n !== 0);
   return amounts.length > 0 && amounts.every((n) => n < 0) ? 'Credit Note' : 'Tax Invoice';
@@ -183,7 +184,7 @@ function bookDocOf(b: PurchaseBill): DocType {
 function twobDocOf(r: Gstr2bRecord): DocType {
   const stated = normDocType(r.invoice_type);
   if (stated !== 'Tax Invoice') return stated;
-  const amounts = [r.taxable_value, r.igst, r.cgst, r.sgst, r.cess]
+  const amounts = [r.taxable_value, r.igst, r.cgst, r.sgst, r.utgst ?? 0, r.cess]
     .map(r2)
     .filter((n) => n !== 0);
   return amounts.length > 0 && amounts.every((n) => n < 0) ? 'Credit Note' : 'Tax Invoice';
@@ -219,10 +220,10 @@ function reducesItc(r: Gstr2bRecord): boolean {
   return r2(r.taxable_value) < 0 || /credit note|creditnote|cdn/i.test(String(r.invoice_type || ''));
 }
 
-type TaxAmounts = { taxable_value: number; igst: number; cgst: number; sgst: number; cess: number };
+type TaxAmounts = { taxable_value: number; igst: number; cgst: number; sgst: number; utgst?: number; cess: number };
 
 function isAllNegative(d: TaxAmounts): boolean {
-  const nonZero = [d.taxable_value, d.igst, d.cgst, d.sgst, d.cess].map(r2).filter((n) => n !== 0);
+  const nonZero = [d.taxable_value, d.igst, d.cgst, d.sgst, d.utgst ?? 0, d.cess].map(r2).filter((n) => n !== 0);
   return nonZero.length > 0 && nonZero.every((n) => n < 0);
 }
 
@@ -288,10 +289,14 @@ export function reconcilePurchases(
 
   // ---- index the 2B side, and note repeats -------------------------------
   const twobByKey = new Map<string, Gstr2bRecord[]>();
+  const twobByLeadingZero = new Map<string, Gstr2bRecord[]>();
   for (const r of twob) {
     const k = keyOf(r.supplier_gstin, r.invoice_no, r.our_gstin);
     if (!twobByKey.has(k)) twobByKey.set(k, []);
     twobByKey.get(k)!.push(r);
+    const lzk = `${normGstin(r.our_gstin)}|${normGstin(r.supplier_gstin)}|${twobDocOf(r)}|${stripInvoiceLeadingZeros(r.invoice_no)}`;
+    if (!twobByLeadingZero.has(lzk)) twobByLeadingZero.set(lzk, []);
+    twobByLeadingZero.get(lzk)!.push(r);
   }
 
   // ---- count repeats on the books side (keyed by ourGSTIN + GSTIN + inv + exact docType) -
@@ -490,6 +495,49 @@ export function reconcilePurchases(
     });
 
     const best = scoredGroups[0];
+    // Phase 4: Multiple-Candidate Ambiguity detection.
+    // If >=2 distinct 2B candidate groups compete for this Books invoice and
+    // neither uniquely dominates (e.g., identical amount+date across two 2B
+    // months, or multiple non-exact competing candidates), NEVER silently pick
+    // one — flag MULTIPLE_CANDIDATES for explicit user confirmation.
+    const second = scoredGroups[1];
+    const distinctCompeting = Boolean(
+      best &&
+      second &&
+      (best.month !== second.month ||
+        !withinTolerance(best.twobTaxable, second.twobTaxable, tolerance) ||
+        !withinTolerance(best.twobItc, second.twobItc, tolerance)),
+    );
+    const sameMonthUniqueWinner = Boolean(
+      best && second && best.amountExact && best.mDiff === 0 && second.mDiff > 0,
+    );
+    const multipleAmbiguous = Boolean(
+      distinctCompeting &&
+      !sameMonthUniqueWinner &&
+      ((best.amountExact && second.amountExact && best.exactDate === second.exactDate && Math.abs(best.amtDiff - second.amtDiff) <= tolerance && best.minDateDiff === second.minDateDiff) ||
+        (!best.amountExact && !second.amountExact)),
+    );
+    if (multipleAmbiguous) {
+      const candSummary = scoredGroups
+        .slice(0, 4)
+        .map((sg) => `${sg.month || '2B'} (Inv ${sg.group[0]?.invoice_no}, Taxable ${r2(sg.twobTaxable)}, Tax ${r2(sg.twobItc)})`)
+        .join(' | ');
+      rows.push({
+        ...base,
+        status: 'Missing in 2B',
+        detailed_status: 'PENDING MANUAL REVIEW',
+        mismatch_reasons: ['MULTIPLE_CANDIDATES'],
+        candidate_count: scoredGroups.length,
+        suggested_2b_invoice_no: best.group[0]?.invoice_no,
+        suggested_2b_date: best.group[0]?.invoice_date,
+        reason: `Multiple competing GSTR-2B candidates (${scoredGroups.length}) found — manual confirmation required: ${candSummary}`,
+        match_hint: `Multiple candidates (${scoredGroups.length}): ${candSummary}`,
+        action:
+          `Multiple GSTR-2B candidates (${scoredGroups.length}) match this invoice key. Open Mismatch Detail / Match 2B to explicitly confirm the correct 2B invoice.`,
+      });
+      continue;
+    }
+
     // Cross-FY collision guard: never pair a book invoice with a 180+ day old/future
     // GSTR-2B bill whose invoice number collided across FY resets if amounts also disagree.
     const crossFyCollision = !!(
@@ -501,34 +549,88 @@ export function reconcilePurchases(
       const sameKeyDiffType = (twobByKey.get(k) || []).find(
         (x) => !claimed.has(twobId(x)) && !claimedElsewhere?.has(twobId(x)) && twobDocOf(x) !== bookDoc,
       );
+      const lzk = `${normGstin(b.our_gstin)}|${normGstin(mv.supplier_gstin)}|${bookDoc}|${stripInvoiceLeadingZeros(mv.invoice_no)}`;
+      const leadingZeroCand = (twobByLeadingZero.get(lzk) || []).find(
+        (x) =>
+          !claimed.has(twobId(x)) &&
+          !claimedElsewhere?.has(twobId(x)) &&
+          normInvoice(x.invoice_no) !== normInvoice(mv.invoice_no),
+      );
       const sameInvDiffGstin = (twobByOurAndInv.get(`${normGstin(b.our_gstin)}|${normInvoice(mv.invoice_no)}`) || []).find(
         (x) =>
           !claimed.has(twobId(x)) &&
           !claimedElsewhere?.has(twobId(x)) &&
           normGstin(x.supplier_gstin) !== mv.supplier_gstin &&
-          twobDocOf(x) === bookDoc &&
-          withinTolerance(x.taxable_value, b.taxable_value, Math.max(2, tolerance)) &&
-          withinTolerance(taxOf(x), itc, Math.max(2, tolerance)),
+          twobDocOf(x) === bookDoc,
       );
       const softK = `${normGstin(b.our_gstin)}|${normGstin(mv.supplier_gstin)}|${bookDoc}|${mv.invoice_date || ''}|${r2(b.taxable_value).toFixed(2)}|${itc.toFixed(2)}`;
       const softCluster = booksSoftPosCount.get(softK) || [];
 
+      const diagReasons: string[] = [];
       let detailedMissing: DetailedReconStatus = 'BOOKS ONLY';
       let dupRef: string | undefined;
-      if (sameKeyDiffType) detailedMissing = 'DOCUMENT TYPE MISMATCH';
-      else if (sameInvDiffGstin) detailedMissing = 'SUPPLIER GSTIN MISMATCH';
-      else if (softCluster.length > 1) {
+      let diagText: string | undefined;
+      let diagHint: string | undefined;
+      let sugInv: string | undefined;
+      let sugDate: string | undefined;
+
+      if (sameKeyDiffType) {
+        detailedMissing = 'DOCUMENT TYPE MISMATCH';
+        const tDoc = twobDocOf(sameKeyDiffType);
+        const pairCode =
+          (bookDoc === 'Tax Invoice' && tDoc === 'Debit Note') || (bookDoc === 'Debit Note' && tDoc === 'Tax Invoice')
+            ? 'DOC_TYPE_MISMATCH_TI_VS_DN'
+            : (bookDoc === 'Tax Invoice' && tDoc === 'Credit Note') || (bookDoc === 'Credit Note' && tDoc === 'Tax Invoice')
+              ? 'DOC_TYPE_MISMATCH_TI_VS_CN'
+              : (bookDoc === 'Debit Note' && tDoc === 'Credit Note') || (bookDoc === 'Credit Note' && tDoc === 'Debit Note')
+                ? 'DOC_TYPE_MISMATCH_DN_VS_CN'
+                : 'DOCUMENT_TYPE_MISMATCH';
+        diagReasons.push(pairCode);
+        diagText = `Document type mismatch: Books ${bookDoc} vs GSTR-2B ${tDoc} (Inv ${sameKeyDiffType.invoice_no})`;
+        diagHint = diagText;
+        sugInv = sameKeyDiffType.invoice_no;
+        sugDate = sameKeyDiffType.invoice_date;
+      }
+      if (leadingZeroCand) {
+        diagReasons.push('LEADING_ZERO_INVOICE_DIFF');
+        if (detailedMissing === 'BOOKS ONLY') detailedMissing = 'DOCUMENT NUMBER MISMATCH';
+        diagText = diagText || `Leading-zero invoice number difference: Books "${mv.invoice_no}" vs GSTR-2B "${leadingZeroCand.invoice_no}" (manual confirmation required)`;
+        diagHint = `Leading-zero diff: Books "${mv.invoice_no}" vs 2B "${leadingZeroCand.invoice_no}"`;
+        sugInv = sugInv || leadingZeroCand.invoice_no;
+        sugDate = sugDate || leadingZeroCand.invoice_date;
+      }
+      if (sameInvDiffGstin) {
+        diagReasons.push('SUPPLIER_GSTIN_DIFF');
+        if (detailedMissing === 'BOOKS ONLY') detailedMissing = 'SUPPLIER GSTIN MISMATCH';
+        diagText = diagText || `Same invoice number "${mv.invoice_no}" found in GSTR-2B under different Supplier GSTIN ${normGstin(sameInvDiffGstin.supplier_gstin)} (Books: ${mv.supplier_gstin})`;
+        diagHint = diagHint || `Supplier GSTIN diff: 2B has ${normGstin(sameInvDiffGstin.supplier_gstin)}`;
+        sugInv = sugInv || sameInvDiffGstin.invoice_no;
+        sugDate = sugDate || sameInvDiffGstin.invoice_date;
+      }
+      if (softCluster.length > 1 && diagReasons.length === 0) {
         detailedMissing = 'POSSIBLE DUPLICATE';
         dupRef = softCluster.slice(0, 3).join('; ');
+        diagReasons.push('POSSIBLE_DUPLICATE');
+      }
+      if (diagReasons.length === 0) {
+        diagReasons.push('MISSING_IN_2B');
       }
 
       rows.push({
         ...base,
         status: 'Missing in 2B',
         detailed_status: detailedMissing,
+        mismatch_reasons: diagReasons,
+        candidate_count: (sameKeyDiffType ? 1 : 0) + (leadingZeroCand ? 1 : 0) + (sameInvDiffGstin ? 1 : 0),
         duplicate_ref: dupRef,
+        reason: diagText,
+        match_hint: diagHint,
+        suggested_2b_invoice_no: sugInv,
+        suggested_2b_date: sugDate,
         action:
-          'Purchase book me hai par GSTR-2B me nahi. Vendor se GSTR-1 me daal kar file karwaayein; tab tak ispe ITC claim mat karein (cl.16(2)(b)).',
+          diagText
+            ? `${diagText}. Open Mismatch Detail to verify and explicitly confirm if applicable.`
+            : 'Purchase book me hai par GSTR-2B me nahi. Vendor se GSTR-1 me daal kar file karwaayein; tab tak ispe ITC claim mat karein (cl.16(2)(b)).',
       });
       continue;
     }
@@ -566,6 +668,12 @@ export function reconcilePurchases(
       String(mv.invoice_no ?? '').trim() !== String(primary.invoice_no ?? '').trim()
         ? `${mv.invoice_no} vs ${primary.invoice_no}`
         : undefined;
+    const bookInvVal = b.book_invoice_value !== undefined && b.book_invoice_value !== null ? r2(b.book_invoice_value) : null;
+    const twobInvVal = primary.invoice_value !== undefined && primary.invoice_value !== null && Number.isFinite(Number(primary.invoice_value))
+      ? r2(Number(primary.invoice_value))
+      : null;
+    const invValDiff = bookInvVal !== null && twobInvVal !== null ? r2(bookInvVal - twobInvVal) : null;
+    const invValDiffers = invValDiff !== null && !withinTolerance(invValDiff, 0, tolerance);
     const twoBFields = {
       matched_2b_id: matchId,
       matched_2b_month: matched2bMonth || undefined,
@@ -581,6 +689,9 @@ export function reconcilePurchases(
       two_b_cess: twobCess,
       reverse_charge: twobRcm,
       two_b_itc: twobItc,
+      book_invoice_value: bookInvVal,
+      two_b_invoice_value: twobInvVal,
+      invoice_value_difference: invValDiff,
       itc_difference: diffItc,
       taxable_difference: diffTaxable,
       subsequent_month_match: subsequentMonth,
@@ -597,12 +708,29 @@ export function reconcilePurchases(
             : 'Same Month Match',
     };
 
+    const amountOk = best.amountExact;
+    const dateOk = dateWithinWindow(mv.invoice_date, primary.invoice_date || '', dateWindow);
+    const taxableDiffers = !withinTolerance(diffTaxable, 0, tolerance);
+    const typeMismatch = bookDoc !== bestDoc;
+
+    // Phase 4: Granular component-level mismatch reason tags
+    const compReasons: string[] = [];
+    if (taxableDiffers) compReasons.push('TAXABLE_VALUE_DIFF');
+    if (!withinTolerance(diffComponents.igst, 0, tolerance)) compReasons.push('IGST_DIFF');
+    if (!withinTolerance(diffComponents.cgst, 0, tolerance)) compReasons.push('CGST_DIFF');
+    if (!withinTolerance(diffComponents.sgst, 0, tolerance)) compReasons.push('SGST_DIFF');
+    if (!withinTolerance(diffComponents.utgst, 0, tolerance)) compReasons.push('UTGST_DIFF');
+    if (!withinTolerance(diffComponents.cess, 0, tolerance)) compReasons.push('CESS_DIFF');
+    if (invValDiffers) compReasons.push('INVOICE_VALUE_DIFF');
+    if (!dateOk) compReasons.push('DOCUMENT_DATE_DIFF');
+
     if (blockedLine) {
       rows.push({
         ...base,
         ...twoBFields,
         status: 'ITC Blocked',
         detailed_status: 'PENDING MANUAL REVIEW',
+        mismatch_reasons: ['ITC_BLOCKED_2B', ...compReasons],
         itc_availability: blockedLine?.itc_availability ?? primary.itc_availability,
         reason: blockedLine?.reason ?? primary.reason,
         action: `GSTR-2B me ITC available = "${blockedLine?.itc_availability ?? primary.itc_availability}"${blockedLine?.reason ?? primary.reason ? ` (${blockedLine?.reason ?? primary.reason})` : ''}. Ye credit claim nahi ho sakta — books se claim hataayein.`,
@@ -610,17 +738,13 @@ export function reconcilePurchases(
       continue;
     }
 
-    const amountOk = best.amountExact;
-    const dateOk = dateWithinWindow(mv.invoice_date, primary.invoice_date || '', dateWindow);
-    const taxableDiffers = !withinTolerance(diffTaxable, 0, tolerance);
-    const typeMismatch = bookDoc !== bestDoc;
-
     if (typeMismatch) {
       rows.push({
         ...base,
         ...twoBFields,
         status: 'Amount Mismatch',
         detailed_status: 'DOCUMENT TYPE MISMATCH',
+        mismatch_reasons: ['DOCUMENT_TYPE_MISMATCH', ...compReasons],
         itc_availability: blockedLine?.itc_availability ?? primary.itc_availability,
         reason: `Document type mismatch: Books ${bookDoc} vs GSTR-2B ${bestDoc}`,
         action: `Books me "${bookDoc}" hai par GSTR-2B me "${bestDoc}" hai — document type verify karein.`,
@@ -636,8 +760,14 @@ export function reconcilePurchases(
         ...twoBFields,
         status: 'Matched',
         detailed_status: ds,
+        mismatch_reasons: invValDiffers ? ['INVOICE_VALUE_DIFF'] : [],
         itc_availability: blockedLine?.itc_availability ?? primary.itc_availability,
-        action: 'OK — GSTR-3B table 4(A) me claim kar sakte hain.',
+        reason: invValDiffers
+          ? `Total invoice value difference: Books ${bookInvVal} vs 2B ${twobInvVal} (diff ${invValDiff! >= 0 ? '+' : ''}${invValDiff}; Taxable & GST matched)`
+          : undefined,
+        action: invValDiffers
+          ? `Taxable & GST matched; verify non-GST / TCS / rounding invoice value diff (${invValDiff! >= 0 ? '+' : ''}${invValDiff}).`
+          : 'OK — GSTR-3B table 4(A) me claim kar sakte hain.',
       });
     } else if (amountOk && !dateOk) {
       const dateReason = `Invoice date mismatch: Books ${mv.invoice_date} vs 2B ${primary.invoice_date} (${gapDays} days, window: ${dateWindow})`;
@@ -646,6 +776,7 @@ export function reconcilePurchases(
         ...twoBFields,
         status: 'Amount Mismatch',
         detailed_status: 'DOCUMENT DATE MISMATCH',
+        mismatch_reasons: compReasons.length ? compReasons : ['DOCUMENT_DATE_DIFF'],
         itc_availability: blockedLine?.itc_availability ?? primary.itc_availability,
         reason: dateReason,
         action:
@@ -655,13 +786,15 @@ export function reconcilePurchases(
       const ds: DetailedReconStatus = taxableDiffers
         ? 'MATCHED WITH TAXABLE DIFFERENCE'
         : 'MATCHED WITH TAX DIFFERENCE';
+      const detailSummary = compReasons.join(', ') || 'TOTAL_TAX_DIFF';
       rows.push({
         ...base,
         ...twoBFields,
         status: 'Amount Mismatch',
         detailed_status: ds,
+        mismatch_reasons: compReasons.length ? compReasons : ['TOTAL_TAX_DIFF'],
         itc_availability: blockedLine?.itc_availability ?? primary.itc_availability,
-        reason: blockedLine?.reason ?? primary.reason,
+        reason: blockedLine?.reason || primary.reason || `Component mismatch: ${detailSummary}`,
         action:
           `GSTIN + document dono match hain par amount alag hai (taxable ${diffTaxable >= 0 ? '+' : ''}${diffTaxable}, ITC ${diffItc >= 0 ? '+' : ''}${diffItc}` +
           `; IGST ${diffComponents.igst}, CGST ${diffComponents.cgst}, SGST ${diffComponents.sgst}, UTGST ${diffComponents.utgst}, Cess ${diffComponents.cess}). ` +
@@ -731,8 +864,7 @@ export function reconcilePurchases(
   const unbookedBySupplier = new Map<string, ReconRow[]>();
   for (const u of unbooked2b) {
     if (u.matched_2b_id && claimedElsewhere?.has(u.matched_2b_id)) continue;
-    const pol = docPolarity(u.document_type || 'Tax Invoice', u);
-    const sk = `${u.our_gstin}|${u.supplier_gstin}|${pol}`;
+    const sk = `${u.our_gstin}|${u.supplier_gstin}|${u.document_type || 'Tax Invoice'}`;
     if (!unbookedBySupplier.has(sk)) unbookedBySupplier.set(sk, []);
     unbookedBySupplier.get(sk)!.push(u);
   }
@@ -740,8 +872,8 @@ export function reconcilePurchases(
   const usedProbIds = new Set<string>();
   for (const r of rows) {
     if (r.status !== 'Missing in 2B') continue;
-    const pol = docPolarity(r.document_type || 'Tax Invoice', r);
-    const sk = `${r.our_gstin}|${r.supplier_gstin}|${pol}`;
+    if (r.mismatch_reasons?.includes('MULTIPLE_CANDIDATES')) continue;
+    const sk = `${r.our_gstin}|${r.supplier_gstin}|${r.document_type || 'Tax Invoice'}`;
     const cands = (unbookedBySupplier.get(sk) || [])
       .filter((c) => {
         if (c.matched_2b_id && usedProbIds.has(c.matched_2b_id)) return false;

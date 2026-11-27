@@ -16,6 +16,12 @@ UPDATE purchase_lines
        twob_utgst = CASE WHEN twob_utgst IS NOT NULL THEN 0 ELSE NULL END
  WHERE book_utgst <> 0 OR COALESCE(twob_utgst, 0) <> 0;
 
+-- 1b. Fold recon_extra_utgst back into recon_extra_sgst before dropping the column
+UPDATE purchase_lines
+   SET recon_extra_sgst = COALESCE(recon_extra_sgst, 0) + recon_extra_utgst,
+       recon_extra_utgst = 0
+ WHERE recon_extra_utgst <> 0;
+
 UPDATE gstr2b_lines
    SET sgst = sgst + utgst,
        utgst = 0
@@ -54,19 +60,47 @@ ALTER TABLE gstr2b_lines
   DROP COLUMN IF EXISTS original_doc_no,
   DROP COLUMN IF EXISTS original_doc_date;
 
--- 4. Restore Migration 27 check constraint
-ALTER TABLE recon_corrections DROP CONSTRAINT IF EXISTS ck_rc_field;
-ALTER TABLE recon_corrections
-  ADD CONSTRAINT ck_rc_field CHECK (
-    field_name IN (
-      'recon_supplier_gstin', 'recon_invoice_no', 'recon_invoice_date',
-      'recon_extra_charges_type', 'recon_extra_taxable', 'recon_extra_igst',
-      'recon_extra_cgst', 'recon_extra_sgst', 'recon_extra_cess',
-      'itc_decision', 'itc_decision_month', 'decision_reason', 'return_classification',
-      'has_e_invoice', 'e_invoice_no', 'has_e_way_bill', 'e_way_bill_no',
-      'e_invoice_required', 'e_way_bill_required', 'our_gstin'
-    )
-  );
+-- 4. Restore Migration 27 check constraint without failing on historical audit rows
+--    (e.g., `recon_extra_utgst` or later-phase audit entries preserved in `recon_corrections`).
+DO $$
+BEGIN
+  ALTER TABLE recon_corrections DROP CONSTRAINT IF EXISTS ck_rc_field;
+  IF EXISTS (
+    SELECT 1 FROM recon_corrections
+     WHERE field_name NOT IN (
+       'recon_supplier_gstin', 'recon_invoice_no', 'recon_invoice_date',
+       'recon_extra_charges_type', 'recon_extra_taxable', 'recon_extra_igst',
+       'recon_extra_cgst', 'recon_extra_sgst', 'recon_extra_cess',
+       'itc_decision', 'itc_decision_month', 'decision_reason', 'return_classification',
+       'has_e_invoice', 'e_invoice_no', 'has_e_way_bill', 'e_way_bill_no',
+       'e_invoice_required', 'e_way_bill_required', 'our_gstin'
+     )
+  ) THEN
+    ALTER TABLE recon_corrections
+      ADD CONSTRAINT ck_rc_field CHECK (
+        field_name IN (
+          'recon_supplier_gstin', 'recon_invoice_no', 'recon_invoice_date',
+          'recon_extra_charges_type', 'recon_extra_taxable', 'recon_extra_igst',
+          'recon_extra_cgst', 'recon_extra_sgst', 'recon_extra_cess',
+          'itc_decision', 'itc_decision_month', 'decision_reason', 'return_classification',
+          'has_e_invoice', 'e_invoice_no', 'has_e_way_bill', 'e_way_bill_no',
+          'e_invoice_required', 'e_way_bill_required', 'our_gstin'
+        )
+      ) NOT VALID;
+  ELSE
+    ALTER TABLE recon_corrections
+      ADD CONSTRAINT ck_rc_field CHECK (
+        field_name IN (
+          'recon_supplier_gstin', 'recon_invoice_no', 'recon_invoice_date',
+          'recon_extra_charges_type', 'recon_extra_taxable', 'recon_extra_igst',
+          'recon_extra_cgst', 'recon_extra_sgst', 'recon_extra_cess',
+          'itc_decision', 'itc_decision_month', 'decision_reason', 'return_classification',
+          'has_e_invoice', 'e_invoice_no', 'has_e_way_bill', 'e_way_bill_no',
+          'e_invoice_required', 'e_way_bill_required', 'our_gstin'
+        )
+      );
+  END IF;
+END $$;
 
 DELETE FROM schema_migrations WHERE filename = '28_utgst_separation_and_phase1.sql';
 

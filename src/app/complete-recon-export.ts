@@ -75,24 +75,30 @@ export interface CompleteReconExportRow {
   books_igst: number | null;
   books_cgst: number | null;
   books_sgst: number | null;
+  books_utgst?: number | null;
   books_cess: number | null;
   books_total_tax: number | null;
+  books_invoice_value?: number | null;
 
   // Group D — GSTR-2B Values (blank for Books Only)
   twob_taxable: number | null;
   twob_igst: number | null;
   twob_cgst: number | null;
   twob_sgst: number | null;
+  twob_utgst?: number | null;
   twob_cess: number | null;
   twob_total_tax: number | null;
+  twob_invoice_value?: number | null;
 
   // Group E — Difference Analysis
   taxable_diff: number | null;
   igst_diff: number | null;
   cgst_diff: number | null;
   sgst_diff: number | null;
+  utgst_diff?: number | null;
   cess_diff: number | null;
   total_tax_diff: number | null;
+  invoice_value_diff?: number | null;
   doc_date_diff_days: number | null;
   doc_no_diff: string;
 
@@ -102,6 +108,9 @@ export interface CompleteReconExportRow {
   match_type: string;
   original_books_month: string;
   actual_2b_month_result: string;
+  reconciliation_month?: string;
+  supplier_pan?: string;
+  mismatch_reasons?: string;
   subsequent_month_match: string;
   cross_fy_match: string;
   matched_after_correction: string;
@@ -390,15 +399,19 @@ export async function queryCompleteReconDataset(
       const bIgst = r2(r.book_igst);
       const bCgst = r2(r.book_cgst);
       const bSgst = r2(r.book_sgst);
+      const bUtgst = r2(r.book_utgst ?? 0);
       const bCess = r2(r.book_cess);
-      const bTotalTax = r2(bIgst + bCgst + bSgst + bCess);
+      const bTotalTax = r2(bIgst + bCgst + bSgst + bUtgst + bCess);
+      const bInvVal = r.book_invoice_value !== null && r.book_invoice_value !== undefined ? r2(r.book_invoice_value) : null;
 
       const tTaxable = has2b && r.twob_taxable_value !== null ? r2(r.twob_taxable_value) : null;
       const tIgst = has2b && r.twob_igst !== null ? r2(r.twob_igst) : null;
       const tCgst = has2b && r.twob_cgst !== null ? r2(r.twob_cgst) : null;
       const tSgst = has2b && r.twob_sgst !== null ? r2(r.twob_sgst) : null;
+      const tUtgst = has2b && r.twob_utgst !== null && r.twob_utgst !== undefined ? r2(r.twob_utgst) : null;
       const tCess = has2b && r.twob_cess !== null ? r2(r.twob_cess) : null;
-      const tTotalTax = has2b ? r2((tIgst ?? 0) + (tCgst ?? 0) + (tSgst ?? 0) + (tCess ?? 0)) : null;
+      const tTotalTax = has2b ? r2((tIgst ?? 0) + (tCgst ?? 0) + (tSgst ?? 0) + (tUtgst ?? 0) + (tCess ?? 0)) : null;
+      const tInvVal = has2b && r.twob_invoice_value !== null && r.twob_invoice_value !== undefined ? r2(r.twob_invoice_value) : null;
 
       const bDate = r.book_invoice_date ? isoDate(r.book_invoice_date) : '';
       const rDate = r.recon_invoice_date ? isoDate(r.recon_invoice_date) : bDate;
@@ -441,22 +454,28 @@ export async function queryCompleteReconDataset(
         books_igst: bIgst,
         books_cgst: bCgst,
         books_sgst: bSgst,
+        books_utgst: bUtgst,
         books_cess: bCess,
         books_total_tax: bTotalTax,
+        books_invoice_value: bInvVal,
 
         twob_taxable: tTaxable,
         twob_igst: tIgst,
         twob_cgst: tCgst,
         twob_sgst: tSgst,
+        twob_utgst: tUtgst,
         twob_cess: tCess,
         twob_total_tax: tTotalTax,
+        twob_invoice_value: tInvVal,
 
         taxable_diff: has2b && tTaxable !== null ? r2(tTaxable - bTaxable) : null,
         igst_diff: has2b && tIgst !== null ? r2(tIgst - bIgst) : null,
         cgst_diff: has2b && tCgst !== null ? r2(tCgst - bCgst) : null,
         sgst_diff: has2b && tSgst !== null ? r2(tSgst - bSgst) : null,
+        utgst_diff: has2b && tUtgst !== null ? r2(tUtgst - bUtgst) : null,
         cess_diff: has2b && tCess !== null ? r2(tCess - bCess) : null,
         total_tax_diff: has2b && tTotalTax !== null ? r2(tTotalTax - bTotalTax) : null,
+        invoice_value_diff: has2b && bInvVal !== null && tInvVal !== null ? r2(tInvVal - bInvVal) : null,
         doc_date_diff_days: has2b ? daysGapSigned(rDate, tDate) : null,
         doc_no_diff: has2b && normInvoice(reconNo) !== normInvoice(twobNo) ? `${reconNo} vs ${twobNo}` : '',
 
@@ -475,6 +494,9 @@ export async function queryCompleteReconDataset(
             : 'Unmatched Books',
         original_books_month: booksPeriod,
         actual_2b_month_result: twobMonth,
+        reconciliation_month: String(r.reconciliation_month || ''),
+        supplier_pan: normGstin(r.book_supplier_gstin).length >= 12 ? normGstin(r.book_supplier_gstin).slice(2, 12) : '',
+        mismatch_reasons: Array.isArray(r.mismatch_reasons) ? r.mismatch_reasons.join(', ') : '',
         subsequent_month_match: has2b ? (subMatch ? 'Yes' : 'No') : '',
         cross_fy_match: has2b ? (crossFy ? 'Yes' : 'No') : '',
         matched_after_correction: has2b ? (edited ? 'Yes' : 'No') : edited ? 'Yes (Unmatched)' : 'No',
@@ -534,8 +556,10 @@ export async function queryCompleteReconDataset(
       const tIgst = r2(docs.reduce((s, d) => s + Number(d.igst || 0), 0));
       const tCgst = r2(docs.reduce((s, d) => s + Number(d.cgst || 0), 0));
       const tSgst = r2(docs.reduce((s, d) => s + Number(d.sgst || 0), 0));
+      const tUtgst = r2(docs.reduce((s, d) => s + Number(d.utgst || 0), 0));
       const tCess = r2(docs.reduce((s, d) => s + Number(d.cess || 0), 0));
-      const tTotalTax = r2(tIgst + tCgst + tSgst + tCess);
+      const tTotalTax = r2(tIgst + tCgst + tSgst + tUtgst + tCess);
+      const tInvVal = first.invoice_value !== null && first.invoice_value !== undefined ? r2(Number(first.invoice_value)) : null;
       const blocked = String(first.itc_availability || 'Yes').trim().toLowerCase() !== 'yes';
 
       exportRows.push({
@@ -563,22 +587,28 @@ export async function queryCompleteReconDataset(
         books_igst: null,
         books_cgst: null,
         books_sgst: null,
+        books_utgst: null,
         books_cess: null,
         books_total_tax: null,
+        books_invoice_value: null,
 
         twob_taxable: tTaxable,
         twob_igst: tIgst,
         twob_cgst: tCgst,
         twob_sgst: tSgst,
+        twob_utgst: tUtgst,
         twob_cess: tCess,
         twob_total_tax: tTotalTax,
+        twob_invoice_value: tInvVal,
 
         taxable_diff: r2(tTaxable),
         igst_diff: r2(tIgst),
         cgst_diff: r2(tCgst),
         sgst_diff: r2(tSgst),
+        utgst_diff: r2(tUtgst),
         cess_diff: r2(tCess),
         total_tax_diff: r2(tTotalTax),
+        invoice_value_diff: tInvVal,
         doc_date_diff_days: null,
         doc_no_diff: '',
 
@@ -587,6 +617,9 @@ export async function queryCompleteReconDataset(
         match_type: 'Unmatched GSTR-2B',
         original_books_month: '',
         actual_2b_month_result: twobMonth,
+        reconciliation_month: '',
+        supplier_pan: normGstin(first.supplier_gstin).length >= 12 ? normGstin(first.supplier_gstin).slice(2, 12) : '',
+        mismatch_reasons: blocked ? 'ITC_BLOCKED_2B' : 'GSTR2B_ONLY',
         subsequent_month_match: '',
         cross_fy_match: '',
         matched_after_correction: '',
@@ -714,22 +747,28 @@ export const COMPLETE_RECON_COLUMNS: ExportCol[] = [
   { h: 'Books IGST', k: 'books_igst', t: 'money', w: 15 },
   { h: 'Books CGST', k: 'books_cgst', t: 'money', w: 15 },
   { h: 'Books SGST', k: 'books_sgst', t: 'money', w: 15 },
+  { h: 'Books UTGST', k: 'books_utgst', t: 'money', w: 15 },
   { h: 'Books Cess', k: 'books_cess', t: 'money', w: 13 },
   { h: 'Books Total Tax', k: 'books_total_tax', t: 'money', w: 17 },
+  { h: 'Books Invoice Value', k: 'books_invoice_value', t: 'money', w: 18 },
   // D. GSTR-2B Values
   { h: 'GSTR-2B Taxable Value', k: 'twob_taxable', t: 'money', w: 17 },
   { h: 'GSTR-2B IGST', k: 'twob_igst', t: 'money', w: 15 },
   { h: 'GSTR-2B CGST', k: 'twob_cgst', t: 'money', w: 15 },
   { h: 'GSTR-2B SGST', k: 'twob_sgst', t: 'money', w: 15 },
+  { h: 'GSTR-2B UTGST', k: 'twob_utgst', t: 'money', w: 15 },
   { h: 'GSTR-2B Cess', k: 'twob_cess', t: 'money', w: 13 },
   { h: 'GSTR-2B Total Tax', k: 'twob_total_tax', t: 'money', w: 17 },
+  { h: 'GSTR-2B Invoice Value', k: 'twob_invoice_value', t: 'money', w: 18 },
   // E. Difference Analysis
   { h: 'Taxable Difference', k: 'taxable_diff', t: 'money', w: 16 },
   { h: 'IGST Difference', k: 'igst_diff', t: 'money', w: 15 },
   { h: 'CGST Difference', k: 'cgst_diff', t: 'money', w: 15 },
   { h: 'SGST Difference', k: 'sgst_diff', t: 'money', w: 15 },
+  { h: 'UTGST Difference', k: 'utgst_diff', t: 'money', w: 15 },
   { h: 'Cess Difference', k: 'cess_diff', t: 'money', w: 13 },
   { h: 'Total Tax Difference', k: 'total_tax_diff', t: 'money', w: 17 },
+  { h: 'Invoice Value Difference', k: 'invoice_value_diff', t: 'money', w: 18 },
   { h: 'Document Date Difference', k: 'doc_date_diff_days', t: 'int', w: 15 },
   { h: 'Document Number Difference', k: 'doc_no_diff', t: 'text', w: 22 },
   // F. Reconciliation Result
@@ -738,6 +777,9 @@ export const COMPLETE_RECON_COLUMNS: ExportCol[] = [
   { h: 'Match Type', k: 'match_type', t: 'text', w: 24 },
   { h: 'Original Books Month', k: 'original_books_month', t: 'text', w: 15 },
   { h: 'Actual 2B Month', k: 'actual_2b_month_result', t: 'text', w: 15 },
+  { h: 'Reconciliation Month', k: 'reconciliation_month', t: 'text', w: 15 },
+  { h: 'Supplier PAN', k: 'supplier_pan', t: 'text', w: 14 },
+  { h: 'Granular Mismatch Reasons', k: 'mismatch_reasons', t: 'text', w: 32 },
   { h: 'Subsequent Month Match (Yes/No)', k: 'subsequent_month_match', t: 'text', w: 18 },
   { h: 'Cross Financial Year Match (Yes/No)', k: 'cross_fy_match', t: 'text', w: 20 },
   { h: 'Matched After Books Correction (Yes/No)', k: 'matched_after_correction', t: 'text', w: 22 },

@@ -29,7 +29,7 @@ import { buildGstr1, gstr1HsnSheetRows, gstr1PortalJson, gstr1SheetRows } from '
 import { buildItcControl, lapseRisk } from '../engine/control';
 import { buildImsActions } from '../engine/ims';
 import { buildGstr9, buildGstr9c, gstr9PortalJson, gstr9WorkingRows, gstr9cWorkingRows } from '../engine/gstr9';
-import { dbReady, itcWorking, persistRun, reconMapOf, reReconcile, sha256, type TwoBFileInput } from './store';
+import { dbReady, itcWorking, persistRun, reconMapOf, reReconcile, sha256, withClient, type TwoBFileInput } from './store';
 import {
   fyOf,
   labelOf,
@@ -764,15 +764,37 @@ export async function runMonthly(opts: RunOptions): Promise<MonthlyRun> {
         );
       }
       if (twob.length > 0) {
+        // Phase 2: Cross-month & cross-FY sync — re-reconcile ALL unlocked purchase
+        // periods for the uploaded GSTIN(s) that either appear in the uploaded 2B
+        // file OR still have pending ('Missing in 2B') books bills, in chronological
+        // order so earliest books months get first claim on 2B invoices.
+        const uploadedGstins = [...new Set(twob.map((t) => normGstin(t.our_gstin)).filter(Boolean))];
         const twobPairs = new Set<string>();
         for (const t of twob) {
           const g = normGstin(t.our_gstin);
           const p = (t.portal_fp || t.period || '').slice(0, 7);
           if (g && p) twobPairs.add(`${g}|${p}`);
         }
-        for (const pair of twobPairs) {
+        if (uploadedGstins.length) {
+          const pendingRes = await withClient((c) =>
+            c.query(
+              `SELECT DISTINCT our_gstin, period FROM purchase_lines
+                WHERE our_gstin = ANY($1::text[])
+                  AND (match_status = 'Missing in 2B' OR matched_2b_key IS NULL)
+                ORDER BY our_gstin, period`,
+              [uploadedGstins],
+            ),
+          ).catch(() => ({ rows: [] as any[] }));
+          for (const row of pendingRes.rows) {
+            const g = normGstin(row.our_gstin);
+            const p = String(row.period || '').slice(0, 7);
+            if (g && p) twobPairs.add(`${g}|${p}`);
+          }
+        }
+        const orderedPairs = [...twobPairs].sort();
+        for (const pair of orderedPairs) {
           const [g, p] = pair.split('|');
-          await reReconcile(g, p, { changedBy: 'cli', reason: 'Monthly pipeline GSTR-2B sync' }).catch(() => {});
+          await reReconcile(g, p, { changedBy: 'cli', reason: 'Monthly pipeline GSTR-2B cross-month sync' }).catch(() => {});
         }
       }
       try {

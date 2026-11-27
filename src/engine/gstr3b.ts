@@ -49,6 +49,28 @@ export interface ItcDetailRow {
   reason?: string;
 }
 
+export interface TaxBreakup5 {
+  igst: number;
+  cgst: number;
+  sgst: number;
+  utgst: number;
+  cess: number;
+  total: number;
+}
+
+export interface Gstr3bTable4 {
+  table4A1_impg: TaxBreakup5;
+  table4A3_rcm: TaxBreakup5;
+  table4A5_allOther: TaxBreakup5;
+  table4A_total: TaxBreakup5;
+  table4B1_sec17_5: TaxBreakup5;
+  table4B2_otherReversal: TaxBreakup5;
+  table4B_total: TaxBreakup5;
+  table4C_netItc: TaxBreakup5;
+  table4D1_reclaimed: TaxBreakup5;
+  table4D2_ineligible: TaxBreakup5;
+}
+
 export interface Gstr3bModel {
   gstin: string;
   legalName?: string;
@@ -81,12 +103,14 @@ export interface Gstr3bModel {
   };
   /** 4(A)(3) ITC on inward supplies liable to reverse charge. */
   rcmItc: number;
-  /** Component-wise ITC summary for GSTR-3B and GSTR-9. */
+  /** Component-wise ITC summary for GSTR-3B and GSTR-9 (UTGST kept separate from SGST). */
   itcByTax: {
-    available: { igst: number; cgst: number; sgst: number; cess: number };
-    reversed: { igst: number; cgst: number; sgst: number; cess: number };
-    net: { igst: number; cgst: number; sgst: number; cess: number };
+    available: { igst: number; cgst: number; sgst: number; utgst: number; cess: number };
+    reversed: { igst: number; cgst: number; sgst: number; utgst: number; cess: number };
+    net: { igst: number; cgst: number; sgst: number; utgst: number; cess: number };
   };
+  /** Phase 6: Structured GSTR-3B Table 4 (4A1 IMPG, 4A3 RCM, 4A5 Other, 4B1 Sec 17(5), 4B2 Reversal, 4C Net, 4D1 Reclaimed, 4D2 Ineligible). */
+  table4: Gstr3bTable4;
 
   // 3.2 inward
   inwardTaxable: number;
@@ -346,39 +370,123 @@ export function buildGstr3b(input: Build3bInput): Gstr3bModel {
       .filter((r) => r.status !== 'ITC Blocked' && r.itc_decision !== 'Do Not Claim' && r.itc_decision !== 'Ineligible')
       .reduce((a, r) => a + r2(r.two_b_itc ?? r.itc), 0),
   );
-  const availByTax = { igst: 0, cgst: 0, sgst: 0, cess: 0 };
-  const revByTax = { igst: 0, cgst: 0, sgst: 0, cess: 0 };
+  const zeroTax5 = (): TaxBreakup5 => ({ igst: 0, cgst: 0, sgst: 0, utgst: 0, cess: 0, total: 0 });
+  const addTax5 = (t: TaxBreakup5, ig: number, cg: number, sg: number, ut: number, ce: number) => {
+    t.igst = r2(t.igst + ig);
+    t.cgst = r2(t.cgst + cg);
+    t.sgst = r2(t.sgst + sg);
+    t.utgst = r2(t.utgst + ut);
+    t.cess = r2(t.cess + ce);
+    t.total = r2(t.igst + t.cgst + t.sgst + t.utgst + t.cess);
+  };
+  const sumTax5 = (...items: TaxBreakup5[]): TaxBreakup5 => {
+    const out = zeroTax5();
+    for (const x of items) addTax5(out, x.igst, x.cgst, x.sgst, x.utgst, x.cess);
+    return out;
+  };
+  const subTax5 = (a: TaxBreakup5, b: TaxBreakup5): TaxBreakup5 => {
+    const out = zeroTax5();
+    addTax5(out, a.igst - b.igst, a.cgst - b.cgst, a.sgst - b.sgst, a.utgst - b.utgst, a.cess - b.cess);
+    return out;
+  };
+
+  const t4A1 = zeroTax5();
+  const t4A3 = zeroTax5();
+  const t4A5 = zeroTax5();
+  const t4B1 = zeroTax5();
+  const t4B2 = zeroTax5();
+  const t4D1 = zeroTax5();
+  const t4D2 = zeroTax5();
+
+  const availByTax = { igst: 0, cgst: 0, sgst: 0, utgst: 0, cess: 0 };
+  const revByTax = { igst: 0, cgst: 0, sgst: 0, utgst: 0, cess: 0 };
   for (const r of input.reconRows) {
     const ig = r2(r.two_b_igst ?? r.igst);
     const cg = r2(r.two_b_cgst ?? r.cgst);
     const sg = r2(r.two_b_sgst ?? r.sgst);
+    const ut = r2(r.two_b_utgst ?? r.utgst ?? 0);
     const ce = r2(r.two_b_cess ?? r.cess);
     const cls = (r.return_classification || '').trim();
     const dec = (r.itc_decision || '').trim();
-    let kind: 'avail' | 'rev' | 'none' = 'none';
-    if (cls && cls !== 'Pending Review') {
-      if (cls === '4(A) — Claimed') kind = 'avail';
-      else if (cls === '4(B) — Blocked' || cls === 'Ineligible') kind = 'rev';
-    } else if (dec && dec !== 'Pending Review') {
-      if (dec === 'Claim') kind = 'avail';
-      else if (dec === 'Ineligible' || dec === 'Reversed') kind = 'rev';
-    } else if (r.status === 'Matched' || r.status === 'Amount Mismatch') {
-      kind = 'avail';
-    } else if (r.status === 'ITC Blocked') {
-      kind = 'rev';
-    }
-    if (kind === 'avail') {
+    const docCat = String(r.doc_category || '').toUpperCase();
+    const isImpg = Boolean(r.is_impg || docCat === 'IMPG' || docCat === 'IMPGA' || docCat === 'IMPGSEZ' || cls === '4(A)(1)');
+    const isRcm = Boolean(r.reverse_charge || cls === '4(A)(3)');
+    const isReclaimedHere = Boolean(r.itc_reclaimed && (!r.itc_reclaim_month || r.itc_reclaim_month === period));
+
+    if (isReclaimedHere) {
+      addTax5(t4D1, ig, cg, sg, ut, ce);
+      addTax5(t4A5, ig, cg, sg, ut, ce);
       availByTax.igst = r2(availByTax.igst + ig);
       availByTax.cgst = r2(availByTax.cgst + cg);
       availByTax.sgst = r2(availByTax.sgst + sg);
+      availByTax.utgst = r2(availByTax.utgst + ut);
       availByTax.cess = r2(availByTax.cess + ce);
-    } else if (kind === 'rev') {
+      continue;
+    }
+
+    if (r.status === 'Duplicate') continue;
+
+    let kind: 'avail' | 'rev_17_5' | 'rev_other' | 'none' = 'none';
+    if (cls && cls !== 'Pending Review') {
+      if (cls === '4(A) — Claimed' || cls === '4(A)(1)' || cls === '4(A)(3)' || cls === '4(A)(5)') kind = 'avail';
+      else if (cls === '4(B) — Blocked' || cls === '4(B)(1)' || cls === 'Ineligible') kind = 'rev_17_5';
+      else if (cls === '4(B)(2)') kind = 'rev_other';
+    } else if (dec && dec !== 'Pending Review') {
+      if (dec === 'Claim') kind = 'avail';
+      else if (dec === 'Ineligible') kind = 'rev_17_5';
+      else if (dec === 'Reversed') kind = r.itc_reversal_type === 'SEC_17_5_BLOCKED' ? 'rev_17_5' : 'rev_other';
+    } else if (r.status === 'Matched' || r.status === 'Amount Mismatch') {
+      kind = 'avail';
+    } else if (r.status === 'ITC Blocked') {
+      kind = 'rev_17_5';
+    }
+
+    if (r.sec16_4_barred) {
+      addTax5(t4D2, ig, cg, sg, ut, ce);
+    }
+
+    if (kind === 'avail') {
+      if (isImpg) addTax5(t4A1, ig, cg, sg, ut, ce);
+      else if (isRcm) addTax5(t4A3, ig, cg, sg, ut, ce);
+      else addTax5(t4A5, ig, cg, sg, ut, ce);
+      availByTax.igst = r2(availByTax.igst + ig);
+      availByTax.cgst = r2(availByTax.cgst + cg);
+      availByTax.sgst = r2(availByTax.sgst + sg);
+      availByTax.utgst = r2(availByTax.utgst + ut);
+      availByTax.cess = r2(availByTax.cess + ce);
+    } else if (kind === 'rev_17_5') {
+      addTax5(t4B1, ig, cg, sg, ut, ce);
       revByTax.igst = r2(revByTax.igst + ig);
       revByTax.cgst = r2(revByTax.cgst + cg);
       revByTax.sgst = r2(revByTax.sgst + sg);
+      revByTax.utgst = r2(revByTax.utgst + ut);
+      revByTax.cess = r2(revByTax.cess + ce);
+    } else if (kind === 'rev_other') {
+      addTax5(t4B2, ig, cg, sg, ut, ce);
+      revByTax.igst = r2(revByTax.igst + ig);
+      revByTax.cgst = r2(revByTax.cgst + cg);
+      revByTax.sgst = r2(revByTax.sgst + sg);
+      revByTax.utgst = r2(revByTax.utgst + ut);
       revByTax.cess = r2(revByTax.cess + ce);
     }
   }
+
+  const t4A_total = sumTax5(t4A1, t4A3, t4A5);
+  const t4B_total = sumTax5(t4B1, t4B2);
+  const t4C_net = subTax5(t4A_total, t4B_total);
+  const table4: Gstr3bTable4 = {
+    table4A1_impg: t4A1,
+    table4A3_rcm: t4A3,
+    table4A5_allOther: t4A5,
+    table4A_total: t4A_total,
+    table4B1_sec17_5: t4B1,
+    table4B2_otherReversal: t4B2,
+    table4B_total: t4B_total,
+    table4C_netItc: t4C_net,
+    table4D1_reclaimed: t4D1,
+    table4D2_ineligible: t4D2,
+  };
+
   const itcByTax = {
     available: availByTax,
     reversed: revByTax,
@@ -386,6 +494,7 @@ export function buildGstr3b(input: Build3bInput): Gstr3bModel {
       igst: r2(availByTax.igst - revByTax.igst),
       cgst: r2(availByTax.cgst - revByTax.cgst),
       sgst: r2(availByTax.sgst - revByTax.sgst),
+      utgst: r2(availByTax.utgst - revByTax.utgst),
       cess: r2(availByTax.cess - revByTax.cess),
     },
   };
@@ -430,6 +539,7 @@ export function buildGstr3b(input: Build3bInput): Gstr3bModel {
     inwardRcm,
     rcmItc,
     itcByTax,
+    table4,
     inwardTaxable,
     inwardIgst,
     inwardCgst,

@@ -42,6 +42,7 @@ import {
   monthControl,
   fyOptionsOf,
   reReconcile,
+  reconcileFinancialYear,
   resetReconToBook,
   setItcDecision,
   setOurGstin,
@@ -99,7 +100,7 @@ import {
   updateImsUploadBatchStatus,
 } from '../app/ims-store';
 import { IMS_WORKFLOW_STATES, type ImsWorkflowState } from '../engine/ims-recon';
-import { normGstin as normGstinOf, r2, isoDate, normInvoiceType, normDocType, normInvoice, docAmount, docSign, docTypeOrNull, monthRange } from '../engine/core';
+import { normGstin as normGstinOf, r2, isoDate, normInvoiceType, normDocType, normInvoice, stripInvoiceLeadingZeros, docAmount, docSign, docTypeOrNull, monthRange } from '../engine/core';
 import { reconcilePurchases, type DateWindow } from '../engine/match';
 import { buildImsActions } from '../engine/ims';
 import { buildGstr9, buildGstr9c, fyMonths, gstr9PortalJson, gstr9WorkingRows, gstr9cWorkingRows } from '../engine/gstr9';
@@ -126,6 +127,31 @@ import {
   buildSupplierEml,
   listPendingSuppliers,
 } from '../app/supplier-draft';
+import {
+  buildSapControlTemplateWorkbook,
+  exportMonthlyBookSummaryWorkbook,
+  exportPanConsolidationWorkbook,
+  getMonthlyBookSummary,
+  getPanSupplierConsolidation,
+  getSapControlComparison,
+  importSapControlExcel,
+  listSapControlHistory,
+  parseSapControlExcel,
+  saveSapControlTotalManual,
+} from '../app/phase3-reports';
+import {
+  buildHistoricalReconExcel,
+  buildHistoricalReconReport,
+  type HistoricalReconFilters,
+  type HistPeriodMode,
+} from '../app/historical-recon-report';
+import { buildHistoricalReconPdf } from '../app/historical-recon-pdf';
+import {
+  buildGstr3bTable4ReportFromDb,
+  exportGstr3bTable4Workbook,
+  recordManualItcDecision,
+  recordManualItcReclaim,
+} from '../app/phase6-gstr3b-control';
 import { planImport, planToEdits } from '../app/report-import';
 import { purchaseTemplateBuffer, purchaseTemplateCsv } from '../app/template';
 import { salesTemplateBuffer, salesTemplateCsv } from '../app/sales-template';
@@ -441,18 +467,118 @@ async function allowedGstins(user: SessionUser): Promise<string[] | null> {
 }
 
 
-// Reject a request that names a GSTIN the caller may not use.
+// Reject a request that names a GSTIN (singular or plural) the caller may not use.
 app.use((req: any, res, next) => {
   const u: SessionUser | undefined = req.user;
-  const g = req.query?.gstin;
-  if (!u || typeof g !== 'string' || !g) return next();
+  if (!u) return next();
+  const rawSingle = typeof req.query?.gstin === 'string' ? req.query.gstin.trim() : '';
+  const rawPlural = typeof req.query?.gstins === 'string' ? req.query.gstins.trim() : '';
+  const requested: string[] = [];
+  if (rawSingle && rawSingle.toUpperCase() !== 'ALL') requested.push(rawSingle.toUpperCase());
+  if (rawPlural) {
+    for (const part of rawPlural.split(',')) {
+      const p = part.trim().toUpperCase();
+      if (p) requested.push(p);
+    }
+  }
+  if (!requested.length) return next();
   allowedGstins(u)
     .then((list) => {
-      if (list === null || list.includes(String(g).toUpperCase())) return next();
+      if (list === null) return next();
+      const denied = requested.find((g) => !list.includes(g));
+      if (!denied) return next();
       res.status(403).json({ error: 'You do not have access to this GSTIN.' });
     })
     .catch((e) => res.status(500).json({ error: e.message }));
 });
+
+/**
+ * REM-1 Fail-closed tenant scope resolver for Phase 3, 5, and 6 routes.
+ * Applies equally to regular users AND any SUPER ADMIN carrying explicit
+ * company/GSTIN grants (`allowedGstins(user)`).
+ */
+async function resolveTenantScope(
+  req: any,
+  requested: { gstin?: string | null; gstins?: string[] | null; company?: string | null },
+): Promise<{ ok: true; allowedGstins: string[] | null } | { ok: false; status: number; error: string }> {
+  const user: SessionUser | undefined = req.user;
+  if (!user) return { ok: false, status: 401, error: 'Please sign in.' };
+
+  const allowed = await allowedGstins(user);
+  const reqSingle = String(requested.gstin || '').trim().toUpperCase();
+  const reqPlural = (requested.gstins || []).map((g) => String(g || '').trim().toUpperCase()).filter(Boolean);
+  const reqCompany = String(requested.company || '').trim();
+
+  // 1. Validate singular gstin
+  if (reqSingle && reqSingle !== 'ALL') {
+    if (allowed !== null && !allowed.includes(reqSingle)) {
+      return { ok: false, status: 403, error: 'You do not have access to this GSTIN.' };
+    }
+  }
+
+  // 2. Validate plural gstins
+  if (reqPlural.length) {
+    if (allowed !== null) {
+      const unauthorized = reqPlural.find((g) => g === 'ALL' || !allowed.includes(g));
+      if (unauthorized) {
+        return { ok: false, status: 403, error: 'You do not have access to one or more requested GSTINs.' };
+      }
+    }
+  }
+
+  // 3. Validate company parameter against user's authorized companyIds & allowedGstins
+  let scopedAllowed: string[] | null = allowed;
+  if (reqCompany) {
+    const coRes = await withClient(async (c) => {
+      const co = await c.query(
+        `SELECT id, name, short_name FROM companies
+          WHERE LOWER(COALESCE(short_name, '')) = LOWER($1)
+             OR LOWER(name) = LOWER($1)
+             OR id::text = $1
+          LIMIT 1`,
+        [reqCompany],
+      );
+      if (!co.rowCount) return null;
+      const cid = Number(co.rows[0].id);
+      const gs = await c.query(`SELECT UPPER(gstin_number) AS g FROM gstins WHERE company_id = $1`, [cid]);
+      return { id: cid, gstins: gs.rows.map((r: any) => String(r.g)) };
+    });
+
+    if (allowed !== null) {
+      if (!coRes) {
+        return { ok: false, status: 403, error: 'You do not have access to this company.' };
+      }
+      if (user.companyIds !== null && !user.companyIds.includes(coRes.id)) {
+        return { ok: false, status: 403, error: 'You do not have access to this company.' };
+      }
+      const allowedForCo = coRes.gstins.filter((g) => allowed.includes(g));
+      if (!allowedForCo.length) {
+        return { ok: false, status: 403, error: 'You do not have access to this company.' };
+      }
+      scopedAllowed = allowedForCo;
+    }
+  }
+
+  return { ok: true, allowedGstins: scopedAllowed };
+}
+
+/**
+ * REM-1 Ownership guard for line-level mutations (prevents cross-company IDOR).
+ */
+async function assertLineOwnership(
+  req: any,
+  lineId: number,
+): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
+  const user: SessionUser | undefined = req.user;
+  if (!user) return { ok: false, status: 401, error: 'Please sign in.' };
+  const line = await getLine(lineId);
+  if (!line) return { ok: false, status: 404, error: `Purchase line ${lineId} not found.` };
+  const allowed = await allowedGstins(user);
+  if (allowed !== null && !allowed.includes(normGstinOf(String(line.our_gstin || '')))) {
+    return { ok: false, status: 403, error: 'You do not have access to this purchase line.' };
+  }
+  return { ok: true };
+}
 
 app.use(express.static(path.join(process.cwd(), 'src', 'server', 'public'), { index: 'index.html' }));
 
@@ -1109,9 +1235,10 @@ app.get('/api/recon/purchase', requirePerm('recon', 'view'), wrap(async (req, re
     }
   }
 
-  // Live GSTR-3B Input Credit (Table 4) roll-up from bill-to-bill rows
+  // Live GSTR-3B Input Credit (Table 4) roll-up from FULL filtered bill-to-bill rows
+  // (Phase 2: never truncate summary totals at 5,000 rows or 2,000 unbooked 2B rows).
   const allMonthRows = (f.q || f.status)
-    ? (await listLines({ gstin: singleGstin, gstins: targetGstins, period: singlePeriod, periods: targetPeriods, limit: 5000 })).rows
+    ? (await listLines({ gstin: singleGstin, gstins: targetGstins, period: singlePeriod, periods: targetPeriods, limit: 50000 })).rows
     : rows;
   const reconLike = allMonthRows.map((r: any) => ({
     our_gstin: r.our_gstin,
@@ -1145,7 +1272,7 @@ app.get('/api/recon/purchase', requirePerm('recon', 'view'), wrap(async (req, re
     reconRows: reconLike,
     sales: [],
   });
-  const unbooked2bItc = r2(twoBRows.reduce((s: number, u: any) => s + Number(u.itc ?? 0), 0));
+  const unbooked2bItc = r2(matchedUnbooked.reduce((s: number, u: any) => s + Number(u.itc ?? 0), 0));
   const booksItcTotal = r2(allMonthRows.reduce((s: number, r: any) => s + Number(r.itc_amount ?? r.book_itc ?? 0), 0));
   const gstr3bItc = {
     booksItc: booksItcTotal,
@@ -1553,8 +1680,18 @@ app.get('/api/recon/purchase/2b-candidates', requirePerm('recon', 'view'), wrap(
       const sim = invoiceSimScore(bInv, u.invoice_no);
       const sameSupplier = u.supplier_gstin === sup;
       const mDiff = monthDiffIso(bookLine.period, u.twob_month);
+      const leadingZeroMatch =
+        sameSupplier &&
+        normInvoice(bInv) !== normInvoice(u.invoice_no) &&
+        stripInvoiceLeadingZeros(bInv) === stripInvoiceLeadingZeros(u.invoice_no);
+      const matchReasons: string[] = [];
+      if (leadingZeroMatch) matchReasons.push('LEADING_ZERO_INVOICE_DIFF');
+      if (!sameSupplier && normInvoice(bInv) === normInvoice(u.invoice_no)) matchReasons.push('SUPPLIER_GSTIN_DIFF');
+      if (exactAmt) matchReasons.push('EXACT_AMOUNT');
+      if (sim >= 85 && !leadingZeroMatch) matchReasons.push('SIMILAR_INVOICE_NO');
       const rankScore =
         (sameSupplier ? 1000000 : 0) +
+        (leadingZeroMatch ? 750000 : 0) +
         (exactAmt ? 500000 : 0) +
         sim * 1000 -
         dateDiffDays * 20 -
@@ -1563,6 +1700,8 @@ app.get('/api/recon/purchase/2b-candidates', requirePerm('recon', 'view'), wrap(
       return {
         ...u,
         sameSupplier,
+        leadingZeroMatch,
+        matchReasons,
         exactAmt,
         taxDiff,
         itcDiff,
@@ -4043,6 +4182,320 @@ app.get('/api/supplier-followup/draft.xlsx', wrap(async (req, res) => {
 }));
 
 // ---------------------------------------------------------------------------
+// Phase 5: Professional Historical Bill-wise Reconciliation Report (7-Sheet Excel + PDF)
+// ---------------------------------------------------------------------------
+
+function historicalFiltersOf(req: express.Request): HistoricalReconFilters {
+  const rawPeriods = str(req.query.periods);
+  const rawGstins = str(req.query.gstins);
+  const pm = str(req.query.periodMode) as HistPeriodMode | '';
+  return {
+    company: str(req.query.company) || null,
+    gstin: str(req.query.gstin) || null,
+    gstins: rawGstins ? rawGstins.split(',').map((s) => s.trim()).filter(Boolean) : undefined,
+    fy: str(req.query.fy) || null,
+    periodMode: pm || undefined,
+    period: str(req.query.period) || null,
+    from: str(req.query.from) || null,
+    to: str(req.query.to) || null,
+    periods: rawPeriods ? rawPeriods.split(',').map((s) => s.trim()).filter(Boolean) : undefined,
+    supplier: str(req.query.supplier) || null,
+    docType: str(req.query.docType) || null,
+    status: str(req.query.status) || null,
+    booksMonth: str(req.query.booksMonth) || null,
+    twobMonth: str(req.query.twobMonth) || null,
+    uploadBatch: str(req.query.uploadBatch) || null,
+    reportingDate: str(req.query.reportingDate) || null,
+  };
+}
+
+app.get('/api/reports/historical-recon', requirePerm('report', 'view'), wrap(async (req, res) => {
+  const ready = await dbReady();
+  if (!ready.ok) return res.status(503).json({ error: ready.reason });
+  const filters = historicalFiltersOf(req);
+  const scope = await resolveTenantScope(req, { gstin: filters.gstin, gstins: filters.gstins, company: filters.company });
+  if (scope.ok === false) return res.status(scope.status).json({ error: scope.error });
+  const report = await buildHistoricalReconReport({ ...filters, allowedGstins: scope.allowedGstins });
+  res.json(report);
+}));
+
+app.get('/api/reports/historical-recon/export.xlsx', requirePerm('report', 'export'), wrap(async (req, res) => {
+  const ready = await dbReady();
+  if (!ready.ok) return res.status(503).json({ error: ready.reason });
+  const filters = historicalFiltersOf(req);
+  const scope = await resolveTenantScope(req, { gstin: filters.gstin, gstins: filters.gstins, company: filters.company });
+  if (scope.ok === false) return res.status(scope.status).json({ error: scope.error });
+  const report = await buildHistoricalReconReport({ ...filters, allowedGstins: scope.allowedGstins });
+  const buf = buildHistoricalReconExcel(report);
+  await audit(req.user, {
+    action: 'REPORT_EXPORT',
+    module: 'Historical Report',
+    gstin: filters.gstin || null,
+    period: filters.period || filters.fy || 'ALL',
+    details: { format: 'xlsx', sheets: 7, booksDocs: report.booksSummary.docs, allParityOk: report.allParityOk },
+  });
+  const tag = (filters.fy || filters.period || 'ALL').replace(/[^A-Za-z0-9_-]/g, '_');
+  return sendXlsx(res, buf, `Historical_Billwise_Recon_Report_${tag}.xlsx`);
+}));
+
+app.get('/api/reports/historical-recon/export.pdf', requirePerm('report', 'export'), wrap(async (req, res) => {
+  const ready = await dbReady();
+  if (!ready.ok) return res.status(503).json({ error: ready.reason });
+  const filters = historicalFiltersOf(req);
+  const scope = await resolveTenantScope(req, { gstin: filters.gstin, gstins: filters.gstins, company: filters.company });
+  if (scope.ok === false) return res.status(scope.status).json({ error: scope.error });
+  const report = await buildHistoricalReconReport({ ...filters, allowedGstins: scope.allowedGstins });
+  const pdfBuf = await buildHistoricalReconPdf(report);
+  await audit(req.user, {
+    action: 'REPORT_EXPORT',
+    module: 'Historical Report',
+    gstin: filters.gstin || null,
+    period: filters.period || filters.fy || 'ALL',
+    details: { format: 'pdf', bytes: pdfBuf.length, booksDocs: report.booksSummary.docs, allParityOk: report.allParityOk },
+  });
+  const tag = (filters.fy || filters.period || 'ALL').replace(/[^A-Za-z0-9_-]/g, '_');
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="Historical_Billwise_Recon_Report_${tag}.pdf"`);
+  res.send(pdfBuf);
+}));
+
+// ---------------------------------------------------------------------------
+// Phase 6: GSTR-3B Table 4 Readiness & Strict Manual ITC Control
+// ---------------------------------------------------------------------------
+
+app.get('/api/gstr3b/table4', requirePerm('itc', 'view'), wrap(async (req, res) => {
+  const ready = await dbReady();
+  if (!ready.ok) return res.status(503).json({ error: ready.reason });
+  const isXlsx = String(req.query.format || '').toLowerCase() === 'xlsx';
+  if (isXlsx && !can(req.user ?? null, 'report', 'export')) {
+    return res.status(403).json({ error: `Your role (${req.user?.role || 'unknown'}) cannot export report.`, needPerm: 'report.export' });
+  }
+  const gstin = normGstinOf(str(req.query.gstin));
+  const period = str(req.query.period);
+  if (!gstin || !period) return res.status(400).json({ error: 'gstin and period (YYYY-MM) are required.' });
+  const scope = await resolveTenantScope(req, { gstin });
+  if (scope.ok === false) return res.status(scope.status).json({ error: scope.error });
+  const report = await buildGstr3bTable4ReportFromDb({ gstin, period });
+  if (isXlsx) {
+    const buf = exportGstr3bTable4Workbook(report);
+    return sendXlsx(res, buf, `GSTR3B_Table4_Control_${gstin}_${period}.xlsx`);
+  }
+  res.json(report);
+}));
+
+app.post('/api/lines/:id/itc-control', requirePerm('itc', 'decide'), wrap(async (req, res) => {
+  const ready = await dbReady();
+  if (!ready.ok) return res.status(503).json({ error: ready.reason });
+  const lineId = Number(req.params.id);
+  const own = await assertLineOwnership(req, lineId);
+  if (own.ok === false) return res.status(own.status).json({ error: own.error });
+  const b = req.body ?? {};
+  const out = await recordManualItcDecision(
+    lineId,
+    {
+      decision: b.decision,
+      decisionMonth: b.decisionMonth,
+      claimMonth: b.claimMonth,
+      reversalType: b.reversalType,
+      returnClassification: b.returnClassification,
+      isImpg: b.isImpg,
+      isRcm: b.isRcm,
+      reason: String(b.reason || ''),
+    },
+    { changedBy: actorOf(req) },
+  );
+  if (!out.ok) return res.status(out.locked ? 423 : 400).json(out);
+  res.json({ ...out, line: await getLine(lineId) });
+}));
+
+app.post('/api/lines/:id/itc-reclaim', requirePerm('itc', 'decide'), wrap(async (req, res) => {
+  const ready = await dbReady();
+  if (!ready.ok) return res.status(503).json({ error: ready.reason });
+  const lineId = Number(req.params.id);
+  const own = await assertLineOwnership(req, lineId);
+  if (own.ok === false) return res.status(own.status).json({ error: own.error });
+  const b = req.body ?? {};
+  const out = await recordManualItcReclaim(
+    lineId,
+    {
+      reclaimMonth: String(b.reclaimMonth || ''),
+      reclaimAmount: b.reclaimAmount !== undefined && b.reclaimAmount !== null && b.reclaimAmount !== '' ? Number(b.reclaimAmount) : undefined,
+      reason: String(b.reason || ''),
+    },
+    { changedBy: actorOf(req) },
+  );
+  if (!out.ok) return res.status(out.locked ? 423 : 400).json(out);
+  res.json({ ...out, line: await getLine(lineId) });
+}));
+
+// ---------------------------------------------------------------------------
+// Phase 3: Monthly Book Summary (Apr–Mar), PAN Consolidation & SAP B1 Controls
+// ---------------------------------------------------------------------------
+
+app.get('/api/reports/monthly-book-summary', requirePerm('report', 'view'), wrap(async (req, res) => {
+  const ready = await dbReady();
+  if (!ready.ok) return res.status(503).json({ error: ready.reason });
+  const isXlsx = String(req.query.format || '').toLowerCase() === 'xlsx';
+  if (isXlsx && !can(req.user ?? null, 'report', 'export')) {
+    return res.status(403).json({ error: `Your role (${req.user?.role || 'unknown'}) cannot export report.`, needPerm: 'report.export' });
+  }
+  const gstin = str(req.query.gstin) || null;
+  const company = str(req.query.company) || null;
+  const scope = await resolveTenantScope(req, { gstin, company });
+  if (scope.ok === false) return res.status(scope.status).json({ error: scope.error });
+  const summary = await getMonthlyBookSummary({
+    fy: str(req.query.fy) || null,
+    gstin,
+    company,
+    allowedGstins: scope.allowedGstins,
+  });
+  if (isXlsx) {
+    const buf = exportMonthlyBookSummaryWorkbook(summary);
+    return sendXlsx(res, buf, `Monthly_Book_Summary_${summary.fy}_${summary.gstin || 'ALL'}.xlsx`);
+  }
+  res.json(summary);
+}));
+
+app.get('/api/reports/pan-consolidation', requirePerm('report', 'view'), wrap(async (req, res) => {
+  const ready = await dbReady();
+  if (!ready.ok) return res.status(503).json({ error: ready.reason });
+  const isXlsx = String(req.query.format || '').toLowerCase() === 'xlsx';
+  if (isXlsx && !can(req.user ?? null, 'report', 'export')) {
+    return res.status(403).json({ error: `Your role (${req.user?.role || 'unknown'}) cannot export report.`, needPerm: 'report.export' });
+  }
+  const gstin = str(req.query.gstin) || null;
+  const company = str(req.query.company) || null;
+  const scope = await resolveTenantScope(req, { gstin, company });
+  if (scope.ok === false) return res.status(scope.status).json({ error: scope.error });
+  const data = await getPanSupplierConsolidation({
+    gstin,
+    company,
+    fy: str(req.query.fy) || null,
+    period: str(req.query.period) || null,
+    q: str(req.query.q) || null,
+    allowedGstins: scope.allowedGstins,
+  });
+  if (isXlsx) {
+    const buf = exportPanConsolidationWorkbook(data);
+    return sendXlsx(res, buf, `PAN_Supplier_Consolidation_${data.scope.fy || data.scope.period || 'ALL'}.xlsx`);
+  }
+  res.json(data);
+}));
+
+app.get('/api/sap-controls/template.xlsx', requirePerm('report', 'view'), (_req, res) => {
+  const buf = buildSapControlTemplateWorkbook();
+  return sendXlsx(res, buf, 'SAP_B1_Control_Totals_Template.xlsx');
+});
+
+app.get('/api/sap-controls/comparison', requirePerm('report', 'view'), wrap(async (req, res) => {
+  const ready = await dbReady();
+  if (!ready.ok) return res.status(503).json({ error: ready.reason });
+  const gstin = str(req.query.gstin) || null;
+  const company = str(req.query.company) || null;
+  const scope = await resolveTenantScope(req, { gstin, company });
+  if (scope.ok === false) return res.status(scope.status).json({ error: scope.error });
+  const data = await getSapControlComparison({
+    gstin,
+    fy: str(req.query.fy) || null,
+    period: str(req.query.period) || null,
+    allowedGstins: scope.allowedGstins,
+  });
+  res.json(data);
+}));
+
+app.get('/api/sap-controls/history', requirePerm('report', 'view'), wrap(async (req, res) => {
+  const ready = await dbReady();
+  if (!ready.ok) return res.status(503).json({ error: ready.reason });
+  const gstin = str(req.query.gstin) || null;
+  const company = str(req.query.company) || null;
+  const scope = await resolveTenantScope(req, { gstin, company });
+  if (scope.ok === false) return res.status(scope.status).json({ error: scope.error });
+  const rows = await listSapControlHistory({
+    gstin,
+    fy: str(req.query.fy) || null,
+    period: str(req.query.period) || null,
+    allowedGstins: scope.allowedGstins,
+  });
+  res.json({ count: rows.length, rows });
+}));
+
+app.post('/api/sap-controls/manual', requirePerm('recon', 'edit'), wrap(async (req, res) => {
+  const ready = await dbReady();
+  if (!ready.ok) return res.status(503).json({ error: ready.reason });
+  const b = req.body ?? {};
+  const targetGstin = normGstinOf(String(b.ourGstin || b.our_gstin || ''));
+  if (targetGstin) {
+    const scope = await resolveTenantScope(req, { gstin: targetGstin });
+    if (scope.ok === false) return res.status(scope.status).json({ error: scope.error });
+  }
+  const result = await saveSapControlTotalManual(
+    {
+      ourGstin: String(b.ourGstin || b.our_gstin || ''),
+      period: String(b.period || ''),
+      invoiceCount: Number(b.invoiceCount ?? b.invoice_count ?? 0),
+      taxableValue: Number(b.taxableValue ?? b.taxable_value ?? 0),
+      igst: Number(b.igst ?? 0),
+      cgst: Number(b.cgst ?? 0),
+      sgst: Number(b.sgst ?? 0),
+      utgst: Number(b.utgst ?? 0),
+      cess: Number(b.cess ?? 0),
+      totalGst: b.totalGst ?? b.total_gst,
+      invoiceValue: Number(b.invoiceValue ?? b.invoice_value ?? 0),
+      remarks: str(b.remarks) || undefined,
+    },
+    {
+      enteredBy: actorOf(req),
+      allowOverwrite: Boolean(b.allowOverwrite),
+      overwriteReason: str(b.overwriteReason) || undefined,
+    },
+  );
+  if (!result.ok) {
+    return res.status(result.locked ? 423 : result.conflict ? 409 : 400).json(result);
+  }
+  await audit(req.user, {
+    action: 'SAP_CONTROL_MANUAL',
+    module: 'SAP Controls',
+    gstin: targetGstin || null,
+    period: str(b.period) || null,
+    details: { batchUid: result.batchUid, allowOverwrite: Boolean(b.allowOverwrite) },
+  });
+  res.json(result);
+}));
+
+app.post('/api/sap-controls/excel', requirePerm('recon', 'edit'), express.raw({ type: '*/*', limit: '50mb' }), wrap(async (req, res) => {
+  const ready = await dbReady();
+  if (!ready.ok) return res.status(503).json({ error: ready.reason });
+  if (!req.body?.length) return res.status(400).json({ error: 'No Excel file received.' });
+  const fileName = path.basename(String(req.query.name || 'sap-control-totals.xlsx'));
+  const buf = Buffer.isBuffer(req.body) ? req.body : Buffer.from(req.body);
+  // Pre-validate every GSTIN in the workbook against the caller's tenant scope before writing anything.
+  const preParsed = parseSapControlExcel(buf, fileName);
+  if (preParsed.ok && preParsed.rows.length) {
+    const scope = await resolveTenantScope(req, { gstins: preParsed.rows.map((r) => r.ourGstin) });
+    if (scope.ok === false) return res.status(scope.status).json({ error: scope.error });
+  }
+  const result = await importSapControlExcel(
+    buf,
+    fileName,
+    {
+      uploadedBy: actorOf(req),
+      allowOverwrite: String(req.query.allowOverwrite || '') === '1' || String(req.query.allowOverwrite || '') === 'true',
+      overwriteReason: str(req.query.overwriteReason) || undefined,
+      allowDuplicateFile: String(req.query.allowDuplicateFile || '') === '1',
+    },
+  );
+  if (!result.ok) {
+    return res.status(result.locked ? 423 : result.conflict ? 409 : 400).json(result);
+  }
+  await audit(req.user, {
+    action: 'SAP_CONTROL_EXCEL',
+    module: 'SAP Controls',
+    details: { batchUid: result.batchUid, fileName, savedCount: result.savedCount },
+  });
+  res.json(result);
+}));
+
+// ---------------------------------------------------------------------------
 // Excel / CSV re-upload
 // ---------------------------------------------------------------------------
 
@@ -4093,6 +4546,36 @@ app.post('/api/import/apply', requirePerm('data', 'import_excel'), express.raw({
 }));
 
 /** Attach follow-up notes to one line from the screen. */
+app.post('/api/recon/purchase/reconcile-fy', requirePerm('reconciliation', 'edit'), wrap(async (req, res) => {
+  const ready = await dbReady();
+  if (!ready.ok) return res.status(503).json({ error: ready.reason });
+  const body = req.body ?? {};
+  const gstin = normGstinOf(str(body.gstin) || str(req.query.gstin));
+  if (!gstin) return res.status(400).json({ error: 'gstin is required' });
+  const fy = str(body.fy) || str(req.query.fy) || null;
+  const includeHistoricalPending = body.includeHistoricalPending !== false;
+  const out = await reconcileFinancialYear({
+    gstin,
+    fy,
+    includeHistoricalPending,
+    changedBy: actorOf(req),
+    reason: str(body.reason) || undefined,
+  });
+  await audit(req.user, {
+    action: 'RECONCILE_FY',
+    module: 'Reconciliation',
+    gstin,
+    period: fy || 'ALL',
+    details: {
+      periodsRun: out.periodsRun,
+      totalChanged: out.totalChanged,
+      totalMatched: out.totalMatched,
+      lockedSkipped: out.lockedSkipped,
+    },
+  });
+  res.json(out);
+}));
+
 app.post('/api/lines/:id/followup', requirePerm('followup', 'edit'), wrap(async (req, res) => {
   const ready = await dbReady();
   if (!ready.ok) return res.status(503).json({ error: ready.reason });

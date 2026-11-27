@@ -253,6 +253,10 @@ export function parsePurchaseRegister(
       if (!period) return null;
 
       const ourGstin = normGstin(pick(raw, map, 'our_gstin'));
+      const rawInvValCell = pick(raw, map, 'invoice_value');
+      const hasRawInvVal = rawInvValCell !== null && rawInvValCell !== undefined && String(rawInvValCell).trim() !== '';
+      const sourceInvoiceValue = hasRawInvVal ? toNum(rawInvValCell) : null;
+      const bookInvoiceValue = sourceInvoiceValue !== null ? applySign(sourceInvoiceValue) : null;
 
       return {
         our_gstin: ourGstin,
@@ -269,6 +273,8 @@ export function parsePurchaseRegister(
         source_sgst: sgstRaw,
         source_utgst: utgstRaw,
         source_cess: cessRaw,
+        source_invoice_value: sourceInvoiceValue,
+        book_invoice_value: bookInvoiceValue,
         reference_no: String(pick(raw, map, 'reference_no') ?? '').trim() || undefined,
         // "Yes"/"No" -> true/false/undefined. GSTR-2B carries neither figure,
         // so an absent column must stay absent rather than becoming "No".
@@ -285,7 +291,7 @@ export function parsePurchaseRegister(
         sgst,
         utgst,
         cess,
-        invoice_total: r2(taxable + taxOf({ igst, cgst, sgst, utgst, cess })),
+        invoice_total: bookInvoiceValue !== null ? bookInvoiceValue : r2(taxable + taxOf({ igst, cgst, sgst, utgst, cess })),
         reverse_charge: ynTri(pick(raw, map, 'reverse_charge')),
         hsn: String(pick(raw, map, 'hsn') ?? '').trim() || undefined,
         remark: String(pick(raw, map, 'remark') ?? '').trim() || undefined,

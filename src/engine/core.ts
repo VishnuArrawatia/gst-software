@@ -154,6 +154,16 @@ export function normInvoice(v: unknown): string {
   return String(v ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 }
 
+/**
+ * Strip leading zeros from numeric runs inside a normalised invoice number for
+ * diagnostic comparison ONLY (e.g., "INV-001" and "INV-0001" both -> "INV1",
+ * "0130" -> "130", while "INV-10" stays "INV10" and "INV-100" stays "INV100").
+ * Never used to force an automatic match without explicit user confirmation.
+ */
+export function stripInvoiceLeadingZeros(v: unknown): string {
+  return normInvoice(v).replace(/(^|[^0-9])0+(?=[0-9])/g, '$1');
+}
+
 /** A number/date that should not exist but does often. */
 export function isBlankish(v: unknown): boolean {
   return v === null || v === undefined || String(v).trim() === '';
@@ -650,6 +660,10 @@ export interface PurchaseBill {
   sgst: number;
   utgst?: number;
   cess: number;
+  /** Actual printed invoice total from source Purchase Register (null/undefined if absent; never fabricated). */
+  source_invoice_value?: number | null;
+  /** Signed actual invoice total (negative for Credit Notes) when present in source register. */
+  book_invoice_value?: number | null;
   invoice_total?: number;
   reverse_charge?: boolean;
   hsn?: string;
@@ -659,6 +673,11 @@ export interface PurchaseBill {
   source_row?: number;
   itc_decision?: string;
   itc_decision_month?: string;
+  itc_claim_month?: string;
+  itc_reversal_type?: string;
+  itc_reclaimed?: boolean;
+  itc_reclaim_month?: string;
+  is_impg?: boolean;
   return_classification?: string;
 
   // ---- reconciliation overrides (Phase 0) -------------------------------
@@ -720,6 +739,11 @@ export interface Gstr2bRecord {
   source_row?: number;
   itc_decision?: string;
   itc_decision_month?: string;
+  itc_claim_month?: string;
+  itc_reversal_type?: string;
+  itc_reclaimed?: boolean;
+  itc_reclaim_month?: string;
+  is_impg?: boolean;
   return_classification?: string;
 }
 
@@ -758,6 +782,11 @@ export interface SalesItem {
   source_row?: number;
   itc_decision?: string;
   itc_decision_month?: string;
+  itc_claim_month?: string;
+  itc_reversal_type?: string;
+  itc_reclaimed?: boolean;
+  itc_reclaim_month?: string;
+  is_impg?: boolean;
   return_classification?: string;
 }
 
@@ -808,6 +837,11 @@ export interface SalesInvoice {
   source_row?: number;
   itc_decision?: string;
   itc_decision_month?: string;
+  itc_claim_month?: string;
+  itc_reversal_type?: string;
+  itc_reclaimed?: boolean;
+  itc_reclaim_month?: string;
+  is_impg?: boolean;
   return_classification?: string;
 }
 
@@ -916,10 +950,17 @@ export interface ReconRow {
   match_hint?: string;
   two_b_taxable?: number;
   two_b_itc?: number;
+  book_invoice_value?: number | null;
+  two_b_invoice_value?: number | null;
+  invoice_value_difference?: number | null;
   itc_difference?: number;
   taxable_difference?: number;
   itc_availability?: string;
   reason?: string;
+  /** Structured granular mismatch reason codes (Phase 4). */
+  mismatch_reasons?: string[];
+  /** Number of competing 2B candidate groups when ambiguous. */
+  candidate_count?: number;
   /**
    * Return period of the GSTR-2B file this line matched in (`YYYY-MM`), taken
    * from the portal file itself — never from the purchase register's month.
@@ -935,5 +976,10 @@ export interface ReconRow {
   source_row?: number;
   itc_decision?: string;
   itc_decision_month?: string;
+  itc_claim_month?: string;
+  itc_reversal_type?: string;
+  itc_reclaimed?: boolean;
+  itc_reclaim_month?: string;
+  is_impg?: boolean;
   return_classification?: string;
 }

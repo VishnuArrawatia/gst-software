@@ -171,7 +171,7 @@ export async function withClient<T>(fn: (c: Client) => Promise<T>): Promise<T> {
     }
     return await fn(client);
   } finally {
-    await client.end().catch(() => {});
+    await client.end().catch(() => { });
   }
 }
 
@@ -313,8 +313,8 @@ export async function persistRun(input: PersistInput): Promise<PersistResult> {
            ON CONFLICT (our_gstin, twob_month, sha256) DO NOTHING
            RETURNING id`,
           [f.file_name, f.sha256, f.file_size ?? null, normGstin(f.our_gstin), g?.company_id ?? null,
-           fyOf(f.twob_month), f.twob_month, f.portal_fp ?? null, f.record_count, f.blocked_count,
-           f.source_format, input.uploadedBy ?? 'system'],
+          fyOf(f.twob_month), f.twob_month, f.portal_fp ?? null, f.record_count, f.blocked_count,
+          f.source_format, input.uploadedBy ?? 'system'],
         );
         if (r.rowCount) res.filesRegistered++;
         else res.duplicateFiles.push(`${f.our_gstin} ${labelOf(f.twob_month)} ${f.file_name}`);
@@ -328,20 +328,20 @@ export async function persistRun(input: PersistInput): Promise<PersistResult> {
       // ---- GSTR-2B lines -----------------------------------------------
       const twobValues: unknown[][] = [];
       // Must match the INSERT column list below: gstin_id, company_id,
-// customer_gstin_norm, customer_gstin_raw, customer_name, invoice_number_raw,
-// invoice_number_norm, invoice_date, financial_year, period, invoice_type,
-// place_of_supply, reverse_charge, hsn, taxable_value, igst, cgst, sgst, cess,
-// invoice_value, note_ref_number, note_ref_date, source_row_number,
-// recipient_type, item_count, e_commerce_gstin, doc_nature, doc_series_from,
-// doc_series_to, doc_series_cancelled, amendment_invoice_number,
-// amendment_invoice_date.
-const SALES_COL_COUNT = 32;
+      // customer_gstin_norm, customer_gstin_raw, customer_name, invoice_number_raw,
+      // invoice_number_norm, invoice_date, financial_year, period, invoice_type,
+      // place_of_supply, reverse_charge, hsn, taxable_value, igst, cgst, sgst, cess,
+      // invoice_value, note_ref_number, note_ref_date, source_row_number,
+      // recipient_type, item_count, e_commerce_gstin, doc_nature, doc_series_from,
+      // doc_series_to, doc_series_cancelled, amendment_invoice_number,
+      // amendment_invoice_date.
+      const SALES_COL_COUNT = 32;
 
-// Must match the INSERT column list in the item block below: sales_invoice_id,
-// line_no, item_code, item_description, hsn, uqc, quantity, gst_rate,
-// taxable_value, igst, cgst, sgst, cess, freight, other_charges,
-// source_row_number.
-const SALES_ITEM_COL_COUNT = 16;
+      // Must match the INSERT column list in the item block below: sales_invoice_id,
+      // line_no, item_code, item_description, hsn, uqc, quantity, gst_rate,
+      // taxable_value, igst, cgst, sgst, cess, freight, other_charges,
+      // source_row_number.
+      const SALES_ITEM_COL_COUNT = 16;
       const twobMeta = new Map<string, Gstr2bRecord>();
       for (const t of input.twob) {
         const key = twobKeyOf(t);
@@ -440,7 +440,7 @@ const SALES_ITEM_COL_COUNT = 16;
                 doc_series_from, doc_series_to, doc_series_cancelled,
                 amendment_invoice_number, amendment_invoice_date)
              VALUES ${Array.from({ length: chunk.length }, (_, i) =>
-               `(${Array.from({ length: SALES_COL_COUNT }, (_, k) => '$' + (i * SALES_COL_COUNT + k + 1)).join(',')})`).join(',')}
+              `(${Array.from({ length: SALES_COL_COUNT }, (_, k) => '$' + (i * SALES_COL_COUNT + k + 1)).join(',')})`).join(',')}
              ON CONFLICT (gstin_id, invoice_number_norm, invoice_date) DO UPDATE SET
                customer_name = EXCLUDED.customer_name,
                period = EXCLUDED.period,
@@ -520,7 +520,7 @@ const SALES_ITEM_COL_COUNT = 16;
                 quantity, gst_rate, taxable_value, igst, cgst, sgst, cess,
                 freight, other_charges, source_row_number)
              VALUES ${chunk.map((_, i) =>
-               `(${Array.from({ length: SALES_ITEM_COL_COUNT }, (_, k) => '$' + (i * SALES_ITEM_COL_COUNT + k + 1)).join(',')})`).join(',')}
+              `(${Array.from({ length: SALES_ITEM_COL_COUNT }, (_, k) => '$' + (i * SALES_ITEM_COL_COUNT + k + 1)).join(',')})`).join(',')}
              ON CONFLICT (sales_invoice_id, line_no) DO UPDATE SET
                item_code = EXCLUDED.item_code,
                item_description = EXCLUDED.item_description,
@@ -553,7 +553,7 @@ const SALES_ITEM_COL_COUNT = 16;
                 itc_availability, reason, applicable_pct, source_file, source_row, source_format,
                 doc_category, source_utgst, original_doc_no, original_doc_date)
              VALUES ${chunk.map((_, i) =>
-               `(${Array.from({ length: TWOB_COL_COUNT }, (_, k) => '$' + (i * TWOB_COL_COUNT + k + 1)).join(',')})`).join(',')}
+              `(${Array.from({ length: TWOB_COL_COUNT }, (_, k) => '$' + (i * TWOB_COL_COUNT + k + 1)).join(',')})`).join(',')}
              ON CONFLICT (line_key) DO UPDATE SET
                supplier_gstin = EXCLUDED.supplier_gstin,
                supplier_name = COALESCE(NULLIF(EXCLUDED.supplier_name,''), gstr2b_lines.supplier_name),
@@ -607,7 +607,7 @@ const SALES_ITEM_COL_COUNT = 16;
   return res;
 }
 
-const PURCHASE_COL_COUNT = 62;
+const PURCHASE_COL_COUNT = 69;
 const TWOB_COL_COUNT = 29;
 /** PostgreSQL allows 65535 bind parameters per statement, so bulk writes chunk. */
 const MAX_PARAMS = 60_000;
@@ -626,17 +626,17 @@ function insertPurchaseSql(n: number): string {
         party_name, source_file, source_row, import_source,
         book_supplier_gstin, book_invoice_no, book_invoice_date, book_reference_no,
         book_entry_date, book_document_type, book_document_type_raw, book_sign,
-        source_taxable_value, source_igst, source_cgst, source_sgst, source_utgst, source_cess,
-        book_taxable_value, book_igst, book_cgst, book_sgst, book_utgst, book_cess,
+        source_taxable_value, source_igst, source_cgst, source_sgst, source_utgst, source_cess, source_invoice_value,
+        book_taxable_value, book_igst, book_cgst, book_sgst, book_utgst, book_cess, book_invoice_value,
         recon_supplier_gstin, recon_invoice_no, recon_invoice_date,
-        match_status, detailed_match_status, match_method, matched_2b_key, matched_2b_month,
+        match_status, detailed_match_status, match_method, matched_2b_key, matched_2b_month, reconciliation_month,
         twob_supplier_gstin, twob_invoice_no, twob_invoice_date, twob_taxable_value,
-        twob_igst, twob_cgst, twob_sgst, twob_utgst, twob_cess, twob_itc, itc_availability,
-        mismatch_reason, itc_amount, taxable_difference, itc_difference,
+        twob_igst, twob_cgst, twob_sgst, twob_utgst, twob_cess, twob_itc, twob_invoice_value, invoice_value_difference, itc_availability,
+        mismatch_reason, mismatch_reasons, candidate_count, itc_amount, taxable_difference, itc_difference,
         duplicate_count, suggested_action, reconciled_at, imported_at,
         has_e_invoice, e_invoice_no, has_e_way_bill, e_way_bill_no)
      VALUES ${Array.from({ length: n }, (_, i) =>
-       `(${Array.from({ length: PURCHASE_COL_COUNT }, (_, k) => '$' + (i * PURCHASE_COL_COUNT + k + 1)).join(',')})`).join(',')}
+      `(${Array.from({ length: PURCHASE_COL_COUNT }, (_, k) => '$' + (i * PURCHASE_COL_COUNT + k + 1)).join(',')})`).join(',')}
      ON CONFLICT (line_key) DO UPDATE SET
        party_name = EXCLUDED.party_name,
        -- E-invoice / e-way bill answers follow the file when it carries the
@@ -673,12 +673,20 @@ function insertPurchaseSql(n: number): string {
        source_sgst = EXCLUDED.source_sgst,
        source_utgst = EXCLUDED.source_utgst,
        source_cess = EXCLUDED.source_cess,
+       source_invoice_value = COALESCE(EXCLUDED.source_invoice_value, purchase_lines.source_invoice_value),
+       book_invoice_value = COALESCE(purchase_lines.book_invoice_value, EXCLUDED.book_invoice_value),
        unit_name = COALESCE(EXCLUDED.unit_name, purchase_lines.unit_name),
        match_status = EXCLUDED.match_status,
        detailed_match_status = EXCLUDED.detailed_match_status,
        match_method = EXCLUDED.match_method,
        matched_2b_key = EXCLUDED.matched_2b_key,
        matched_2b_month = EXCLUDED.matched_2b_month,
+       reconciliation_month = CASE
+         WHEN EXCLUDED.matched_2b_key IS NULL THEN NULL
+         WHEN purchase_lines.matched_2b_key = EXCLUDED.matched_2b_key AND purchase_lines.reconciliation_month IS NOT NULL
+           THEN purchase_lines.reconciliation_month
+         ELSE GREATEST(purchase_lines.period, COALESCE(EXCLUDED.matched_2b_month, purchase_lines.period))
+       END,
        twob_supplier_gstin = EXCLUDED.twob_supplier_gstin,
        twob_invoice_no = EXCLUDED.twob_invoice_no,
        twob_invoice_date = EXCLUDED.twob_invoice_date,
@@ -686,8 +694,12 @@ function insertPurchaseSql(n: number): string {
        twob_igst = EXCLUDED.twob_igst, twob_cgst = EXCLUDED.twob_cgst,
        twob_sgst = EXCLUDED.twob_sgst, twob_utgst = EXCLUDED.twob_utgst, twob_cess = EXCLUDED.twob_cess,
        twob_itc = EXCLUDED.twob_itc,
+       twob_invoice_value = EXCLUDED.twob_invoice_value,
+       invoice_value_difference = EXCLUDED.invoice_value_difference,
        itc_availability = EXCLUDED.itc_availability,
        mismatch_reason = EXCLUDED.mismatch_reason,
+       mismatch_reasons = EXCLUDED.mismatch_reasons,
+       candidate_count = EXCLUDED.candidate_count,
        itc_amount = EXCLUDED.itc_amount,
        taxable_difference = EXCLUDED.taxable_difference,
        itc_difference = EXCLUDED.itc_difference,
@@ -745,12 +757,15 @@ function lineParams(
     r2(b.source_sgst ?? b.sgst),
     r2(b.source_utgst ?? b.utgst ?? 0),
     r2(b.source_cess ?? b.cess),
+    b.source_invoice_value !== undefined && b.source_invoice_value !== null ? r2(b.source_invoice_value) : null,
     r2(b.taxable_value), r2(b.igst), r2(b.cgst), r2(b.sgst), r2(b.utgst ?? 0), r2(b.cess),
+    b.book_invoice_value !== undefined && b.book_invoice_value !== null ? r2(b.book_invoice_value) : null,
     // recon_* — the editable copy
     normGstin(b.supplier_gstin), String(b.invoice_no ?? '').trim(), b.invoice_date || null,
     // match outcome
     row?.status ?? null, row?.detailed_status ?? null, row ? 'primary' : 'none', row?.matched_2b_id ?? null,
     row?.matched_2b_month ?? null,
+    matched ? (row?.matched_2b_month && row.matched_2b_month > b.period ? row.matched_2b_month : b.period) : null,
     matched ? normGstin(row?.two_b_supplier_gstin ?? twob?.supplier_gstin ?? b.supplier_gstin) : null,
     matched ? String(row?.two_b_invoice_no ?? twob?.invoice_no ?? row?.invoice_no ?? '') : null,
     matched ? (row?.two_b_invoice_date ?? twob?.invoice_date ?? row?.invoice_date) || null : null,
@@ -760,8 +775,11 @@ function lineParams(
     matched ? r2(row?.two_b_sgst ?? twob?.sgst) : null,
     matched ? r2(row?.two_b_utgst ?? twob?.utgst ?? 0) : null,
     matched ? r2(row?.two_b_cess ?? twob?.cess) : null,
-    row?.two_b_itc ?? null, row?.itc_availability ?? null,
-    row?.reason ?? null, itc, row?.taxable_difference ?? null, row?.itc_difference ?? null,
+    row?.two_b_itc ?? null,
+    matched ? (row?.two_b_invoice_value ?? (twob?.invoice_value != null ? r2(twob.invoice_value) : null)) : null,
+    matched ? (row?.invoice_value_difference ?? null) : null,
+    row?.itc_availability ?? null,
+    row?.reason ?? null, row?.mismatch_reasons ?? [], row?.candidate_count ?? 0, itc, row?.taxable_difference ?? null, row?.itc_difference ?? null,
     row?.duplicate_count ?? null, [row?.action, row?.match_hint].filter(Boolean).join(' | ') || null, row ? new Date() : null, new Date(),
     b.has_e_invoice ?? null, b.e_invoice_no ?? null, b.has_e_way_bill ?? null, b.e_way_bill_no ?? null,
   ];
@@ -940,7 +958,9 @@ export async function loadBundleForReconcile(gstin: string, period: string, cach
       sgst: Number(r.book_sgst),
       utgst: Number(r.book_utgst ?? 0),
       cess: Number(r.book_cess),
-      invoice_total: r2(Number(r.book_taxable_value)),
+      source_invoice_value: r.source_invoice_value !== null && r.source_invoice_value !== undefined ? Number(r.source_invoice_value) : null,
+      book_invoice_value: r.book_invoice_value !== null && r.book_invoice_value !== undefined ? Number(r.book_invoice_value) : null,
+      invoice_total: r.book_invoice_value !== null && r.book_invoice_value !== undefined ? Number(r.book_invoice_value) : r2(Number(r.book_taxable_value)),
       source_file: r.source_file ?? undefined,
       source_row: r.source_row ?? undefined,
       recon_supplier_gstin: r.recon_supplier_gstin,
@@ -1134,8 +1154,12 @@ export async function reReconcile(
       const tUtgsts: Array<number | null> = [];
       const tCesss: Array<number | null> = [];
       const tItcs: Array<number | null> = [];
+      const tInvVals: Array<number | null> = [];
+      const invValDiffs: Array<number | null> = [];
       const tAvails: Array<string | null> = [];
       const reasons: Array<string | null> = [];
+      const mReasonsJson: string[] = [];
+      const candCounts: number[] = [];
       const itcAmts: Array<number | null> = [];
       const taxDiffs: Array<number | null> = [];
       const itcDiffs: Array<number | null> = [];
@@ -1162,8 +1186,12 @@ export async function reReconcile(
         tUtgsts.push(r.two_b_utgst ?? null);
         tCesss.push(r.two_b_cess ?? null);
         tItcs.push(r.two_b_itc ?? null);
+        tInvVals.push(r.two_b_invoice_value ?? null);
+        invValDiffs.push(r.invoice_value_difference ?? null);
         tAvails.push(r.itc_availability ?? null);
         reasons.push(r.reason ?? null);
+        mReasonsJson.push(JSON.stringify(r.mismatch_reasons ?? []));
+        candCounts.push(r.candidate_count ?? 0);
         itcAmts.push(r.itc ?? null);
         taxDiffs.push(r.taxable_difference ?? null);
         itcDiffs.push(r.itc_difference ?? null);
@@ -1179,6 +1207,12 @@ export async function reReconcile(
              match_method = 're-reconcile',
              matched_2b_key = v.matched_2b_key,
              matched_2b_month = v.matched_2b_month,
+             reconciliation_month = CASE
+               WHEN v.matched_2b_key IS NULL THEN NULL
+               WHEN p.matched_2b_key = v.matched_2b_key AND p.reconciliation_month IS NOT NULL
+                 THEN p.reconciliation_month
+               ELSE GREATEST(p.period, COALESCE(v.matched_2b_month, p.period))
+             END,
              twob_supplier_gstin = v.twob_supplier_gstin,
              twob_invoice_no = v.twob_invoice_no,
              twob_invoice_date = NULLIF(v.twob_invoice_date, '')::date,
@@ -1189,8 +1223,12 @@ export async function reReconcile(
              twob_utgst = v.twob_utgst,
              twob_cess = v.twob_cess,
              twob_itc = v.twob_itc,
+             twob_invoice_value = v.twob_invoice_value,
+             invoice_value_difference = v.invoice_value_difference,
              itc_availability = v.itc_availability,
              mismatch_reason = v.mismatch_reason,
+             mismatch_reasons = COALESCE(ARRAY(SELECT jsonb_array_elements_text(v.mismatch_reasons_json::jsonb)), '{}'::text[]),
+             candidate_count = v.candidate_count,
              itc_amount = v.itc_amount,
              taxable_difference = v.taxable_difference,
              itc_difference = v.itc_difference,
@@ -1203,21 +1241,21 @@ export async function reReconcile(
                $1::bigint[], $2::text[], $3::text[], $4::text[], $5::text[],
                $6::text[], $7::text[], $8::numeric[], $9::numeric[], $10::numeric[],
                $11::numeric[], $12::numeric[], $13::numeric[], $14::text[],
-               $15::text[], $16::numeric[], $17::numeric[], $18::numeric[], $19::int[], $20::text[], $21::text[], $22::numeric[]
+               $15::text[], $16::numeric[], $17::numeric[], $18::numeric[], $19::int[], $20::text[], $21::text[], $22::numeric[], $23::numeric[], $24::numeric[], $25::text[], $26::int[]
              )
            ) AS v(
              id, match_status, matched_2b_key, matched_2b_month, twob_supplier_gstin,
              twob_invoice_no, twob_invoice_date, twob_taxable_value, twob_igst, twob_cgst,
              twob_sgst, twob_cess, twob_itc, itc_availability,
              mismatch_reason, itc_amount, taxable_difference, itc_difference, duplicate_count, suggested_action,
-             detailed_match_status, twob_utgst
+             detailed_match_status, twob_utgst, twob_invoice_value, invoice_value_difference, mismatch_reasons_json, candidate_count
            )
            WHERE p.id = v.id`,
           [
             ids, statuses, mKeys, mMonths, tGstins,
             tInvs, tDates, tTaxables, tIgsts, tCgsts,
             tSgsts, tCesss, tItcs, tAvails,
-            reasons, itcAmts, taxDiffs, itcDiffs, dupCounts, actions, dStatuses, tUtgsts,
+            reasons, itcAmts, taxDiffs, itcDiffs, dupCounts, actions, dStatuses, tUtgsts, tInvVals, invValDiffs, mReasonsJson, candCounts,
           ],
         );
       }
@@ -1227,7 +1265,7 @@ export async function reReconcile(
            (changed_by, action, our_gstin, financial_year, period, reason, details)
          VALUES ($1,'RE-RECONCILE',$2,$3,$4,$5,$6)`,
         [opts.changedBy, normGstin(gstin), fyOf(period), period, opts.reason ?? 'Save & Re-reconcile',
-         JSON.stringify({ lines: books.length, twobLines: twob.length, summary: out.after, changed: moved })],
+        JSON.stringify({ lines: books.length, twobLines: twob.length, summary: out.after, changed: moved })],
       );
       // Tie the pending corrections to the re-run, so the trail proves the match
       // was actually re-attempted and not merely retyped.
@@ -1742,7 +1780,7 @@ export async function applyEdits(
         if (lock.rowCount) {
           fail(
             `GST month ${labelOf(row.period)} for ${row.our_gstin} is LOCKED (by ${lock.rows[0].locked_by}). ` +
-              'Unlock it as admin first.',
+            'Unlock it as admin first.',
             true,
           );
           continue;
@@ -1941,7 +1979,7 @@ export async function applyEdits(
                   old_value, new_value, reason, changed_by, rerefreshed)
                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,false)`,
               [e.lineId, row.our_gstin, row.period, row.recon_invoice_no, row.recon_supplier_gstin,
-               d.field, d.from, d.to, why, opts.by],
+              d.field, d.from, d.to, why, opts.by],
             );
           }
           await writeAudit(c, {
@@ -2176,7 +2214,7 @@ export async function setOurGstin(
             old_value, new_value, reason, changed_by, rerefreshed)
          VALUES ($1,$2,$3,$4,$5,'our_gstin',$6,$7,$8,$9,false)`,
         [lineId, from, row.period, row.recon_invoice_no, row.recon_supplier_gstin,
-         from, next, opts.reason ?? null, opts.changedBy],
+          from, next, opts.reason ?? null, opts.changedBy],
       );
 
       await writeAudit(c, {
@@ -2226,6 +2264,17 @@ export async function setItcDecision(
   if (patch.decisionMonth !== undefined && patch.decisionMonth && !/^\d{4}-\d{2}$/.test(patch.decisionMonth)) {
     out.reason = 'ITC decision month must be YYYY-MM (for example 2026-04).';
     return out;
+  }
+  if (patch.decisionMonth) {
+    const existingLine = await getLine(lineId);
+    if (existingLine) {
+      const targetLock = await isLocked(String(existingLine.our_gstin), patch.decisionMonth);
+      if (targetLock.locked) {
+        out.locked = true;
+        out.reason = `Target decision month ${patch.decisionMonth} for ${existingLine.our_gstin} is LOCKED.`;
+        return out;
+      }
+    }
   }
   const bulk = await applyEdits([{ lineId, itc: patch }], { by: opts.changedBy, reason: patch.reason, atomic: true });
   const row = bulk.rows[0];
@@ -2475,9 +2524,9 @@ export async function dashboard(f: { gstin?: string; gstins?: string[]; period?:
     };
     const totals = await c.query(
       `SELECT count(*)::int lines,
-              count(*) FILTER (WHERE matched_2b_key IS NOT NULL)::int matched,
+              count(*) FILTER (WHERE match_status = 'Matched')::int matched,
               count(*) FILTER (WHERE itc_decision = 'Pending Review')::int pending,
-              coalesce(sum(book_igst + book_cgst + book_sgst + book_utgst + book_cess) FILTER (WHERE matched_2b_key IS NOT NULL),0)::numeric itc_matched,
+              coalesce(sum(book_igst + book_cgst + book_sgst + book_utgst + book_cess) FILTER (WHERE match_status = 'Matched'),0)::numeric itc_matched,
               coalesce(sum(book_igst + book_cgst + book_sgst + book_utgst + book_cess) FILTER (WHERE itc_decision = 'Claim'),0)::numeric itc_claim,
               count(*) FILTER (WHERE book_document_type = 'Credit Note')::int credit_docs,
               count(*) FILTER (WHERE book_document_type = 'Debit Note')::int debit_docs,
@@ -2490,11 +2539,24 @@ export async function dashboard(f: { gstin?: string; gstins?: string[]; period?:
          FROM purchase_lines ${where}`,
       params,
     );
-    const twobCount = (f.gstins && f.gstins.length)
-      ? await c.query('SELECT count(*)::int n FROM gstr2b_lines WHERE our_gstin = ANY($1::text[])', [f.gstins.map((g) => normGstin(g)).filter(Boolean)])
-      : f.gstin
-        ? await c.query('SELECT count(*)::int n FROM gstr2b_lines WHERE our_gstin = $1', [normGstin(f.gstin)])
-        : await c.query('SELECT count(*)::int n FROM gstr2b_lines');
+    const tParams: unknown[] = [];
+    const tw: string[] = [];
+    if (f.gstins && f.gstins.length) {
+      tParams.push(f.gstins.map((g) => normGstin(g)).filter(Boolean));
+      tw.push(`our_gstin = ANY($${tParams.length}::text[])`);
+    } else if (f.gstin) {
+      tParams.push(normGstin(f.gstin));
+      tw.push(`our_gstin = $${tParams.length}`);
+    }
+    if (f.periods && f.periods.length) {
+      tParams.push(f.periods.filter(Boolean));
+      tw.push(`twob_month = ANY($${tParams.length}::text[])`);
+    } else if (f.period) {
+      tParams.push(f.period);
+      tw.push(`twob_month = $${tParams.length}`);
+    }
+    const twWhere = tw.length ? `WHERE ${tw.join(' AND ')}` : '';
+    const twobCount = await c.query(`SELECT count(*)::int n FROM gstr2b_lines ${twWhere}`, tParams);
     const m = await c.query(
       `SELECT matched_2b_month k, count(*)::int n,
               coalesce(sum(book_igst + book_cgst + book_sgst + book_utgst + book_cess),0)::numeric itc
@@ -2614,8 +2676,8 @@ async function writeAudit(
         invoice_no, supplier_gstin, field_name, old_value, new_value, reason)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
     [a.changedBy, a.action, a.our_gstin ?? null, a.company ?? null, a.financialYear ?? null,
-     a.period ?? null, a.lineId ?? null, a.invoiceNo ?? null, a.supplierGstin ?? null,
-     a.field ?? null, a.oldValue ?? null, a.newValue ?? null, a.reason ?? null],
+    a.period ?? null, a.lineId ?? null, a.invoiceNo ?? null, a.supplierGstin ?? null,
+    a.field ?? null, a.oldValue ?? null, a.newValue ?? null, a.reason ?? null],
   );
 }
 
@@ -2696,14 +2758,14 @@ export async function importPastedPurchase(
   // tell which rows are missing.
   const lockedRows = out.keys.length
     ? await withClient((c) =>
-        c.query(
-          `SELECT our_gstin, period FROM month_locks
+      c.query(
+        `SELECT our_gstin, period FROM month_locks
             WHERE is_locked AND (our_gstin, period) IN (
               SELECT * FROM unnest($1::text[], $2::text[])
             )`,
-          [out.keys.map((k) => k.gstin), out.keys.map((k) => k.period)],
-        ).then((r) => r.rows as Array<{ our_gstin: string; period: string }>),
-      )
+        [out.keys.map((k) => k.gstin), out.keys.map((k) => k.period)],
+      ).then((r) => r.rows as Array<{ our_gstin: string; period: string }>),
+    )
     : [];
   if (lockedRows.length) {
     const first = lockedRows[0];
@@ -2711,8 +2773,8 @@ export async function importPastedPurchase(
       lockedRows.length === 1
         ? `GST month ${labelOf(first.period)} for ${first.our_gstin} is LOCKED. Unlock it as admin first.`
         : `${lockedRows.length} months in this batch are LOCKED ` +
-          `(${lockedRows.slice(0, 4).map((r) => `${labelOf(r.period)} ${r.our_gstin}`).join(', ')}` +
-          `${lockedRows.length > 4 ? ', …' : ''}). Unlock them as admin first.`;
+        `(${lockedRows.slice(0, 4).map((r) => `${labelOf(r.period)} ${r.our_gstin}`).join(', ')}` +
+        `${lockedRows.length > 4 ? ', …' : ''}). Unlock them as admin first.`;
     return out;
   }
 
@@ -2845,6 +2907,14 @@ export interface MonthControlRow {
   followUp: number;
   twobFiles: number;
   twobRecords: number;
+  /** Deduplicated GSTR-2B canonical documents in this month (source of truth from gstr2b_lines). */
+  twobDocs?: number;
+  /** GSTR-2B documents in this month not yet matched to any Books row. */
+  unmatched2b?: number;
+  /** Books taxable minus matched 2B taxable (for matched/mismatched books in this month). */
+  taxableDiff?: number;
+  /** Books GST minus matched 2B GST (for matched/mismatched books in this month). */
+  gstDiff?: number;
   locked: boolean;
   filed1: boolean;
   filed3b: boolean;
@@ -2882,9 +2952,14 @@ export async function monthControl(f: { gstin?: string } = {}): Promise<MonthCon
               count(*)::int lines,
               coalesce(sum(book_taxable_value),0)::numeric taxable,
               coalesce(sum(book_igst + book_cgst + book_sgst + book_utgst + book_cess),0)::numeric purchase_gst,
-              count(*) FILTER (WHERE matched_2b_key IS NOT NULL)::int matched,
+              count(*) FILTER (WHERE match_status = 'Matched')::int matched,
               coalesce(sum(book_igst + book_cgst + book_sgst + book_utgst + book_cess)
-                       FILTER (WHERE matched_2b_key IS NOT NULL),0)::numeric matched_itc,
+                       FILTER (WHERE match_status = 'Matched'),0)::numeric matched_itc,
+              coalesce(sum(book_taxable_value - coalesce(twob_taxable_value, 0))
+                       FILTER (WHERE matched_2b_key IS NOT NULL), 0)::numeric taxable_diff,
+              coalesce(sum((book_igst + book_cgst + book_sgst + book_utgst + book_cess)
+                           - (coalesce(twob_igst,0) + coalesce(twob_cgst,0) + coalesce(twob_sgst,0) + coalesce(twob_utgst,0) + coalesce(twob_cess,0)))
+                       FILTER (WHERE matched_2b_key IS NOT NULL), 0)::numeric gst_diff,
               count(*) FILTER (WHERE match_status = 'Missing in 2B')::int missing,
               count(*) FILTER (WHERE match_status = 'Amount Mismatch')::int mismatch,
               count(*) FILTER (WHERE match_status = 'Duplicate')::int duplicate,
@@ -2910,6 +2985,28 @@ export async function monthControl(f: { gstin?: string } = {}): Promise<MonthCon
          FROM gstr2b_files ${fWhere} GROUP BY twob_month`,
       fparams,
     );
+    const twobLineStats = await c.query(
+      `WITH canon AS (
+         SELECT our_gstin,
+                MIN(twob_month) AS period,
+                ARRAY_AGG(DISTINCT line_key) AS keys
+           FROM gstr2b_lines ${fWhere}
+          GROUP BY our_gstin, UPPER(TRIM(supplier_gstin)),
+                   UPPER(REGEXP_REPLACE(TRIM(invoice_no), '[^A-Za-z0-9]', '', 'g')),
+                   COALESCE(NULLIF(TRIM(document_type), ''), 'Tax Invoice')
+       )
+       SELECT c.period,
+              count(*)::int AS twob_docs,
+              count(*) FILTER (
+                WHERE NOT EXISTS (
+                  SELECT 1 FROM purchase_lines q
+                   WHERE q.our_gstin = c.our_gstin AND q.matched_2b_key = ANY(c.keys)
+                )
+              )::int AS unmatched_2b
+         FROM canon c
+        GROUP BY c.period`,
+      fparams,
+    );
     const locks = await c.query(`SELECT period, bool_or(is_locked) locked FROM month_locks ${fWhere} GROUP BY period`, fparams);
 
     // gstr1/gstr3b filings key on gstin_id, not our_gstin — resolve through gstins.
@@ -2928,20 +3025,26 @@ export async function monthControl(f: { gstin?: string } = {}): Promise<MonthCon
 
     const twob = new Map<string, { files: number; records: number }>();
     for (const r of files.rows as any[]) twob.set(r.period, { files: r.files, records: r.records });
+    const twobDocsMap = new Map<string, { twobDocs: number; unmatched2b: number }>();
+    for (const r of twobLineStats.rows as any[]) {
+      twobDocsMap.set(r.period, { twobDocs: Number(r.twob_docs || 0), unmatched2b: Number(r.unmatched_2b || 0) });
+    }
     const lockMap = new Map<string, boolean>();
     for (const r of locks.rows as any[]) lockMap.set(r.period, !!r.locked);
 
     const out: MonthControlRow[] = lines.rows.map((r: any) => {
       const t = twob.get(r.period) || { files: 0, records: 0 };
+      const td = twobDocsMap.get(r.period) || { twobDocs: 0, unmatched2b: 0 };
+      const has2b = t.files > 0 || td.twobDocs > 0;
       const locked = lockMap.get(r.period) === true;
       const open = r.missing + r.mismatch + r.duplicate;
       let status: MonthStatus;
       if (locked) status = 'Locked';
-      else if (!r.lines && !t.files) status = 'Not Started';
+      else if (!r.lines && !has2b) status = 'Not Started';
       else if (barePeriod(r.period) && (filed1.has(barePeriod(r.period)) || filed3b.has(barePeriod(r.period)))) status = 'Filed';
       else if (!r.lines) status = 'Data Imported';
       else if (r.pending_decision > 0) status = 'Under Review';
-      else if (open > 0 || !t.files) status = 'Reconciliation Pending';
+      else if (open > 0 || !has2b) status = 'Reconciliation Pending';
       else if (r.blocked > 0) status = 'Reconciliation Pending';
       else status = 'Ready for Filing';
 
@@ -2963,7 +3066,11 @@ export async function monthControl(f: { gstin?: string } = {}): Promise<MonthCon
         claimedAmt: Number(r.claimed_amt),
         followUp: r.follow_up,
         twobFiles: t.files,
-        twobRecords: t.records,
+        twobRecords: td.twobDocs || t.records,
+        twobDocs: td.twobDocs,
+        unmatched2b: td.unmatched2b,
+        taxableDiff: r2(Number(r.taxable_diff || 0)),
+        gstDiff: r2(Number(r.gst_diff || 0)),
         locked,
         filed1: filed1.has(barePeriod(r.period)),
         filed3b: filed3b.has(barePeriod(r.period)),
@@ -2973,14 +3080,18 @@ export async function monthControl(f: { gstin?: string } = {}): Promise<MonthCon
 
     // Months that only exist as a 2B upload (books never imported) must still
     // appear, or "Not Started" would be invisible exactly when it matters.
-    for (const [period, t] of twob) {
+    const all2bPeriods = new Set<string>([...twob.keys(), ...twobDocsMap.keys()]);
+    for (const period of all2bPeriods) {
       if (out.some((x) => x.period === period)) continue;
+      const t = twob.get(period) || { files: 0, records: 0 };
+      const td = twobDocsMap.get(period) || { twobDocs: 0, unmatched2b: 0 };
       const locked = lockMap.get(period) === true;
       out.push({
         period, label: labelOf(period), fy: fyLabelOf(period),
         lines: 0, taxable: 0, purchaseGst: 0, matched: 0, matchedItc: 0, missing: 0, mismatch: 0,
         duplicate: 0, blocked: 0, pendingDecision: 0, claimed: 0, claimedAmt: 0,
-        followUp: 0, twobFiles: t.files, twobRecords: t.records, locked,
+        followUp: 0, twobFiles: t.files, twobRecords: td.twobDocs || t.records,
+        twobDocs: td.twobDocs, unmatched2b: td.unmatched2b, taxableDiff: 0, gstDiff: 0, locked,
         filed1: filed1.has(barePeriod(period)), filed3b: filed3b.has(barePeriod(period)),
         status: locked ? 'Locked' : 'Data Imported',
       });
@@ -3232,7 +3343,7 @@ export async function importGstr2bExcelBatch(
                 source_taxable_value, source_igst, source_cgst, source_sgst, source_utgst, source_cess,
                 original_doc_no, original_doc_date)
              VALUES ${chunk.map((_, i) =>
-               `(${Array.from({ length: COL_CNT }, (__, k) => '$' + (i * COL_CNT + k + 1)).join(',')})`).join(',')}
+              `(${Array.from({ length: COL_CNT }, (__, k) => '$' + (i * COL_CNT + k + 1)).join(',')})`).join(',')}
              ON CONFLICT (line_key) DO NOTHING`,
             chunk.flat(),
           );
@@ -3299,14 +3410,14 @@ export async function importGstr2bExcelBatch(
         ),
       );
       for (const row of periodRes.rows) {
-        const pairKey = `${normGstin(row.our_gstin)}|${row.period}`;
-        if (unlockedPairs.has(pairKey) || preview.returnPeriods.includes(row.period) || row.period <= (preview.returnPeriods[preview.returnPeriods.length - 1] || '9999-12')) {
-          const rr = await reReconcile(row.our_gstin, row.period, {
-            changedBy: opts.importedBy || 'system',
-            reason: `Post GSTR-2B Excel Batch ${batchUid}`,
-          });
-          if (rr.ok) reconciled.push(rr);
-        }
+        // Phase 2: Re-reconcile ALL unlocked purchase periods for the imported GSTIN(s)
+        // in chronological order — including later Books months (e.g. Nov 2026 Books
+        // matching an April 2026 GSTR-2B uploaded afterwards) and cross-FY pending months.
+        const rr = await reReconcile(row.our_gstin, row.period, {
+          changedBy: opts.importedBy || 'system',
+          reason: `Post GSTR-2B Excel Batch ${batchUid}`,
+        });
+        if (rr.ok) reconciled.push(rr);
       }
     }
 
@@ -3355,4 +3466,83 @@ export async function listGstr2bExcelBatches(allowed?: string[] | null) {
     );
     return r.rows;
   });
+}
+
+export interface ReconcileFyResult {
+  ok: boolean;
+  gstin: string;
+  fy: string | null;
+  periodsRun: number;
+  totalChanged: number;
+  totalMatched: number;
+  lockedSkipped: string[];
+  results: ReReconcileResult[];
+}
+
+/**
+ * Phase 2: One-click Chronological Cross-Month / Cross-FY Reconciliation Runner.
+ *
+ * Re-reconciles every unlocked Books month for the given GSTIN (either within
+ * the requested FY or across all historical months when `fy` is omitted) in
+ * strict chronological order (`period ASC`) so earliest Books months get first
+ * 1-to-1 claim on GSTR-2B invoices, never double-matching and never mutating
+ * `itc_decision` or `itc_decision_month`.
+ */
+export async function reconcileFinancialYear(opts: {
+  gstin: string;
+  fy?: string | null;
+  includeHistoricalPending?: boolean;
+  changedBy: string;
+  reason?: string;
+}): Promise<ReconcileFyResult> {
+  const g = normGstin(opts.gstin);
+  const fy = opts.fy ? String(opts.fy).trim() : null;
+  const params: unknown[] = [g];
+  const where: string[] = ['our_gstin = $1'];
+  if (fy && !opts.includeHistoricalPending) {
+    const startYear = Number(fy.slice(0, 4));
+    if (startYear >= 2017 && startYear <= 2099) {
+      params.push(`${startYear}-04`, `${startYear + 1}-03`);
+      where.push(`period BETWEEN $2 AND $3`);
+    }
+  }
+  const periodRes = await withClient((c) =>
+    c.query(
+      `SELECT DISTINCT period FROM purchase_lines WHERE ${where.join(' AND ')} ORDER BY period ASC`,
+      params,
+    ),
+  );
+  const periods = periodRes.rows.map((r: any) => String(r.period));
+  const results: ReReconcileResult[] = [];
+  const lockedSkipped: string[] = [];
+  let totalChanged = 0;
+  let totalMatched = 0;
+
+  for (const period of periods) {
+    const lk = await isLocked(g, period);
+    if (lk.locked) {
+      lockedSkipped.push(period);
+      continue;
+    }
+    const rr = await reReconcile(g, period, {
+      changedBy: opts.changedBy,
+      reason: opts.reason || (fy ? `Chronological FY ${fy} reconciliation` : 'Chronological cross-month reconciliation'),
+    });
+    results.push(rr);
+    if (rr.ok) {
+      totalChanged += rr.changed;
+      totalMatched += rr.matched;
+    }
+  }
+
+  return {
+    ok: true,
+    gstin: g,
+    fy,
+    periodsRun: results.length,
+    totalChanged,
+    totalMatched,
+    lockedSkipped,
+    results,
+  };
 }
