@@ -427,7 +427,7 @@ export function reconcilePurchases(
       twobItc: number;
       diffItc: number;
       diffTaxable: number;
-      diffComponents: { igst: number; cgst: number; sgst: number; utgst: number; cess: number };
+      diffComponents: { igst: number; cgst: number; sgst: number; utgst: number; sgstUtgst: number; cess: number };
       amountExact: boolean;
       exactDate: boolean;
       within60Days: boolean;
@@ -454,12 +454,19 @@ export function reconcilePurchases(
         cgst: r2(twobCgst - effCgst),
         sgst: r2(twobSgst - effSgst),
         utgst: r2(twobUtgst - effUtgst),
+        sgstUtgst: r2((twobSgst + twobUtgst) - (effSgst + effUtgst)),
         cess: r2(twobCess - effCess),
       };
+      // Treat SGST and UTGST together as one combined head for reconciliation
+      // matching (SAP/Books for UT GSTINs commonly book UTGST under SGST while
+      // GSTR-2B reports it under UTGST).
       const amountExact =
         withinTolerance(diffTaxable, 0, tolerance) &&
         withinTolerance(diffItc, 0, tolerance) &&
-        Object.values(diffComponents).every((d) => withinTolerance(d, 0, tolerance));
+        withinTolerance(diffComponents.igst, 0, tolerance) &&
+        withinTolerance(diffComponents.cgst, 0, tolerance) &&
+        withinTolerance(diffComponents.sgstUtgst, 0, tolerance) &&
+        withinTolerance(diffComponents.cess, 0, tolerance);
       const minDateDiff = grp.reduce((mn, x) => Math.min(mn, daysBetween(mv.invoice_date, x.invoice_date)), 9999);
       scoredGroups.push({
         group: grp,
@@ -714,12 +721,16 @@ export function reconcilePurchases(
     const typeMismatch = bookDoc !== bestDoc;
 
     // Phase 4: Granular component-level mismatch reason tags
+    // SGST and UTGST are evaluated together so UT invoices booked in SGST match
+    // GSTR-2B UTGST without raising false SGST_DIFF / UTGST_DIFF mismatches.
     const compReasons: string[] = [];
     if (taxableDiffers) compReasons.push('TAXABLE_VALUE_DIFF');
     if (!withinTolerance(diffComponents.igst, 0, tolerance)) compReasons.push('IGST_DIFF');
     if (!withinTolerance(diffComponents.cgst, 0, tolerance)) compReasons.push('CGST_DIFF');
-    if (!withinTolerance(diffComponents.sgst, 0, tolerance)) compReasons.push('SGST_DIFF');
-    if (!withinTolerance(diffComponents.utgst, 0, tolerance)) compReasons.push('UTGST_DIFF');
+    if (!withinTolerance(diffComponents.sgstUtgst, 0, tolerance)) {
+      if (effSgst === 0 && twobSgst === 0) compReasons.push('UTGST_DIFF');
+      else compReasons.push('SGST_DIFF');
+    }
     if (!withinTolerance(diffComponents.cess, 0, tolerance)) compReasons.push('CESS_DIFF');
     if (invValDiffers) compReasons.push('INVOICE_VALUE_DIFF');
     if (!dateOk) compReasons.push('DOCUMENT_DATE_DIFF');
@@ -797,7 +808,7 @@ export function reconcilePurchases(
         reason: blockedLine?.reason || primary.reason || `Component mismatch: ${detailSummary}`,
         action:
           `GSTIN + document dono match hain par amount alag hai (taxable ${diffTaxable >= 0 ? '+' : ''}${diffTaxable}, ITC ${diffItc >= 0 ? '+' : ''}${diffItc}` +
-          `; IGST ${diffComponents.igst}, CGST ${diffComponents.cgst}, SGST ${diffComponents.sgst}, UTGST ${diffComponents.utgst}, Cess ${diffComponents.cess}). ` +
+          `; IGST ${diffComponents.igst}, CGST ${diffComponents.cgst}, SGST/UTGST ${diffComponents.sgstUtgst}, Cess ${diffComponents.cess}). ` +
           'Vendor se corrected document ya 2B me amendment karwaayein. GSTR-3B me 2B wala amount claim karein.',
       });
     }

@@ -9790,8 +9790,7 @@ function renderEbGranularPanel(r) {
         cmpRow('Taxable Value', Number(r.book_taxable_value || 0), effTx, r.twob_taxable_value, true) +
         cmpRow('IGST', Number(r.book_igst || 0), effIg, r.twob_igst, true) +
         cmpRow('CGST', Number(r.book_cgst || 0), effCg, r.twob_cgst, true) +
-        cmpRow('SGST', Number(r.book_sgst || 0), effSg, r.twob_sgst, true) +
-        cmpRow('UTGST (Separate)', Number(r.book_utgst || 0), effUt, r.twob_utgst, true) +
+        cmpRow('SGST / UTGST', Number(r.book_sgst || 0) + Number(r.book_utgst || 0), effSg + effUt, has2b ? (Number(r.twob_sgst || 0) + Number(r.twob_utgst || 0)) : null, true) +
         cmpRow('Cess', Number(r.book_cess || 0), effCe, r.twob_cess, true) +
         cmpRow('Total GST', origTax, effTax, has2b ? twobTax : null, true) +
         cmpRow('Invoice Value', r.book_invoice_value, r.book_invoice_value, r.twob_invoice_value, true) +

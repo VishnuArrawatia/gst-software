@@ -271,6 +271,15 @@ async function main() {
       assert.ok(!res.rows[0].mismatch_reasons?.includes('SGST_DIFF'));
     });
 
+    check('P4-10b: Books SGST matches GSTR-2B UTGST as one combined head (UT GSTIN)', () => {
+      const res = reconcilePurchases(
+        [mkBook({ our_gstin: '26ABFCS9511H1Z7', supplier_gstin: '26AAFCH2607A1Z7', invoice_no: 'HF/SER/1/26-27', taxable_value: 6400, igst: 0, cgst: 576, sgst: 576, utgst: 0, source_invoice_value: 7552, book_invoice_value: 7552, source_row: 1 })],
+        [mk2b({ our_gstin: '26ABFCS9511H1Z7', supplier_gstin: '26AAFCH2607A1Z7', invoice_no: 'HF/SER/1/26-27', taxable_value: 6400, igst: 0, cgst: 576, sgst: 0, utgst: 576, invoice_value: 7552, source_row: 1 })],
+      );
+      assert.equal(res.rows[0].status, 'Matched');
+      assert.equal(res.rows[0].mismatch_reasons?.length ?? 0, 0);
+    });
+
     check('P4-11: Only Cess difference emits CESS_DIFF', () => {
       const res = reconcilePurchases(
         [mkBook({ invoice_no: 'CESS-01', igst: 1800, cess: 500, source_invoice_value: 12300, book_invoice_value: 12300, source_row: 1 })],
